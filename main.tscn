@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://g813oa3u8glg"]
 
 [ext_resource type="Script" uid="uid://x3cr4jp6yjen" path="res://main.gd" id="1_ig7tw"]
+[ext_resource type="ArrayMesh" uid="uid://dbhf8wkaa3bgj" path="res://cube.obj" id="2_0xm2m"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_7dm0k"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -14,8 +15,6 @@ background_mode = 2
 sky = SubResource("Sky_ig7tw")
 glow_enabled = true
 
-[sub_resource type="BoxMesh" id="BoxMesh_7dm0k"]
-
 [node name="Main" type="Node3D" unique_id=1983684945]
 script = ExtResource("1_ig7tw")
 
@@ -23,7 +22,7 @@ script = ExtResource("1_ig7tw")
 environment = SubResource("Environment_0xm2m")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1826720821]
-mesh = SubResource("BoxMesh_7dm0k")
+mesh = ExtResource("2_0xm2m")
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=807859617]
 transform = Transform3D(1, 0, 0, 0, 0.9731347, 0.23023658, 0, -0.23023658, 0.9731347, 1.0940399, 1.5094483, 3)
@@ -37,6 +36,6 @@ horizontal_alignment = 0
 
 [node name="Label3D" type="Label3D" parent="." unique_id=1686110316]
 transform = Transform3D(0.8364454, 0, 0.54805046, 0, 1, 0, -0.54805046, 0, 0.8364454, -3.1290605, 1, -2)
-text = "Test"
+text = "..."
 font_size = 96
 horizontal_alignment = 0

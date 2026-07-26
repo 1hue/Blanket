@@ -3,15 +3,18 @@
 
 layout(constant_id = 0) const float CONSTANT_0 = 0.0;
 layout(constant_id = 1) const float CONSTANT_1 = 0.0;
-layout(local_size_x = 4, local_size_y = 2) in;
+layout(local_size_x = 1, local_size_y = 1) in;
+layout(push_constant, std430) uniform PushParams {
+    float push_data[4];
+};
 layout(set = 0, binding = 0, std430) buffer DataStorageBuffer {
     uint counter;
     vec2 constants;
 
     float storage_data[];
 };
-layout(push_constant, std430) uniform PushParams {
-    float push_data[4];
+layout(set = 1, binding = 0, std430) buffer MeshBuffer {
+    float surface[];
 };
 
 void main() {

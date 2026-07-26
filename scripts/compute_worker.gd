@@ -24,9 +24,12 @@ var constants: Vector2
 var storage_out: PackedFloat32Array
 var benchmark: float
 
+var mesh_uniform: RDUniform
+var mesh_uniform_set: RID
+
 
 func _init() -> void:
-	rd = RenderingServer.create_local_rendering_device()
+	rd = RenderingServer.get_rendering_device()
 	if not rd:
 		push_error("Couldn't create local RenderingDevice on GPU: %s" % RenderingServer.get_video_adapter_name())
 
@@ -39,15 +42,10 @@ func _notification(what) -> void:
 
 		if not rd:
 			return
-
 		if storage_buffer.is_valid():
 			rd.free_rid(storage_buffer)
-
 		if shader.is_valid():
 			rd.free_rid(shader)
-
-		# Free if local RD only
-		rd.free()
 
 
 func _compile() -> void:
@@ -72,11 +70,10 @@ func _init_storage_buffer() -> void:
 	storage_init.resize(SSBO_SIZE * 4)
 	storage_buffer = rd.storage_buffer_create(storage_init.size(), storage_init)
 
-	var uniform: RDUniform = create_uniform([storage_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
+	var uniform := create_uniform([storage_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
 	uniform_set = rd.uniform_set_create([uniform], shader, 0)
 
 
-## Import, compile and load shader
 func compile_shader(p_rd: RenderingDevice, p_shader_path: String) -> RID:
 	var shader_file: RDShaderFile = load(p_shader_path)
 	var shader_spirv: RDShaderSPIRV = shader_file.get_spirv()
@@ -112,6 +109,16 @@ func create_uniform(rids: Array[RID], type: RenderingDevice.UniformType, binding
 	return uniform
 
 
+func set_mesh(mesh: RID) -> void:
+	if mesh_uniform_set:
+		rd.free_rid(mesh_uniform_set)
+
+	var mesh_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh, 0)
+
+	mesh_uniform = create_uniform([mesh_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
+	mesh_uniform_set = rd.uniform_set_create([mesh_uniform], shader, 1)
+
+
 func compute(digit: int) -> void:
 	var push_constant := PackedFloat32Array([digit, 0,0,0])
 	#assert(push_constant.size() == INPUT_COUNT,
@@ -122,6 +129,7 @@ func compute(digit: int) -> void:
 	rd.compute_list_bind_compute_pipeline(compute_list, pipeline)
 	rd.compute_list_set_push_constant(compute_list, push_constant.to_byte_array(), push_constant.size() * 4)
 	rd.compute_list_bind_uniform_set(compute_list, uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, uniform_set, 1)
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
 	rd.compute_list_end()
 	rd.capture_timestamp("bench_end")
