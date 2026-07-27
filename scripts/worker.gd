@@ -8,9 +8,12 @@ const SHADER_PATHS: Array[String] = [
 	"res://shaders/compact.glsl"
 ]
 
+const COUNT_BUFFER_OFFSET := 16
+
 var rd: RenderingDevice
 var shaders: Array[RID] = [RID(), RID()]
 var pipelines: Array[RID] = [RID(), RID()]
+var params: ComputePushConstant
 
 var mesh: RID
 var mesh_uniform_set: RID
@@ -18,33 +21,8 @@ var vertex_count: int
 var index_count: int
 
 var count_buffer: RID
+var count_buffer_size: int
 var count_uniform_set: RID
-
-var push_constant: PackedByteArray
-var p_local_up: Vector3:
-	get:
-		return Vector3(
-			push_constant.decode_float(0),
-			push_constant.decode_float(4),
-			push_constant.decode_float(8)
-		)
-	set(value):
-		push_constant.encode_float(0, value.x)
-		push_constant.encode_float(4, value.y)
-		push_constant.encode_float(8, value.z)
-		compute()
-var p_up_threshold_degrees: float:
-	get:
-		return push_constant.decode_float(12)
-	set(value):
-		push_constant.encode_float(12, value)
-		compute()
-var p_shift_amount: float:
-	get:
-		return push_constant.decode_float(16)
-	set(value):
-		push_constant.encode_float(16, value)
-		compute()
 
 
 func _init(p_mesh: ArrayMesh) -> void:
@@ -63,7 +41,9 @@ func _init(p_mesh: ArrayMesh) -> void:
 		rd.compute_pipeline_create(shaders[1]),
 	]
 
-	push_constant.resize(20)
+	params = ComputePushConstant.new()
+	params.changed.connect(compute)
+
 	_init_mesh(p_mesh)
 
 
@@ -88,26 +68,37 @@ func _init_mesh(p_mesh: ArrayMesh) -> void:
 	var vertex_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
 
 	buffer = RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh, 0)
+	var index_data := rd.buffer_get_data(buffer)
+	var indices := ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(index_data))
+	prints("index buffer: ", indices.size(), indices)
 	var index_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
+	var index_len := p_mesh.surface_get_array_index_len(0)
 
 	mesh_uniform_set = rd.uniform_set_create([index_uniform, vertex_uniform], shaders[0], 0)
 
-	_init_count_buffer(buffer)
+	_init_count_buffer(index_len)
 
 
-func _init_count_buffer(index_buffer: RID) -> void:
+func _init_count_buffer(index_len: int) -> void:
 	if count_buffer.is_valid():
 		rd.free_rid(count_buffer)
 
+	count_buffer_size = COUNT_BUFFER_OFFSET + index_len * 2 # Indices is 16-bit uint each = 2 bytes
+
 	var data_init := PackedByteArray()
-	data_init.resize(16)
+	data_init.resize(count_buffer_size)
 	count_buffer = rd.storage_buffer_create(data_init.size(), data_init)
 
 	var count_uniform := ComputeUtil.create_uniform([count_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
 	count_uniform_set = rd.uniform_set_create([count_uniform], shaders[0], 1)
 
 
+func clear() -> void:
+	rd.buffer_clear(count_buffer, 0, count_buffer_size) # reset counter
+
+
 func compute() -> void:
+	clear()
 	compute_count()
 	#compute_compact()
 
@@ -115,7 +106,7 @@ func compute() -> void:
 func compute_count() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
-	rd.compute_list_set_push_constant(compute_list, push_constant, push_constant.size())
+	rd.compute_list_set_push_constant(compute_list, params.bytes, params.bytes.size())
 	rd.compute_list_bind_uniform_set(compute_list, mesh_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, count_uniform_set, 1)
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
@@ -125,10 +116,10 @@ func compute_count() -> void:
 
 func out() -> void:
 	var bytes_out := rd.buffer_get_data(count_buffer)
-	var arr := bytes_out.slice(4).to_float32_array()
+	var arr := ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(bytes_out.slice(4)))
 
-	print_rich('Output: x%d | [color=pale_green][b]%s[/b][/color] (%s)' % [
-		bytes_out.decode_u32(0), arr, bytes_out.size()
+	print_rich('Output: x%d | %s [color=pale_green][b]%s[/b][/color]' % [
+		bytes_out.decode_u32(0), arr.size(), arr
 	])
 
 	output.emit("%s" % [arr])

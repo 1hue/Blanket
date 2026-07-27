@@ -1,7 +1,9 @@
 #[compute]
 #version 450
 
-#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
 
 layout(local_size_x = 256) in;
 
@@ -14,7 +16,7 @@ layout(push_constant, std430) uniform PushParams {
 };
 
 layout(set = 0, binding = 0, scalar) restrict readonly buffer IndexBuffer {
-    uvec3 indices[]; // 3 per triangle
+    u16vec3 indices[]; // Indices referencing verts form triangles, 3 verts per triangle
 };
 
 layout(set = 0, binding = 1, scalar) restrict readonly buffer VertexBuffer {
@@ -24,7 +26,8 @@ layout(set = 0, binding = 1, scalar) restrict readonly buffer VertexBuffer {
 
 layout(set = 1, binding = 0, scalar) restrict buffer CountBuffer {
     uint counter;
-    vec3 eligible[];
+    vec3 debug;
+    u16vec3 eligible[];
 };
 
 vec3 oct_decode(vec2 e) {
@@ -49,14 +52,15 @@ void main() {
         return;
     }
 
-	vec3 tri[3] = vec3[](
-		verts[indices[idx].x],
-		verts[indices[idx].y],
-		verts[indices[idx].z]
-	);
+// 	vec3 tri[3] = vec3[](
+// 		verts[indices[idx].x],
+// 		verts[indices[idx].y],
+// 		verts[indices[idx].z]
+// 	);
+
+    eligible[idx] = indices[idx];
 
     if (idx == 0) {
         vec3 normal = read_normal(idx);
-        eligible[0] = vec3(shift_amount,1,1);
     }
 }
