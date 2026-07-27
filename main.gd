@@ -1,6 +1,7 @@
 extends Node3D
 
 var worker: ComputeWorker
+var vertex_count: int
 
 @onready var debug: Label3D = $Label3D
 # Make sure this uses an ArrayMesh - primitives like BoxMesh cannot have the STORAGE_BUFFER flag
@@ -10,20 +11,22 @@ var worker: ComputeWorker
 func _ready() -> void:
 	convert_to_storage_buffer_mesh(mesh_instance_3d)
 
-	worker = ComputeWorker.new()
-	worker.output.connect(_on_output)
-
 	var array_mesh: ArrayMesh = mesh_instance_3d.mesh
 	var format := array_mesh.surface_get_format(0)
 	var uses_storage_buffer := (format & Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER) != 0
 	assert(uses_storage_buffer, "Mesh must have the STORAGE_BUFFER flag")
 
+	vertex_count = array_mesh.surface_get_array_len(0)
+	prints("vertex_count", vertex_count)
+
+	worker = ComputeWorker.new()
+	worker.output.connect(_on_output)
 	worker.set_mesh(mesh_instance_3d.mesh.get_rid())
-	worker.compute(10)
+	worker.compute(vertex_count, 0)
 
 
 func _on_output() -> void:
-	debug.text = "%s" % worker.storage_out
+	debug.text = worker.storage_out
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -36,7 +39,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			digit = event.keycode - KEY_KP_0
 
 		if digit != -1:
-			worker.compute(digit)
+			worker.compute(vertex_count, digit)
 			get_viewport().set_input_as_handled()
 
 

@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://x3cr4jp6yjen" path="res://main.gd" id="1_ig7tw"]
 [ext_resource type="ArrayMesh" uid="uid://dbhf8wkaa3bgj" path="res://cube.obj" id="2_0xm2m"]
+[ext_resource type="Script" uid="uid://8ehypqim7667" path="res://scripts/camera_rig.gd" id="3_h2yge"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_7dm0k"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -15,18 +16,21 @@ background_mode = 2
 sky = SubResource("Sky_ig7tw")
 glow_enabled = true
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ja0xq"]
+cull_mode = 2
+
 [node name="Main" type="Node3D" unique_id=1983684945]
 script = ExtResource("1_ig7tw")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1840859551]
 environment = SubResource("Environment_0xm2m")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1826720821]
-mesh = ExtResource("2_0xm2m")
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="WorldEnvironment" unique_id=839109420]
+transform = Transform3D(0.8660254, 0.35355338, -0.35355338, 0, 0.7071068, 0.7071068, 0.50000006, -0.6123725, 0.6123725, 0, 12, 0)
 
-[node name="Camera3D" type="Camera3D" parent="." unique_id=807859617]
-transform = Transform3D(1, 0, 0, 0, 0.9731347, 0.23023658, 0, -0.23023658, 0.9731347, 1.0940399, 1.5094483, 3)
-current = true
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1826720821]
+material_override = SubResource("StandardMaterial3D_ja0xq")
+mesh = ExtResource("2_0xm2m")
 
 [node name="Label3D2" type="Label3D" parent="." unique_id=1803463112]
 transform = Transform3D(0.8369103, 0.0016074883, 0.54733783, -0.0013174033, 0.9999987, -0.0009225342, -0.5473386, 5.102507e-05, 0.8369114, -3.1290605, 1.6597109, -2)
@@ -39,3 +43,11 @@ transform = Transform3D(0.8364454, 0, 0.54805046, 0, 1, 0, -0.54805046, 0, 0.836
 text = "..."
 font_size = 96
 horizontal_alignment = 0
+
+[node name="CameraRig" type="Node3D" parent="." unique_id=1815120481]
+script = ExtResource("3_h2yge")
+metadata/_custom_type_script = "uid://8ehypqim7667"
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig" unique_id=807859617]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2951946, 3.5272152)
+current = true
