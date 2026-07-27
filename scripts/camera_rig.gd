@@ -22,7 +22,10 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+	if event.shift_pressed or event.ctrl_pressed:
+		return
+
+	if event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_MIDDLE):
 		dragging = event.pressed
 		get_viewport().set_input_as_handled()
 

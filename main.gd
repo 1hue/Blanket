@@ -16,30 +16,35 @@ func _ready() -> void:
 	var uses_storage_buffer := (format & Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER) != 0
 	assert(uses_storage_buffer, "Mesh must have the STORAGE_BUFFER flag")
 
-	vertex_count = array_mesh.surface_get_array_len(0)
-	prints("vertex_count", vertex_count)
-
-	worker = ComputeWorker.new()
+	worker = ComputeWorker.new(mesh_instance_3d.mesh)
 	worker.output.connect(_on_output)
-	worker.set_mesh(mesh_instance_3d.mesh.get_rid())
-	worker.compute(vertex_count, 0)
+	worker.compute()
 
 
-func _on_output() -> void:
-	debug.text = worker.storage_out
+func _on_output(message: String) -> void:
+	debug.text = message
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		var digit := -1
+		if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:
+			worker.p_shift_amount += 1
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_MINUS or event.keycode == KEY_KP_SUBTRACT:
+			worker.p_shift_amount -= 1
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_BACKSPACE:
+			worker.p_shift_amount = 0
+			get_viewport().set_input_as_handled()
 
-		if event.keycode >= KEY_0 and event.keycode <= KEY_9:
-			digit = event.keycode - KEY_0
-		elif event.keycode >= KEY_KP_0 and event.keycode <= KEY_KP_9:
-			digit = event.keycode - KEY_KP_0
 
-		if digit != -1:
-			worker.compute(vertex_count, digit)
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.shift_pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			worker.p_shift_amount += 1
+			get_viewport().set_input_as_handled()
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			worker.p_shift_amount -= 1
 			get_viewport().set_input_as_handled()
 
 
