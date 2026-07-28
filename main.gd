@@ -31,23 +31,23 @@ func _on_output(message: String) -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:
-			worker.params.shift_amount += 1
+			worker.params_compact.shift_amount += 1
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_MINUS or event.keycode == KEY_KP_SUBTRACT:
-			worker.params.shift_amount -= 1
+			worker.params_compact.shift_amount -= 1
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_BACKSPACE:
-			worker.params.shift_amount = 0
+			worker.params_compact.shift_amount = 0
 			get_viewport().set_input_as_handled()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.shift_pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			worker.params.shift_amount += 1
+			worker.params_compact.shift_amount += 1
 			get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			worker.params.shift_amount -= 1
+			worker.params_compact.shift_amount -= 1
 			get_viewport().set_input_as_handled()
 
 

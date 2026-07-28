@@ -58,6 +58,6 @@ current = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1)
 
 [node name="Cube" parent="cube" index="0" unique_id=2046122579]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 1)
+transform = Transform3D(0.83454484, -0.55094004, 0, 0.55094004, 0.83454484, 0, 0, 0, 1, 0, 0.5, 1)
 
 [editable path="cube"]

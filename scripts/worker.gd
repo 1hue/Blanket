@@ -12,9 +12,12 @@ const COUNT_BUFFER_OFFSET := 16
 var rd: RenderingDevice
 var shaders: Array[RID] = [RID(), RID()]
 var pipelines: Array[RID] = [RID(), RID()]
-var params: ComputePushConstant
+
+var params_count: ParamsCount
+var params_compact: ParamsCompact
 
 var mesh_uniform_set: RID
+var vertex_uniform: RDUniform
 var index_count: int
 var index_stride: int
 
@@ -24,6 +27,7 @@ var count_uniform_set: RID
 
 var mesh: ArrayMesh
 var owned_surface: int
+var owned_surface_uniform_set: RID
 
 
 func _init(p_mesh: ArrayMesh, global_transform: Transform3D) -> void:
@@ -55,9 +59,12 @@ func _init(p_mesh: ArrayMesh, global_transform: Transform3D) -> void:
 		rd.compute_pipeline_create(shaders[1]),
 	]
 
-	params = ComputePushConstant.new()
-	params.local_up = global_transform.basis.inverse() * Vector3.UP
-	params.changed.connect(compute)
+	params_count = ParamsCount.new()
+	params_count.local_up = global_transform.basis.inverse() * Vector3.UP
+	params_count.changed.connect(compute)
+
+	params_compact = ParamsCompact.new()
+	params_compact.local_up = global_transform.basis.inverse() * Vector3.UP
 
 	_init_mesh()
 
@@ -78,16 +85,16 @@ func _notification(what) -> void:
 
 func _init_mesh() -> void:
 	var mesh_rid := mesh.get_rid()
-	var buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, 0)
-	var index_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
+	var buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, 0)
+	vertex_uniform = ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
 
-	buffer = RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, 0)
-	var vertex_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
+	buffer = RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, 0)
+	var index_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
 
 	buffer = RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, 0)
 	var attribute_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2)
 
-	mesh_uniform_set = rd.uniform_set_create([index_uniform, vertex_uniform, attribute_uniform], shaders[0], 0)
+	mesh_uniform_set = rd.uniform_set_create([vertex_uniform, index_uniform, attribute_uniform], shaders[0], 0)
 
 	_init_count_buffer()
 
@@ -111,17 +118,42 @@ func compute() -> void:
 	clear()
 	compute_count()
 	add_surface()
-	out()
-
-
-func update() -> void:
 	compute_compact()
 
 
 func add_surface() -> void:
+	if params_compact.changed.is_connected(compute_compact):
+		params_compact.changed.disconnect(compute_compact)
+
+	if owned_surface:
+		mesh.surface_remove(owned_surface)
+
 	var counter := rd.buffer_get_data(count_buffer, 0 , 4).decode_u32(0)
 	var eligible_indices := rd.buffer_get_data(count_buffer, 4, counter * 12).to_int32_array()
+
 	_add_surface(mesh, eligible_indices)
+	_init_new_surface_buffer()
+
+	var target_format := mesh.surface_get_format(owned_surface)
+	params_compact.vertex_count = eligible_indices.size()
+	params_compact.target_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(
+		target_format, params_compact.vertex_count
+	)
+	var source_format := mesh.surface_get_format(0)
+	var source_vertex_count := mesh.surface_get_array_len(0)
+	params_compact.source_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(
+		source_format, source_vertex_count
+	)
+
+	params_compact.changed.connect(compute_compact)
+
+
+func _init_new_surface_buffer() -> void:
+	var mesh_rid := mesh.get_rid()
+	var buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, owned_surface)
+	var target_vertex_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
+
+	owned_surface_uniform_set = rd.uniform_set_create([vertex_uniform, target_vertex_uniform], shaders[1], 0)
 
 
 func _add_surface(array_mesh: ArrayMesh, eligible_indices: PackedInt32Array) -> void:
@@ -162,7 +194,7 @@ func _add_surface(array_mesh: ArrayMesh, eligible_indices: PackedInt32Array) -> 
 func compute_count() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
-	rd.compute_list_set_push_constant(compute_list, params.bytes, params.bytes.size())
+	rd.compute_list_set_push_constant(compute_list, params_count.bytes, params_count.bytes.size())
 	rd.compute_list_bind_uniform_set(compute_list, mesh_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, count_uniform_set, 1)
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
@@ -172,23 +204,24 @@ func compute_count() -> void:
 func compute_compact() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[1])
-	rd.compute_list_set_push_constant(compute_list, params.bytes, params.bytes.size())
-	rd.compute_list_bind_uniform_set(compute_list, mesh_uniform_set, 0)
+	rd.compute_list_set_push_constant(compute_list, params_compact.bytes, params_compact.bytes.size())
+	rd.compute_list_bind_uniform_set(compute_list, owned_surface_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, count_uniform_set, 1)
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
 	rd.compute_list_end()
-
 	#var count := rd.compute_list_dispatch_indirect()
+	out()
 
 func out() -> void:
 	var bytes_out := rd.buffer_get_data(count_buffer)
+	var counter := bytes_out.decode_u32(0)
 	#var arr := ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(bytes_out.slice(COUNT_BUFFER_OFFSET)))
 
 	print_rich('Output: x%d | [color=pale_green][b]%s[/b][/color] %sB' % [
-		bytes_out.decode_u32(0), ComputeUtil.to_vector3i_array(bytes_out.slice(4).to_int32_array()), count_buffer_size
+		counter, ComputeUtil.to_vector3i_array(bytes_out.slice(4).to_int32_array()), count_buffer_size
 	])
 
-	output.emit("%s" % [1])
+	output.emit("%s" % [counter])
 
 
 #region Debug

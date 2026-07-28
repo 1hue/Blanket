@@ -1,62 +1,56 @@
 #[compute]
 #version 450
 
-#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_scalar_block_layout : require
 
 layout(local_size_x = 256) in;
 
-layout(constant_id = 0) const uint VERTEX_COUNT = 24;
-
 layout(push_constant, std430) uniform PushParams {
-    vec3 local_up; // World-up transformed into mesh local space (computed on CPU)
-    float shift_amount; // How far to move eligible vertices
-    float up_threshold_degrees; // Max angle from local_up for a face to qualify
+	vec3 local_up;
+	float shift_amount;
+	uint vertex_count;
+	uint source_vertex_stride; // bytes per position in source buffer
+	uint target_vertex_stride; // bytes per position in target buffer
 };
 
-layout(set = 0, binding = 0, scalar) restrict readonly buffer IndexBuffer {
-    uvec3 indices[]; // 3 per triangle
+layout(set = 0, binding = 0, std430) restrict readonly buffer SourceVertexBuffer {
+	uint source_buffer[];
 };
 
-layout(set = 0, binding = 1, scalar) restrict readonly buffer SourceVertexBuffer {
-    vec3 source_verts[VERTEX_COUNT];
-    uint source_normals[]; // Packed normals and tangents
+layout(set = 0, binding = 1, std430) restrict writeonly buffer TargetVertexBuffer {
+	uint target_buffer[];
 };
 
-layout(set = 0, binding = 2, scalar) restrict writeonly buffer VertexBuffer {
-    vec3 verts[VERTEX_COUNT];
+layout(set = 1, binding = 0, scalar) restrict buffer CountBuffer {
+	uint counter;
+	uvec3 eligible[];
 };
 
-layout(set = 0, binding = 3, scalar) restrict buffer DebugBuffer {
-    vec3 debug;
-};
-
-vec3 oct_decode(vec2 e) {
-    vec3 v = vec3(e.xy, 1.0 - abs(e.x) - abs(e.y));
-    vec2 wrapped = (1.0 - abs(v.yx)) * sign(v.xy);
-    v.xy = mix(v.xy, wrapped, step(v.z, 0.0));
-    return normalize(v);
+vec3 read_source_position(uint vertex_index) {
+	uint word = (vertex_index * source_vertex_stride) / 4u;
+	return vec3(
+		uintBitsToFloat(source_buffer[word]),
+		uintBitsToFloat(source_buffer[word + 1u]),
+		uintBitsToFloat(source_buffer[word + 2u])
+	);
 }
 
-vec3 read_normal(uint vertex_index) {
-    uint element_index = vertex_index * 2u;
-    vec2 e = unpackUnorm2x16(source_normals[element_index]) * 2.0 - 1.0;
-    return oct_decode(e);
+void write_target_position(uint vertex_index, vec3 position) {
+	uint word = (vertex_index * target_vertex_stride) / 4u;
+	target_buffer[word] = floatBitsToUint(position.x);
+	target_buffer[word + 1u] = floatBitsToUint(position.y);
+	target_buffer[word + 2u] = floatBitsToUint(position.z);
 }
 
 void main() {
-    // 2D
-    uint idx = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+	uint target_index = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
 
-    if (idx >= source_verts.length()) {
-        return;
-    }
+	if (target_index >= vertex_count) {
+		return;
+	}
 
-    vec3 tri[3] = vec3[](
-        source_verts[indices[idx].x],
-        source_verts[indices[idx].y],
-        source_verts[indices[idx].z]
-    );
+	uint source_index = eligible[target_index / 3u][target_index % 3u];
+	vec3 source_position = read_source_position(source_index);
 
-    vec3 normal = read_normal(idx);
-    debug = normal;
+	write_target_position(target_index, source_position + normalize(local_up) * shift_amount);
 }

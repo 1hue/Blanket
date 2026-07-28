@@ -1,12 +1,11 @@
 extends RefCounted
-class_name ComputePushConstant
+class_name ParamsCount
 
 signal changed
 
 const OFFSET_LOCAL_UP := 0
 const OFFSET_UP_THRESHOLD_DEGREES := 12
-const OFFSET_SHIFT_AMOUNT := 16
-const TOTAL_SIZE := 20
+const TOTAL_SIZE := 16
 
 var bytes := PackedByteArray()
 
@@ -29,15 +28,8 @@ var up_threshold_degrees: float:
 		bytes.encode_float(OFFSET_UP_THRESHOLD_DEGREES, value)
 		changed.emit()
 
-var shift_amount: float:
-	get: return bytes.decode_float(OFFSET_SHIFT_AMOUNT)
-	set(value):
-		bytes.encode_float(OFFSET_SHIFT_AMOUNT, value)
-		changed.emit()
-
 
 func _init() -> void:
 	bytes.resize(TOTAL_SIZE)
 	up_threshold_degrees = 45
-	shift_amount = 1
 	local_up = Vector3.UP

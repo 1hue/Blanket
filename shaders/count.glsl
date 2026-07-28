@@ -17,15 +17,14 @@ layout(constant_id = 6) const uint ATTRIBUTE_STRIDE = 0;
 layout(push_constant, std430) uniform PushParams {
 	vec3 local_up; // World-up transformed into mesh local space (computed on CPU)
 	float up_threshold_degrees; // Max angle from local_up for a face to qualify, 0deg for horizontal
-	float shift_amount;
 };
 
-layout(set = 0, binding = 0, std430) restrict readonly buffer IndexBuffer {
-	uint index_buffer[]; // 16-bit or 32-bit indices, per INDEX_STRIDE
-};
-
-layout(set = 0, binding = 1, std430) restrict readonly buffer VertexBuffer {
+layout(set = 0, binding = 0, std430) restrict readonly buffer VertexBuffer {
 	uint vertex_buffer[]; // positions, then normals+tangents
+};
+
+layout(set = 0, binding = 1, std430) restrict readonly buffer IndexBuffer {
+	uint index_buffer[]; // 16-bit or 32-bit indices, per INDEX_STRIDE
 };
 
 layout(set = 0, binding = 2, std430) restrict buffer AttributeBuffer {
