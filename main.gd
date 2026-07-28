@@ -1,7 +1,8 @@
 extends Node3D
 
+const HIGHLIGHT_MATERIAL: StandardMaterial3D = preload("res://assets/highlight.tres")
+
 var worker: ComputeWorker
-var vertex_count: int
 
 @onready var debug: Label3D = $Label3D
 # Make sure this uses an ArrayMesh - primitives like BoxMesh cannot have the STORAGE_BUFFER flag
@@ -20,6 +21,7 @@ func _ready() -> void:
 	worker = ComputeWorker.new(mesh_instance.mesh, mesh_instance.global_transform)
 	worker.output.connect(_on_output)
 	worker.compute()
+	mesh_instance.set_surface_override_material(worker.owned_surface, HIGHLIGHT_MATERIAL)
 
 
 func _on_output(message: String) -> void:

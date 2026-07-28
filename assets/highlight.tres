@@ -1,0 +1,5 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://bq4fsw1x303w"]
+
+[resource]
+vertex_color_use_as_albedo = true
+albedo_color = Color(0.65875006, 0.93, 0.279, 1)

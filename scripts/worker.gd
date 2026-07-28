@@ -7,7 +7,6 @@ const SHADER_PATHS: Array[String] = [
 	"res://shaders/count.glsl",
 	"res://shaders/compact.glsl"
 ]
-
 const COUNT_BUFFER_OFFSET := 16
 
 var rd: RenderingDevice
@@ -23,17 +22,19 @@ var count_buffer: RID
 var count_buffer_size: int
 var count_uniform_set: RID
 
+var mesh: ArrayMesh
+var owned_surface: int
 
-func _init(mesh: ArrayMesh, global_transform: Transform3D) -> void:
+
+func _init(p_mesh: ArrayMesh, global_transform: Transform3D) -> void:
 	rd = RenderingServer.get_rendering_device()
+	mesh = p_mesh
 
 	var format := mesh.surface_get_format(0)
 	var primitive := mesh.surface_get_primitive_type(0)
 
 	assert(format & Mesh.ARRAY_FORMAT_NORMAL != 0, "Mesh must have normals: %s" % mesh)
 	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be of triangle primitives: %s is %s" % [mesh, primitive])
-
-	prints("Normals:", format & Mesh.ARRAY_FORMAT_NORMAL != 0, "| Colours:", format & Mesh.ARRAY_FORMAT_COLOR != 0)
 
 	index_count = mesh.surface_get_array_index_len(0)
 	var vertex_count := mesh.surface_get_array_len(0)
@@ -58,7 +59,7 @@ func _init(mesh: ArrayMesh, global_transform: Transform3D) -> void:
 	params.local_up = global_transform.basis.inverse() * Vector3.UP
 	params.changed.connect(compute)
 
-	_init_mesh(mesh.get_rid())
+	_init_mesh()
 
 
 func _notification(what) -> void:
@@ -75,35 +76,16 @@ func _notification(what) -> void:
 				rd.free_rid(shader)
 
 
-func _init_mesh(mesh: RID) -> void:
-	#var format := p_mesh.surface_get_format(0)
-	var surface := RenderingServer.mesh_get_surface(mesh, 0)
-	#prints("surface", surface)
-	#prints("vertex_count", vertex_count, "index_count", index_count,
-		#"normals_offset", normals_offset, "indices_offset", indices_offset, "index_stride", index_stride)
-
-	#var normal_tangent_stride := RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
-	#var length := vertex_count * normal_tangent_stride
-	#var normals_data := rd.buffer_get_data(buffer, 0, 16)
-	#prints("\n", normals_data, "\n")
-	#prints("vert buffer 16 bytes:", normals_data)
-	#prints(" - try decode normal at [0]:", ComputeUtil.read_normal(normals_data, 0))
-	#normals_data = rd.buffer_get_data(buffer, 72, 16)
-	#prints("288 offset 16 bytes:", normals_data)
-	#prints(" - try decode normal at [0]:", ComputeUtil.read_normal(normals_data, 0))
-
-	var buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh, 0)
+func _init_mesh() -> void:
+	var mesh_rid := mesh.get_rid()
+	var buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, 0)
 	var index_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
-	#var index_data := rd.buffer_get_data(buffer)
-	#var indices := ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(index_data))
-	#prints("index buffer: ", index_data)
 
-	buffer = RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh, 0)
+	buffer = RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, 0)
 	var vertex_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
 
-	buffer = RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh, 0)
+	buffer = RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, 0)
 	var attribute_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2)
-	#prints("\nTest", rd.buffer_get_data(buffer), "\n")
 
 	mesh_uniform_set = rd.uniform_set_create([index_uniform, vertex_uniform, attribute_uniform], shaders[0], 0)
 
@@ -129,6 +111,50 @@ func compute() -> void:
 	clear()
 	compute_count()
 	#compute_compact()
+	add_surface()
+	#var count := rd.compute_list_dispatch_indirect()
+	out()
+
+
+func add_surface() -> void:
+	var counter := rd.buffer_get_data(count_buffer, 0 , 4).decode_u32(0)
+	var eligible_indices := rd.buffer_get_data(count_buffer, 4, counter * 12).to_int32_array()
+	_add_surface(mesh, eligible_indices)
+
+
+func _add_surface(array_mesh: ArrayMesh, eligible_indices: PackedInt32Array) -> void:
+	var source_arrays := array_mesh.surface_get_arrays(0)
+	var source_verts: PackedVector3Array = source_arrays[Mesh.ARRAY_VERTEX]
+	var source_normals: PackedVector3Array = source_arrays[Mesh.ARRAY_NORMAL]
+
+	var count := eligible_indices.size()
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var indices := PackedInt32Array()
+	vertices.resize(count)
+	normals.resize(count)
+	indices.resize(count)
+
+	for i in count:
+		var source_index := eligible_indices[i]
+		vertices[i] = source_verts[source_index]
+		normals[i] = source_normals[source_index]
+		indices[i] = i
+
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_INDEX] = indices
+
+	owned_surface = array_mesh.get_surface_count()
+	array_mesh.add_surface_from_arrays(
+		Mesh.PRIMITIVE_TRIANGLES,
+		arrays,
+		[],
+		{},
+		Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER
+	)
 
 
 func compute_count() -> void:
@@ -139,15 +165,39 @@ func compute_count() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, count_uniform_set, 1)
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
 	rd.compute_list_end()
-	out()
 
 
 func out() -> void:
 	var bytes_out := rd.buffer_get_data(count_buffer)
-	var arr := ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(bytes_out.slice(COUNT_BUFFER_OFFSET)))
+	#var arr := ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(bytes_out.slice(COUNT_BUFFER_OFFSET)))
 
-	print_rich('Output: x%d | [color=pale_green][b]%s[/b][/color] %s B' % [
-		bytes_out.decode_u32(0), bytes_out.slice(4).to_int32_array(), count_buffer_size
+	print_rich('Output: x%d | [color=pale_green][b]%s[/b][/color] %sB' % [
+		bytes_out.decode_u32(0), ComputeUtil.to_vector3i_array(bytes_out.slice(4).to_int32_array()), count_buffer_size
 	])
 
-	output.emit("%s" % [arr])
+	output.emit("%s" % [1])
+
+
+#region Debug
+
+#prints("Normals:", format & Mesh.ARRAY_FORMAT_NORMAL != 0, "| Colours:", format & Mesh.ARRAY_FORMAT_COLOR != 0)
+#var format := p_mesh.surface_get_format(0)
+#var surface := RenderingServer.mesh_get_surface(mesh, 0)
+#prints("surface", surface)
+#prints("vertex_count", vertex_count, "index_count", index_count,
+	#"normals_offset", normals_offset, "indices_offset", indices_offset, "index_stride", index_stride)
+
+#var normal_tangent_stride := RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
+#var length := vertex_count * normal_tangent_stride
+#var normals_data := rd.buffer_get_data(buffer, 0, 16)
+#prints("\n", normals_data, "\n")
+#prints("vert buffer 16 bytes:", normals_data)
+#prints(" - try decode normal at [0]:", ComputeUtil.read_normal(normals_data, 0))
+#normals_data = rd.buffer_get_data(buffer, 72, 16)
+#prints("288 offset 16 bytes:", normals_data)
+#prints(" - try decode normal at [0]:", ComputeUtil.read_normal(normals_data, 0))
+#var index_data := rd.buffer_get_data(buffer)
+#var indices := ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(index_data))
+#prints("index buffer: ", index_data)
+
+#endregion
