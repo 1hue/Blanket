@@ -74,3 +74,18 @@ static func to_vector3i_array(indices: PackedInt32Array) -> Array[Vector3i]:
 		triangles.append(Vector3i(indices[i], indices[i + 1], indices[i + 2]))
 
 	return triangles
+
+
+static func oct_decode(e: Vector2) -> Vector3:
+	var v := Vector3(e.x, e.y, 1.0 - absf(e.x) - absf(e.y))
+	if v.z < 0.0:
+		var ox := v.x
+		v.x = (1.0 - absf(v.y)) * signf(ox)
+		v.y = (1.0 - absf(ox)) * signf(v.y)
+	return v.normalized()
+
+
+static func read_normal(bytes: PackedByteArray, byte_offset := 0) -> Vector3:
+	var x := bytes.decode_u16(byte_offset) / 65535.0 * 2.0 - 1.0
+	var y := bytes.decode_u16(byte_offset + 2) / 65535.0 * 2.0 - 1.0
+	return oct_decode(Vector2(x, y))

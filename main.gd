@@ -5,18 +5,18 @@ var vertex_count: int
 
 @onready var debug: Label3D = $Label3D
 # Make sure this uses an ArrayMesh - primitives like BoxMesh cannot have the STORAGE_BUFFER flag
-@onready var mesh_instance_3d: MeshInstance3D = $MeshInstance3D
+@onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 
 
 func _ready() -> void:
-	convert_to_storage_buffer_mesh(mesh_instance_3d)
+	convert_to_storage_buffer_mesh(mesh_instance)
 
-	var array_mesh: ArrayMesh = mesh_instance_3d.mesh
+	var array_mesh: ArrayMesh = mesh_instance.mesh
 	var format := array_mesh.surface_get_format(0)
 	var uses_storage_buffer := (format & Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER) != 0
 	assert(uses_storage_buffer, "Mesh must have the STORAGE_BUFFER flag")
 
-	worker = ComputeWorker.new(mesh_instance_3d.mesh)
+	worker = ComputeWorker.new(mesh_instance.mesh)
 	worker.output.connect(_on_output)
 	worker.compute()
 
@@ -48,8 +48,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
-func convert_to_storage_buffer_mesh(mesh_instance: MeshInstance3D) -> void:
-	var source_mesh := mesh_instance.mesh as ArrayMesh
+func convert_to_storage_buffer_mesh(p_mesh_instance: MeshInstance3D) -> void:
+	var source_mesh := p_mesh_instance.mesh as ArrayMesh
 	var new_mesh := ArrayMesh.new()
 
 	for i in source_mesh.get_surface_count():
