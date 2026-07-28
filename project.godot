@@ -14,7 +14,7 @@ config/name="Compute"
 run/main_scene="uid://g813oa3u8glg"
 config/features=PackedStringArray("4.8", "Forward Plus")
 boot_splash/show_image=false
-config/icon="res://icon.svg"
+config/icon="res://assets/icon.svg"
 
 [display]
 

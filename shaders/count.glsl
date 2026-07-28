@@ -11,6 +11,8 @@ layout(constant_id = 1) const uint VERTEX_COUNT = 0;
 layout(constant_id = 2) const uint INDEX_STRIDE = 0; // bytes per index, 2 or 4
 layout(constant_id = 3) const uint NORMALS_OFFSET = 0; // bytes
 layout(constant_id = 4) const uint NORMAL_TANGENT_STRIDE = 0; // bytes per vertex
+layout(constant_id = 5) const uint COLORS_OFFSET = 0;
+layout(constant_id = 6) const uint ATTRIBUTE_STRIDE = 0;
 
 layout(push_constant, std430) uniform PushParams {
 	vec3 local_up; // World-up transformed into mesh local space (computed on CPU)
@@ -26,9 +28,13 @@ layout(set = 0, binding = 1, std430) restrict readonly buffer VertexBuffer {
 	uint vertex_buffer[]; // positions, then normals+tangents
 };
 
-layout(set = 1, binding = 0, scalar) restrict writeonly buffer CountBuffer {
+layout(set = 0, binding = 2, std430) restrict buffer AttributeBuffer {
+	uint attribute_buffer[];
+};
+
+layout(set = 1, binding = 0, scalar) restrict buffer CountBuffer {
 	uint counter;
-	vec3 eligible[];
+	uvec3 eligible[];
 };
 
 uint read_index(uint i) {
@@ -57,6 +63,11 @@ vec3 read_normal(uint vertex_index) {
 	return oct_decode(e);
 }
 
+void write_color(uint vertex_index, vec4 color) {
+	uint word = (COLORS_OFFSET + vertex_index * ATTRIBUTE_STRIDE) / 4u;
+	attribute_buffer[word] = packUnorm4x8(color);
+}
+
 void main() {
 	uint tri = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
 
@@ -76,9 +87,16 @@ void main() {
 		+ read_normal(tri_indices.z)
 	);
 
-	if (dot(face_normal, normalize(local_up)) <= cos(radians(up_threshold_degrees))) {
+	bool passes = dot(face_normal, normalize(local_up)) > cos(radians(up_threshold_degrees));
+	vec4 color = passes ? vec4(0.0, 1.0, 0.0, 1.0) : vec4(1.0, 0.0, 0.0, 1.0);
+
+	write_color(tri_indices.x, color);
+	write_color(tri_indices.y, color);
+	write_color(tri_indices.z, color);
+
+	if (!passes) {
 		return;
 	}
 
-	eligible[atomicAdd(counter, 1u)] = face_normal;
+	eligible[atomicAdd(counter, 1u)] = tri_indices;
 }

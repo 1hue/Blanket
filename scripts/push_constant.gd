@@ -38,3 +38,6 @@ var shift_amount: float:
 
 func _init() -> void:
 	bytes.resize(TOTAL_SIZE)
+	up_threshold_degrees = 45
+	shift_amount = 1
+	local_up = Vector3.UP

@@ -5,7 +5,8 @@ var vertex_count: int
 
 @onready var debug: Label3D = $Label3D
 # Make sure this uses an ArrayMesh - primitives like BoxMesh cannot have the STORAGE_BUFFER flag
-@onready var mesh_instance: MeshInstance3D = $MeshInstance3D
+#@onready var mesh_instance: MeshInstance3D = $MeshInstance3D
+@onready var mesh_instance: MeshInstance3D = $cube/Cube
 
 
 func _ready() -> void:
@@ -16,7 +17,7 @@ func _ready() -> void:
 	var uses_storage_buffer := (format & Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER) != 0
 	assert(uses_storage_buffer, "Mesh must have the STORAGE_BUFFER flag")
 
-	worker = ComputeWorker.new(mesh_instance.mesh)
+	worker = ComputeWorker.new(mesh_instance.mesh, mesh_instance.global_transform)
 	worker.output.connect(_on_output)
 	worker.compute()
 
