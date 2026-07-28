@@ -57,7 +57,7 @@ current = true
 [node name="cube" parent="." unique_id=127492725 instance=ExtResource("4_1bvp3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1)
 
-[node name="Cube" parent="cube" index="0" unique_id=365896432]
+[node name="Cube" parent="cube" index="0" unique_id=1146061178]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 1)
 
 [editable path="cube"]

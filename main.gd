@@ -1,6 +1,6 @@
 extends Node3D
 
-const HIGHLIGHT_MATERIAL: StandardMaterial3D = preload("res://assets/highlight.tres")
+const SNOW_MATERIAL: StandardMaterial3D = preload("res://assets/snow.tres")
 
 var worker: ComputeWorker
 
@@ -21,7 +21,7 @@ func _ready() -> void:
 	worker = ComputeWorker.new(mesh_instance.mesh, mesh_instance.global_transform)
 	worker.output.connect(_on_output)
 	worker.compute()
-	mesh_instance.set_surface_override_material(worker.owned_surface, HIGHLIGHT_MATERIAL)
+	mesh_instance.set_surface_override_material(worker.owned_surface, SNOW_MATERIAL)
 
 
 func _on_output(message: String) -> void:
