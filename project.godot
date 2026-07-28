@@ -34,3 +34,4 @@ joypads/ignore_joypad_on_unfocused_application=true
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+anti_aliasing/quality/msaa_3d=2

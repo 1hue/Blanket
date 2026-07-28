@@ -110,10 +110,12 @@ func clear() -> void:
 func compute() -> void:
 	clear()
 	compute_count()
-	#compute_compact()
 	add_surface()
-	#var count := rd.compute_list_dispatch_indirect()
 	out()
+
+
+func update() -> void:
+	compute_compact()
 
 
 func add_surface() -> void:
@@ -166,6 +168,17 @@ func compute_count() -> void:
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
 	rd.compute_list_end()
 
+
+func compute_compact() -> void:
+	var compute_list := rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[1])
+	rd.compute_list_set_push_constant(compute_list, params.bytes, params.bytes.size())
+	rd.compute_list_bind_uniform_set(compute_list, mesh_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, count_uniform_set, 1)
+	rd.compute_list_dispatch(compute_list, 1, 1, 1)
+	rd.compute_list_end()
+
+	#var count := rd.compute_list_dispatch_indirect()
 
 func out() -> void:
 	var bytes_out := rd.buffer_get_data(count_buffer)
