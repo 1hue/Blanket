@@ -3,6 +3,8 @@
 
 #extension GL_EXT_scalar_block_layout : require
 
+const float SHIFT_FACTOR = 0.1;
+
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
@@ -52,5 +54,5 @@ void main() {
 	uint source_index = eligible[target_index / 3u][target_index % 3u];
 	vec3 source_position = read_source_position(source_index);
 
-	write_target_position(target_index, source_position + normalize(local_up) * shift_amount);
+	write_target_position(target_index, source_position + normalize(local_up) * shift_amount * SHIFT_FACTOR);
 }

@@ -2,16 +2,6 @@ extends Node
 class_name ComputeUtil
 
 
-static func compile_shader(p_rd: RenderingDevice, p_shader_path: String) -> RID:
-	var shader_file: RDShaderFile = load(p_shader_path)
-	var shader_spirv: RDShaderSPIRV = shader_file.get_spirv()
-
-	var err = shader_spirv.get_stage_compile_error(RenderingDevice.SHADER_STAGE_COMPUTE)
-	if err: push_warning(err)
-
-	return p_rd.shader_create_from_spirv(shader_spirv)
-
-
 static func create_uniform(rids: Array[RID], type: RenderingDevice.UniformType, binding := 0) -> RDUniform:
 	var uniform: RDUniform = RDUniform.new()
 	uniform.uniform_type = type

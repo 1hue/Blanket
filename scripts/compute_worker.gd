@@ -3,23 +3,11 @@ class_name ComputeWorker
 
 signal output(message: String)
 
-const SHADER_PATHS: Array[String] = [
-	"res://shaders/count.glsl",
-	"res://shaders/compact.glsl"
-]
-const COUNT_BUFFER_OFFSET := 16
-
 var rd: RenderingDevice
-var shaders: Array[RID] = [RID(), RID()]
-var pipelines: Array[RID] = [RID(), RID()]
-
-var params_count: ParamsCount
-var params_compact: ParamsCompact
+var params: ComputeParams
 
 var mesh_uniform_set: RID
 var vertex_uniform: RDUniform
-var index_count: int
-var index_stride: int
 
 var count_buffer: RID
 var count_buffer_size: int
@@ -30,41 +18,26 @@ var owned_surface: int
 var owned_surface_uniform_set: RID
 
 
-func _init(p_mesh: ArrayMesh, global_transform: Transform3D) -> void:
+func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -> void:
 	rd = RenderingServer.get_rendering_device()
 	mesh = p_mesh
 
 	var format := mesh.surface_get_format(0)
 	var primitive := mesh.surface_get_primitive_type(0)
-
-	assert(format & Mesh.ARRAY_FORMAT_NORMAL != 0, "Mesh must have normals: %s" % mesh)
-	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be of triangle primitives: %s is %s" % [mesh, primitive])
-
-	index_count = mesh.surface_get_array_index_len(0)
+	var index_count := mesh.surface_get_array_index_len(0)
 	var vertex_count := mesh.surface_get_array_len(0)
-	index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, vertex_count)
+	var index_stride := RenderingServer.mesh_surface_get_format_index_stride(format, vertex_count)
 	var normal_offset := RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_NORMAL)
 	var normal_stride := RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
 	var colors_offset := RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_COLOR)
 	var attribute_stride := RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
 
-	shaders = [
-		ComputeUtil.compile_shader(rd, SHADER_PATHS[0]),
-		ComputeUtil.compile_shader(rd, SHADER_PATHS[1]),
-	]
-	pipelines = [
-		rd.compute_pipeline_create(shaders[0], ComputeUtil.create_spec_constants([
-			index_count, vertex_count, index_stride, normal_offset, normal_stride, colors_offset, attribute_stride
-		])),
-		rd.compute_pipeline_create(shaders[1]),
-	]
+	assert(format & Mesh.ARRAY_FORMAT_NORMAL != 0, "Mesh must have normals: %s" % mesh)
+	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be of triangle primitives: %s is %s" % [mesh, primitive])
 
-	params_count = ParamsCount.new()
-	params_count.local_up = global_transform.basis.inverse() * Vector3.UP
-	params_count.changed.connect(compute)
-
-	params_compact = ParamsCompact.new()
-	params_compact.local_up = global_transform.basis.inverse() * Vector3.UP
+	params = ComputeParams.new()
+	params.local_up = global_transform.basis.inverse() * Vector3.UP
+	params.changed.connect(compute)
 
 	_init_mesh()
 
@@ -75,12 +48,6 @@ func _notification(what) -> void:
 
 		if count_buffer.is_valid():
 			rd.free_rid(count_buffer)
-		for pipeline in pipelines:
-			if pipeline.is_valid():
-				rd.free_rid(pipeline)
-		for shader in shaders:
-			if shader.is_valid():
-				rd.free_rid(shader)
 
 
 func _init_mesh() -> void:
@@ -118,12 +85,12 @@ func compute() -> void:
 	clear()
 	compute_count()
 	add_surface()
-	compute_compact()
+	compute_positions()
 
 
 func add_surface() -> void:
-	if params_compact.changed.is_connected(compute_compact):
-		params_compact.changed.disconnect(compute_compact)
+	if params_compact.changed.is_connected(compute_positions):
+		params_compact.changed.disconnect(compute_positions)
 
 	if owned_surface:
 		mesh.surface_remove(owned_surface)
@@ -145,7 +112,7 @@ func add_surface() -> void:
 		source_format, source_vertex_count
 	)
 
-	params_compact.changed.connect(compute_compact)
+	params_compact.changed.connect(compute_positions)
 
 
 func _init_new_surface_buffer() -> void:
@@ -194,23 +161,24 @@ func _add_surface(array_mesh: ArrayMesh, eligible_indices: PackedInt32Array) -> 
 func compute_count() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
-	rd.compute_list_set_push_constant(compute_list, params_count.bytes, params_count.bytes.size())
+	rd.compute_list_set_push_constant(compute_list, params.pack_count(), params.SIZE_COUNT)
 	rd.compute_list_bind_uniform_set(compute_list, mesh_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, count_uniform_set, 1)
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
 	rd.compute_list_end()
 
 
-func compute_compact() -> void:
+func compute_positions() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[1])
-	rd.compute_list_set_push_constant(compute_list, params_compact.bytes, params_compact.bytes.size())
+	rd.compute_list_set_push_constant(compute_list, params.pack_position(), params.SIZE_POSITION)
 	rd.compute_list_bind_uniform_set(compute_list, owned_surface_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, count_uniform_set, 1)
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
 	rd.compute_list_end()
 	#var count := rd.compute_list_dispatch_indirect()
 	out()
+
 
 func out() -> void:
 	var bytes_out := rd.buffer_get_data(count_buffer)

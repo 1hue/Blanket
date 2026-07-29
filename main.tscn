@@ -4,6 +4,7 @@
 [ext_resource type="ArrayMesh" uid="uid://dbhf8wkaa3bgj" path="res://assets/cube.obj" id="2_0xm2m"]
 [ext_resource type="Script" uid="uid://8ehypqim7667" path="res://scripts/camera_rig.gd" id="3_h2yge"]
 [ext_resource type="PackedScene" uid="uid://c3ruydhlr5ywd" path="res://assets/cube.blend" id="4_1bvp3"]
+[ext_resource type="Script" uid="uid://dtnblg1g7ceap" path="res://scripts/mesh_cover.gd" id="5_lquwl"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_7dm0k"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -57,7 +58,11 @@ current = true
 [node name="cube" parent="." unique_id=127492725 instance=ExtResource("4_1bvp3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1)
 
-[node name="Cube" parent="cube" index="0" unique_id=2046122579]
+[node name="Cube" parent="cube" index="0" unique_id=1284184747]
 transform = Transform3D(0.83454484, -0.55094004, 0, 0.55094004, 0.83454484, 0, 0, 0, 1, 0, 0.5, 1)
+
+[node name="MeshCover" type="Node" parent="cube/Cube" index="0" unique_id=1033344705]
+script = ExtResource("5_lquwl")
+metadata/_custom_type_script = "uid://dtnblg1g7ceap"
 
 [editable path="cube"]
