@@ -3,54 +3,64 @@ class_name ComputeWorker
 
 signal output(message: String)
 
+const FACES_BUFFER_OFFSET = 16
+const EDGES_BUFFER_OFFSET = 4
+
 var rd: RenderingDevice
+var shaders: Array[RID]:
+	get: return SurfaceService.shaders
+var pipelines: Array[RID]:
+	get: return SurfaceService.pipelines
 var params: ComputeParams
 
+var mesh: ArrayMesh
 var mesh_uniform_set: RID
 var vertex_uniform: RDUniform
 
-var count_buffer: RID
-var count_buffer_size: int
-var count_uniform_set: RID
+var faces_buffer: RID
+var faces_buffer_size: int
+var faces_uniform_set: RID
 
-var mesh: ArrayMesh
+var edges_buffer: RID
+var edges_buffer_size: int
+var edges_uniform_set: RID
+
 var owned_surface: int
 var owned_surface_uniform_set: RID
+
+var surface: ComputeSurface
 
 
 func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -> void:
 	rd = RenderingServer.get_rendering_device()
 	mesh = p_mesh
+	surface = ComputeSurface.new(p_mesh, surface_idx)
 
-	var format := mesh.surface_get_format(0)
-	var primitive := mesh.surface_get_primitive_type(0)
-	var index_count := mesh.surface_get_array_index_len(0)
-	var vertex_count := mesh.surface_get_array_len(0)
-	var index_stride := RenderingServer.mesh_surface_get_format_index_stride(format, vertex_count)
-	var normal_offset := RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_NORMAL)
-	var normal_stride := RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
-	var colors_offset := RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_COLOR)
-	var attribute_stride := RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
+	_init_params(global_transform)
+	_init_mesh_buffer()
+	_init_faces_buffer()
+	_init_edges_buffer()
+
+
+func _init_params(global_transform: Transform3D) -> void:
+	var format := mesh.surface_get_format(surface.idx)
+	var primitive := mesh.surface_get_primitive_type(surface.idx)
 
 	assert(format & Mesh.ARRAY_FORMAT_NORMAL != 0, "Mesh must have normals: %s" % mesh)
 	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be of triangle primitives: %s is %s" % [mesh, primitive])
 
 	params = ComputeParams.new()
+	params.vertex_count = mesh.surface_get_array_len(surface.idx)
+	params.index_count = mesh.surface_get_array_index_len(surface.idx)
+	params.normal_offset = RenderingServer.mesh_surface_get_format_offset(format, params.vertex_count, Mesh.ARRAY_NORMAL)
+	params.normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, params.vertex_count)
+	params.colors_offset = RenderingServer.mesh_surface_get_format_offset(format, params.vertex_count, Mesh.ARRAY_COLOR)
+	params.attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, params.vertex_count)
 	params.local_up = global_transform.basis.inverse() * Vector3.UP
-	params.changed.connect(compute)
-
-	_init_mesh()
+	params.changed.connect(update)
 
 
-func _notification(what) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		print_rich('[color=dim_gray]Worker goodbye![/color]')
-
-		if count_buffer.is_valid():
-			rd.free_rid(count_buffer)
-
-
-func _init_mesh() -> void:
+func _init_mesh_buffer() -> void:
 	var mesh_rid := mesh.get_rid()
 	var buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, 0)
 	vertex_uniform = ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
@@ -63,59 +73,39 @@ func _init_mesh() -> void:
 
 	mesh_uniform_set = rd.uniform_set_create([vertex_uniform, index_uniform, attribute_uniform], shaders[0], 0)
 
-	_init_count_buffer()
+
+func _init_faces_buffer() -> void:
+	faces_buffer_size = FACES_BUFFER_OFFSET + params.index_count * params.index_stride # Indices is 16-bit uint each = 2 bytes
+	faces_buffer = rd.storage_buffer_create(faces_buffer_size)
+
+	var count_uniform := ComputeUtil.create_uniform([faces_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
+	faces_uniform_set = rd.uniform_set_create([count_uniform], shaders[0], 1)
 
 
-func _init_count_buffer() -> void:
-	if count_buffer.is_valid():
-		rd.free_rid(count_buffer)
+func _init_edges_buffer() -> void:
+	edges_buffer_size = EDGES_BUFFER_OFFSET + params.index_count * params.index_stride # Indices is 16-bit uint each = 2 bytes
+	edges_buffer = rd.storage_buffer_create(edges_buffer_size)
 
-	count_buffer_size = COUNT_BUFFER_OFFSET + index_count * index_stride # Indices is 16-bit uint each = 2 bytes
-	count_buffer = rd.storage_buffer_create(count_buffer_size)
-
-	var count_uniform := ComputeUtil.create_uniform([count_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
-	count_uniform_set = rd.uniform_set_create([count_uniform], shaders[0], 1)
+	var edges_uniform := ComputeUtil.create_uniform([edges_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
+	edges_uniform_set = rd.uniform_set_create([edges_uniform], shaders[1], 1)
 
 
 func clear() -> void:
-	rd.buffer_clear(count_buffer, 0, count_buffer_size) # reset counter
+	rd.buffer_clear(faces_buffer, 0, faces_buffer_size)
 
 
-func compute() -> void:
-	clear()
-	compute_count()
-	add_surface()
-	compute_positions()
-
-
-func add_surface() -> void:
-	if params_compact.changed.is_connected(compute_positions):
-		params_compact.changed.disconnect(compute_positions)
-
-	if owned_surface:
-		mesh.surface_remove(owned_surface)
-
-	var counter := rd.buffer_get_data(count_buffer, 0 , 4).decode_u32(0)
-	var eligible_indices := rd.buffer_get_data(count_buffer, 4, counter * 12).to_int32_array()
-
-	_add_surface(mesh, eligible_indices)
-	_init_new_surface_buffer()
-
-	var target_format := mesh.surface_get_format(owned_surface)
-	params_compact.vertex_count = eligible_indices.size()
-	params_compact.target_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(
-		target_format, params_compact.vertex_count
-	)
-	var source_format := mesh.surface_get_format(0)
-	var source_vertex_count := mesh.surface_get_array_len(0)
-	params_compact.source_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(
-		source_format, source_vertex_count
-	)
-
-	params_compact.changed.connect(compute_positions)
+## Free up GPU memory after bake
+func _cleanup_bake() -> void:
+	rd.free_rid(faces_uniform_set)
+	rd.free_rid(faces_buffer)
+	rd.free_rid(edges_uniform_set)
+	rd.free_rid(edges_buffer)
 
 
 func _init_new_surface_buffer() -> void:
+	if owned_surface_uniform_set.is_valid():
+		rd.free_rid(owned_surface_uniform_set)
+
 	var mesh_rid := mesh.get_rid()
 	var buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, owned_surface)
 	var target_vertex_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
@@ -123,57 +113,55 @@ func _init_new_surface_buffer() -> void:
 	owned_surface_uniform_set = rd.uniform_set_create([vertex_uniform, target_vertex_uniform], shaders[1], 0)
 
 
-func _add_surface(array_mesh: ArrayMesh, eligible_indices: PackedInt32Array) -> void:
-	var source_arrays := array_mesh.surface_get_arrays(0)
-	var source_verts: PackedVector3Array = source_arrays[Mesh.ARRAY_VERTEX]
-	var source_normals: PackedVector3Array = source_arrays[Mesh.ARRAY_NORMAL]
-
-	var count := eligible_indices.size()
-	var vertices := PackedVector3Array()
-	var normals := PackedVector3Array()
-	var indices := PackedInt32Array()
-	vertices.resize(count)
-	normals.resize(count)
-	indices.resize(count)
-
-	for i in count:
-		var source_index := eligible_indices[i]
-		vertices[i] = source_verts[source_index]
-		normals[i] = source_normals[source_index]
-		indices[i] = i
-
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_INDEX] = indices
-
-	owned_surface = array_mesh.get_surface_count()
-	array_mesh.add_surface_from_arrays(
-		Mesh.PRIMITIVE_TRIANGLES,
-		arrays,
-		[],
-		{},
-		Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER
-	)
+func bake() -> void:
+	_compute_bake()
+	_add_surface()
+	_cleanup_bake()
+	update()
 
 
-func compute_count() -> void:
+func _compute_bake() -> void:
 	var compute_list := rd.compute_list_begin()
+
+	# 1st pass: Identify eligible surfaces
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
 	rd.compute_list_set_push_constant(compute_list, params.pack_count(), params.SIZE_COUNT)
 	rd.compute_list_bind_uniform_set(compute_list, mesh_uniform_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, count_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, faces_uniform_set, 1)
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
+
+	# 2nd pass: Identify outer edges
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
+	rd.compute_list_bind_uniform_set(compute_list, faces_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, edges_uniform_set, 1)
+	rd.compute_list_dispatch_indirect(compute_list, faces_buffer, 0)
+
 	rd.compute_list_end()
 
 
-func compute_positions() -> void:
+func _add_surface() -> void:
+	var upright_count := rd.buffer_get_data(faces_buffer, 0, 4).decode_u32(0)
+	var upright_indices := rd.buffer_get_data(faces_buffer, FACES_BUFFER_OFFSET, upright_count * 12).to_int32_array()
+
+	var outer_counter := rd.buffer_get_data(outer_buffer, 0, 4).decode_u32(0)
+	var outer_edges := rd.buffer_get_data(outer_buffer, 4, outer_counter * 8).to_int32_array()
+
+	surface.rebuild(upright_indices, outer_edges, params.local_up)
+
+	params.vertex_count = surface.vertex_count()
+	params.target_vertex_stride = surface.vertex_stride()
+	source_map_buffer = rd.storage_buffer_create(
+		surface.source_map.size() * 4, surface.source_map.to_byte_array()
+	)
+
+
+## Reposition verts of the added mesh surface
+func update() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[1])
 	rd.compute_list_set_push_constant(compute_list, params.pack_position(), params.SIZE_POSITION)
 	rd.compute_list_bind_uniform_set(compute_list, owned_surface_uniform_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, count_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, faces_uniform_set, 1)
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
 	rd.compute_list_end()
 	#var count := rd.compute_list_dispatch_indirect()
@@ -181,15 +169,27 @@ func compute_positions() -> void:
 
 
 func out() -> void:
-	var bytes_out := rd.buffer_get_data(count_buffer)
+	var bytes_out := rd.buffer_get_data(faces_buffer)
 	var counter := bytes_out.decode_u32(0)
-	#var arr := ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(bytes_out.slice(COUNT_BUFFER_OFFSET)))
+	#var arr := ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(bytes_out.slice(FACES_BUFFER_OFFSET)))
 
 	print_rich('Output: x%d | [color=pale_green][b]%s[/b][/color] %sB' % [
 		counter, ComputeUtil.to_vector3i_array(bytes_out.slice(4).to_int32_array()), count_buffer_size
 	])
 
 	output.emit("%s" % [counter])
+
+
+func _notification(what) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		print_rich('[color=dim_gray]Worker goodbye![/color]')
+
+		if mesh_uniform_set.is_valid():
+			rd.free_rid(mesh_uniform_set)
+		if count_uniform_set.is_valid():
+			rd.free_rid(count_uniform_set)
+		if count_buffer.is_valid():
+			rd.free_rid(count_buffer)
 
 
 #region Debug

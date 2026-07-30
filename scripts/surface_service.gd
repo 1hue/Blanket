@@ -1,9 +1,9 @@
 extends RefCounted
 
 const SHADER_PATHS: Array[String] = [
-	"res://shaders/count.glsl",
+	"res://shaders/faces.glsl",
 	"res://shaders/edges.glsl",
-	"res://shaders/positions.glsl"
+	"res://shaders/verts.glsl"
 ]
 
 var rd: RenderingDevice

@@ -16,7 +16,7 @@ func _ready() -> void:
 	for i in mesh_instance.mesh.get_surface_count():
 		var worker := ComputeWorker.new(mesh_instance.mesh, i, mesh_instance.global_transform)
 		worker.output.connect(_on_output)
-		worker.compute()
+		worker.bake()
 		mesh_instance.set_surface_override_material(worker.owned_surface, material)
 		workers.append(worker)
 

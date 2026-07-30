@@ -5,28 +5,28 @@
 
 layout(local_size_x = 256) in;
 
-layout(set = 0, binding = 0, scalar) restrict readonly buffer CountBuffer {
+layout(set = 0, binding = 0, scalar) restrict readonly buffer FacesBuffer {
 	uvec3 dispatch;
-	uint counter;
-	uvec3 eligible[];
+	uint faces_count;
+	uvec3 faces[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer OuterBuffer {
-	uint outer_counter;
-	uvec2 outer_edges[];
+layout(set = 1, binding = 0, scalar) restrict buffer EdgesBuffer {
+	uint edges_count;
+	uvec2 edges[];
 };
 
 uvec2 edge_at(uint edge) {
-	uvec3 tri = eligible[edge / 3u];
+	uvec3 face = faces[edge / 3u];
 	uint corner = edge % 3u;
 
 	if (corner == 0u) {
-		return tri.xy;
+		return face.xy;
 	}
 	if (corner == 1u) {
-		return tri.yz;
+		return face.yz;
 	}
-	return tri.zx;
+	return face.zx;
 }
 
 bool same_edge(uvec2 a, uvec2 b) {
@@ -35,19 +35,19 @@ bool same_edge(uvec2 a, uvec2 b) {
 
 void main() {
 	uint edge = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
-	uint edge_count = counter * 3u;
+	uint total_edges = faces_count * 3u;
 
-	if (edge >= edge_count) {
+	if (edge >= total_edges) {
 		return;
 	}
 
-	uvec2 mine = edge_at(edge);
+	uvec2 current = edge_at(edge);
 
-	for (uint other = 0u; other < edge_count; other++) {
-		if (other != edge && same_edge(mine, edge_at(other))) {
+	for (uint other = 0u; other < total_edges; other++) {
+		if (other != edge && same_edge(current, edge_at(other))) {
 			return;
 		}
 	}
 
-	outer_edges[atomicAdd(outer_counter, 1u)] = mine;
+	edges[atomicAdd(edges_count, 1u)] = current;
 }
