@@ -1,5 +1,4 @@
-// Finds faces whose normal points within max_slope_degrees of local_up.
-// Writes them to FacesBuffer and sizes the edges pass dispatch.
+// Finds faces facing within max_slope_degrees of local_up
 #[compute]
 #version 450
 

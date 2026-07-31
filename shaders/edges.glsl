@@ -1,11 +1,10 @@
-// Finds the outer boundary of the face selection - edges belonging to only one face.
-// Writes them to EdgesBuffer and sizes the verts pass dispatch.
+// Finds the outer boundary - edges belonging to only one selected face
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
 
-const uint BUILD_GROUP_SIZE = 256u;
+const uint VERTS_GROUP_SIZE = 256u;
 
 layout(local_size_x = 256) in;
 
@@ -59,5 +58,5 @@ void main() {
 
 	uint slot = atomicAdd(edges_count, 1u);
 	edges[slot] = current;
-	atomicMax(dispatch.x, (faces_count + slot + BUILD_GROUP_SIZE) / BUILD_GROUP_SIZE);
+	atomicMax(dispatch.x, (faces_count + slot + VERTS_GROUP_SIZE) / VERTS_GROUP_SIZE);
 }

@@ -1,5 +1,4 @@
-// Offsets every marked vert along local_up by depth, from its source position.
-// Runs on demand, not per frame.
+// Offsets marked verts along local_up by depth, from their source position
 #[compute]
 #version 450
 

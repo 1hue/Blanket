@@ -1,5 +1,4 @@
-// Builds the new surface: cap verts from faces, wall verts from edges.
-// Writes positions, normals, markers, indices, and each vert's source index.
+// Builds the new surface geometry: cap verts from faces, wall verts from edges
 #[compute]
 #version 450
 
@@ -58,8 +57,8 @@ vec3 read_in_position(uint in_index) {
 	uint word = (in_index * in_vertex_stride) / 4u;
 	return vec3(
 		uintBitsToFloat(in_words[word]),
-				uintBitsToFloat(in_words[word + 1u]),
-				uintBitsToFloat(in_words[word + 2u])
+		uintBitsToFloat(in_words[word + 1u]),
+		uintBitsToFloat(in_words[word + 2u])
 	);
 }
 
@@ -107,13 +106,15 @@ void main() {
 
 		for (uint corner = 0u; corner < 3u; corner++) {
 			uint in_index = corner == 0u ? face.x : (corner == 1u ? face.y : face.z);
+
 			write_vertex(
 				base + corner,
 				in_index,
 				read_in_position(in_index),
-						 read_in_normal(in_index),
-						 MARKER_SHIFTED
+				read_in_normal(in_index),
+				MARKER_SHIFTED
 			);
+
 			out_indices[base + corner] = base + corner;
 		}
 		return;
