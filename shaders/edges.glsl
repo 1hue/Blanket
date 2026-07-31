@@ -1,17 +1,22 @@
+// Finds the outer boundary of the face selection - edges belonging to only one face.
+// Writes them to EdgesBuffer and sizes the verts pass dispatch.
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
 
+const uint BUILD_GROUP_SIZE = 256u;
+
 layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0, scalar) restrict readonly buffer FacesBuffer {
-	uvec3 dispatch;
+	uvec3 faces_dispatch;
 	uint faces_count;
 	uvec3 faces[];
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer EdgesBuffer {
+	uvec3 dispatch; // sized to cover cap faces plus wall edges for the build pass
 	uint edges_count;
 	uvec2 edges[];
 };
@@ -37,6 +42,9 @@ void main() {
 	uint edge = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
 	uint total_edges = faces_count * 3u;
 
+	dispatch.y = 1u;
+	dispatch.z = 1u;
+
 	if (edge >= total_edges) {
 		return;
 	}
@@ -49,5 +57,7 @@ void main() {
 		}
 	}
 
-	edges[atomicAdd(edges_count, 1u)] = current;
+	uint slot = atomicAdd(edges_count, 1u);
+	edges[slot] = current;
+	atomicMax(dispatch.x, (faces_count + slot + BUILD_GROUP_SIZE) / BUILD_GROUP_SIZE);
 }

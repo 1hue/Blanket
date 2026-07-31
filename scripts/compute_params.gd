@@ -25,25 +25,33 @@ var max_slope_degrees := 45.0:
 		max_slope_degrees = value
 		changed.emit()
 
-var vertex_stride: int
-var index_count: int
-var vertex_count: int
-var index_stride: int
-var normals_offset: int
-var normal_tangent_stride: int
-var colors_offset: int
-var attribute_stride: int
+var source_index_count: int
+var source_index_stride: int
+var source_vertex_count: int
+var source_vertex_stride: int
+var source_normal_offset: int
+var source_normal_stride: int
+var source_colors_offset: int
+var source_attribute_stride: int
+var target_vertex_count: int
 var target_vertex_stride: int
 
 
 ## 1st pass
-func pack_count() -> PackedByteArray:
+func pack_faces() -> PackedByteArray:
 	var bytes := PackedByteArray()
 	bytes.resize(SIZE_COUNT)
 	bytes.encode_float(0, local_up.x)
 	bytes.encode_float(4, local_up.y)
 	bytes.encode_float(8, local_up.z)
 	bytes.encode_float(12, max_slope_degrees)
+	bytes.encode_u32(16, source_vertex_count)
+	bytes.encode_u32(20, source_index_count)
+	bytes.encode_u32(24, source_index_stride)
+	bytes.encode_u32(28, source_normal_offset)
+	bytes.encode_u32(32, source_normal_stride)
+	bytes.encode_u32(36, source_colors_offset)
+	bytes.encode_u32(40, source_attribute_stride)
 	return bytes
 
 
@@ -55,7 +63,7 @@ func pack_positions() -> PackedByteArray:
 	bytes.encode_float(4, local_up.y)
 	bytes.encode_float(8, local_up.z)
 	bytes.encode_float(12, depth)
-	bytes.encode_u32(16, vertex_count)
-	bytes.encode_u32(20, vertex_stride)
+	bytes.encode_u32(16, source_vertex_count)
+	bytes.encode_u32(20, source_vertex_stride)
 	bytes.encode_u32(24, target_vertex_stride)
 	return bytes

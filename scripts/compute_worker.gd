@@ -45,17 +45,20 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 func _init_params(global_transform: Transform3D) -> void:
 	var format := mesh.surface_get_format(surface.idx)
 	var primitive := mesh.surface_get_primitive_type(surface.idx)
+	var vertex_count := mesh.surface_get_array_len(surface.idx)
 
 	assert(format & Mesh.ARRAY_FORMAT_NORMAL != 0, "Mesh must have normals: %s" % mesh)
 	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be of triangle primitives: %s is %s" % [mesh, primitive])
 
 	params = ComputeParams.new()
-	params.vertex_count = mesh.surface_get_array_len(surface.idx)
-	params.index_count = mesh.surface_get_array_index_len(surface.idx)
-	params.normal_offset = RenderingServer.mesh_surface_get_format_offset(format, params.vertex_count, Mesh.ARRAY_NORMAL)
-	params.normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, params.vertex_count)
-	params.colors_offset = RenderingServer.mesh_surface_get_format_offset(format, params.vertex_count, Mesh.ARRAY_COLOR)
-	params.attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, params.vertex_count)
+	params.source_vertex_count = mesh.surface_get_array_len(surface.idx)
+	params.source_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(format, vertex_count)
+	params.source_index_count = mesh.surface_get_array_index_len(surface.idx)
+	params.source_index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, vertex_count)
+	params.source_normal_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_NORMAL)
+	params.source_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
+	params.source_colors_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_COLOR)
+	params.source_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
 	params.local_up = global_transform.basis.inverse() * Vector3.UP
 	params.changed.connect(update)
 
@@ -75,7 +78,7 @@ func _init_mesh_buffer() -> void:
 
 
 func _init_faces_buffer() -> void:
-	faces_buffer_size = FACES_BUFFER_OFFSET + params.index_count * params.index_stride # Indices is 16-bit uint each = 2 bytes
+	faces_buffer_size = FACES_BUFFER_OFFSET + params.index_count * 4 # Max faces buffer size is all verts stuffed into it
 	faces_buffer = rd.storage_buffer_create(faces_buffer_size)
 
 	var count_uniform := ComputeUtil.create_uniform([faces_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
@@ -114,18 +117,18 @@ func _init_new_surface_buffer() -> void:
 
 
 func bake() -> void:
-	_compute_bake()
+	_bake()
 	_add_surface()
 	_cleanup_bake()
 	update()
 
 
-func _compute_bake() -> void:
+func _bake() -> void:
 	var compute_list := rd.compute_list_begin()
 
 	# 1st pass: Identify eligible surfaces
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
-	rd.compute_list_set_push_constant(compute_list, params.pack_count(), params.SIZE_COUNT)
+	rd.compute_list_set_push_constant(compute_list, params.pack_faces(), params.SIZE_COUNT)
 	rd.compute_list_bind_uniform_set(compute_list, mesh_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, faces_uniform_set, 1)
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
@@ -140,19 +143,17 @@ func _compute_bake() -> void:
 
 
 func _add_surface() -> void:
-	var upright_count := rd.buffer_get_data(faces_buffer, 0, 4).decode_u32(0)
-	var upright_indices := rd.buffer_get_data(faces_buffer, FACES_BUFFER_OFFSET, upright_count * 12).to_int32_array()
+	var face_count := rd.buffer_get_data(faces_buffer, 12, 4).decode_u32(0)
+	var face_indices := rd.buffer_get_data(faces_buffer, FACES_BUFFER_OFFSET, face_count * 12).to_int32_array()
 
-	var outer_counter := rd.buffer_get_data(outer_buffer, 0, 4).decode_u32(0)
-	var outer_edges := rd.buffer_get_data(outer_buffer, 4, outer_counter * 8).to_int32_array()
+	var edges_count := rd.buffer_get_data(edges_buffer, 0, 4).decode_u32(0)
+	var edge_indices := rd.buffer_get_data(edges_buffer, 4, edges_count * 8).to_int32_array()
 
-	surface.rebuild(upright_indices, outer_edges, params.local_up)
+	surface.rebuild(face_indices, edge_indices, params.local_up)
 
-	params.vertex_count = surface.vertex_count()
-	params.target_vertex_stride = surface.vertex_stride()
-	source_map_buffer = rd.storage_buffer_create(
-		surface.source_map.size() * 4, surface.source_map.to_byte_array()
-	)
+	params.target_vertex_count = surface.vertex_count
+	params.target_vertex_stride = surface.vertex_stride
+	source_map_buffer = rd.storage_buffer_create(surface.source_map.size() * 4, surface.source_map.to_byte_array())
 
 
 ## Reposition verts of the added mesh surface
@@ -186,10 +187,14 @@ func _notification(what) -> void:
 
 		if mesh_uniform_set.is_valid():
 			rd.free_rid(mesh_uniform_set)
-		if count_uniform_set.is_valid():
-			rd.free_rid(count_uniform_set)
-		if count_buffer.is_valid():
-			rd.free_rid(count_buffer)
+		if faces_uniform_set.is_valid():
+			rd.free_rid(faces_uniform_set)
+		if faces_buffer.is_valid():
+			rd.free_rid(faces_buffer)
+		if edges_uniform_set.is_valid():
+			rd.free_rid(edges_uniform_set)
+		if edges_buffer.is_valid():
+			rd.free_rid(edges_buffer)
 
 
 #region Debug
