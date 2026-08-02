@@ -1,4 +1,4 @@
-// Offsets marked verts along local_up by depth, from their source position
+// Offsets marked verts along local_up by depth, from their source position.
 #[compute]
 #version 450
 
@@ -9,12 +9,12 @@ const float SHIFT_FACTOR = 0.1;
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
-	vec3 local_up;
-	float depth;
+	vec3 local_up; // model space, normalized
+	float depth; // extrude distance
 	uint out_vertex_count;
 	uint in_vertex_stride;
 	uint out_vertex_stride;
-	uint out_markers_offset;
+	uint out_marker_offset;
 	uint out_attribute_stride;
 };
 
@@ -44,7 +44,7 @@ vec3 read_in_position(uint in_index) {
 }
 
 float read_marker(uint out_index) {
-	uint word = (out_markers_offset + out_index * out_attribute_stride) / 4u;
+	uint word = (out_marker_offset + out_index * out_attribute_stride) / 4u;
 	return uintBitsToFloat(out_attributes[word]);
 }
 
@@ -63,7 +63,8 @@ void main() {
 	}
 
 	vec3 position = read_in_position(out_sources[out_index]);
-	vec3 offset = normalize(local_up) * depth * SHIFT_FACTOR * read_marker(out_index);
+	// Marker is 1.0 (shifted) or 0.0 (static), doubling as the multiplier - no branch needed
+	vec3 offset = local_up * depth * SHIFT_FACTOR * read_marker(out_index);
 
 	write_position(out_index, position + offset);
 }

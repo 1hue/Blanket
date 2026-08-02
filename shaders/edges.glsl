@@ -11,13 +11,13 @@ layout(local_size_x = 256) in;
 layout(set = 0, binding = 0, scalar) restrict readonly buffer FacesBuffer {
 	uvec3 faces_dispatch;
 	uint faces_count;
-	uvec3 faces[];
+	uvec3 faces[]; // input: eligible faces from faces.glsl
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer EdgesBuffer {
-	uvec3 dispatch; // sized to cover cap faces plus wall edges for the build pass
+	uvec3 dispatch; // indirect args for verts.glsl
 	uint edges_count;
-	uvec2 edges[];
+	uvec2 edges[]; // output: boundary edges (walls)
 };
 
 uvec2 edge_at(uint edge) {
@@ -41,9 +41,6 @@ void main() {
 	uint edge = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
 	uint total_edges = faces_count * 3u;
 
-	dispatch.y = 1u;
-	dispatch.z = 1u;
-
 	if (edge >= total_edges) {
 		return;
 	}
@@ -59,4 +56,6 @@ void main() {
 	uint slot = atomicAdd(edges_count, 1u);
 	edges[slot] = current;
 	atomicMax(dispatch.x, (faces_count + slot + VERTS_GROUP_SIZE) / VERTS_GROUP_SIZE);
+	dispatch.y = 1u;
+	dispatch.z = 1u;
 }

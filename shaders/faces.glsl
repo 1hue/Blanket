@@ -1,23 +1,21 @@
-// Finds faces facing within max_slope_degrees of local_up
+// Finds faces facing within max_slope_degrees of local_up.
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
-const uint EDGES_GROUP_SIZE = 256u;
-
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
-	vec3 local_up; // World-up transformed into mesh local space (computed on CPU)
-	float max_slope_degrees; // Max angle from local_up for a face to qualify, 0deg for horizontal
+	vec3 local_up; // model space, normalized
+	float upright_dot; // min face-vs-up dot to qualify
 	uint in_index_count;
 	uint in_vertex_count;
-	uint in_index_stride; // bytes per index, 2 or 4
-	uint in_normals_offset; // bytes
-	uint in_normal_tangent_stride; // bytes per vertex
-	uint in_colors_offset; // bytes
+	uint in_index_stride; // 2 or 4 bytes
+	uint in_normal_offset; // bytes into vertex buffer
+	uint in_normal_stride; // bytes per vertex
+	uint in_color_offset; // bytes into attribute buffer
 	uint in_attribute_stride; // bytes per vertex
 };
 
@@ -25,18 +23,18 @@ layout(set = 0, binding = 0, std430) restrict readonly buffer InVertexBuffer {
 	uint in_words[]; // positions, then normals+tangents
 };
 
-layout(set = 0, binding = 1, std430) restrict readonly buffer InIndexBuffer {
+layout(set = 1, binding = 0, std430) restrict readonly buffer InIndexBuffer {
 	uint in_index_words[]; // 16-bit or 32-bit indices, per in_index_stride
 };
 
-layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
+layout(set = 1, binding = 1, std430) restrict buffer InAttributeBuffer {
 	uint in_attribute_words[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
-	uvec3 dispatch; // x scales with faces_count, y is 3 so the edges pass gets one invocation per edge
+layout(set = 2, binding = 0, scalar) restrict buffer FacesBuffer {
+	uvec3 dispatch; // indirect args for edges.glsl
 	uint faces_count;
-	uvec3 faces[];
+	uvec3 faces[]; // eligible face vertex indices
 };
 
 uint read_index(uint i) {
@@ -56,25 +54,22 @@ vec3 oct_decode(vec2 e) {
 	vec3 v = vec3(e.xy, 1.0 - abs(e.x) - abs(e.y));
 	vec2 wrapped = (1.0 - abs(v.yx)) * sign(v.xy);
 	v.xy = mix(v.xy, wrapped, step(v.z, 0.0));
-	return normalize(v);
+	return v; // unnormalized - summed with two others and renormalized by the caller
 }
 
 vec3 read_normal(uint vertex_index) {
-	uint word = (in_normals_offset + vertex_index * in_normal_tangent_stride) / 4u;
-	vec2 e = unpackUnorm2x16(in_words[word]) * 2.0 - 1.0;
+	uint word = (in_normal_offset + vertex_index * in_normal_stride) / 4u;
+	vec2 e = fma(unpackUnorm2x16(in_words[word]), vec2(2.0), vec2(-1.0));
 	return oct_decode(e);
 }
 
 void write_color(uint vertex_index, vec4 color) {
-	uint word = (in_colors_offset + vertex_index * in_attribute_stride) / 4u;
+	uint word = (in_color_offset + vertex_index * in_attribute_stride) / 4u;
 	in_attribute_words[word] = packUnorm4x8(color);
 }
 
 void main() {
 	uint face = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
-
-	dispatch.y = 3u;
-	dispatch.z = 1u;
 
 	if (face * 3u + 2u >= in_index_count) {
 		return;
@@ -86,15 +81,17 @@ void main() {
 		return;
 	}
 
+	// Average the 3 corner normals to approximate the face normal
 	vec3 face_normal = normalize(
 		read_normal(face_indices.x)
 		+ read_normal(face_indices.y)
 		+ read_normal(face_indices.z)
 	);
 
-	bool is_upright = dot(face_normal, normalize(local_up)) > cos(radians(max_slope_degrees));
+	bool is_upright = dot(face_normal, local_up) > upright_dot;
 	vec4 color = is_upright ? vec4(0.0, 1.0, 0.0, 1.0) : vec4(1.0, 0.0, 0.0, 1.0);
 
+	// Debug visualization on the source mesh, regardless of eligibility
 	write_color(face_indices.x, color);
 	write_color(face_indices.y, color);
 	write_color(face_indices.z, color);
@@ -103,7 +100,10 @@ void main() {
 		return;
 	}
 
+	// Record this face as part of the snow cap
 	uint slot = atomicAdd(faces_count, 1u);
 	faces[slot] = face_indices;
-	atomicMax(dispatch.x, (slot + EDGES_GROUP_SIZE) / EDGES_GROUP_SIZE);
+	atomicMax(dispatch.x, (slot + 256u) / 256u);
+	dispatch.y = 3u;
+	dispatch.z = 1u;
 }

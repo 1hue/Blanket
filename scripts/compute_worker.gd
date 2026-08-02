@@ -3,8 +3,7 @@ class_name ComputeWorker
 
 signal output(message: String)
 
-const FACES_BUFFER_OFFSET = 16
-const EDGES_BUFFER_OFFSET = 4
+const FACES_HEADER = 16 # dispatch (12) + count (4)
 
 var rd: RenderingDevice
 var shaders: Array[RID]:
@@ -14,19 +13,27 @@ var pipelines: Array[RID]:
 var params: ComputeParams
 
 var mesh: ArrayMesh
-var mesh_uniform_set: RID
-var vertex_uniform: RDUniform
+var mesh_uniform: RDUniform
+var mesh_uniform_sets: Array[RID] # 0 = Verts, 1 = Indices & Atrributes
 
 var faces_buffer: RID
 var faces_buffer_size: int
-var faces_uniform_set: RID
+var faces_uniform: RDUniform
+var faces_uniform_set: RID # faces.glsl set 1 (write), edges.glsl set 0 (read)
 
 var edges_buffer: RID
 var edges_buffer_size: int
-var edges_uniform_set: RID
+var edges_uniform: RDUniform
+var edges_uniform_set: RID # edges.glsl set 1 (write)
 
-var owned_surface: int
-var owned_surface_uniform_set: RID
+var verts_selection_uniform_set: RID # verts.glsl set 1 (faces + edges, read)
+var verts_in_uniform_set: RID # verts.glsl set 0 (source vertex buffer)
+var verts_out_uniform_set: RID # verts.glsl set 2 (new surface + out_sources)
+
+var depth_in_uniform_set: RID # depth.glsl set 0
+var depth_out_uniform_set: RID # depth.glsl set 1
+
+var out_sources_buffer: RID
 
 var surface: ComputeSurface
 
@@ -37,9 +44,10 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	surface = ComputeSurface.new(p_mesh, surface_idx)
 
 	_init_params(global_transform)
-	_init_mesh_buffer()
-	_init_faces_buffer()
-	_init_edges_buffer()
+	_init_mesh_uniforms()
+	_init_faces_uniforms()
+	_init_edges_uniforms()
+	_init_verts_uniforms()
 
 
 func _init_params(global_transform: Transform3D) -> void:
@@ -48,93 +56,133 @@ func _init_params(global_transform: Transform3D) -> void:
 	var vertex_count := mesh.surface_get_array_len(surface.idx)
 
 	assert(format & Mesh.ARRAY_FORMAT_NORMAL != 0, "Mesh must have normals: %s" % mesh)
-	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be of triangle primitives: %s is %s" % [mesh, primitive])
+	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be triangles: %s is %s" % [mesh, primitive])
 
 	params = ComputeParams.new()
-	params.source_vertex_count = mesh.surface_get_array_len(surface.idx)
-	params.source_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(format, vertex_count)
-	params.source_index_count = mesh.surface_get_array_index_len(surface.idx)
-	params.source_index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, vertex_count)
-	params.source_normal_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_NORMAL)
-	params.source_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
-	params.source_colors_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_COLOR)
-	params.source_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
+	params.in_vertex_count = vertex_count
+	params.in_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(format, vertex_count)
+	params.in_index_count = mesh.surface_get_array_index_len(surface.idx)
+	params.in_index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, vertex_count)
+	params.in_normals_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_NORMAL)
+	params.in_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
+	params.in_colors_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_COLOR)
+	params.in_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
 	params.local_up = global_transform.basis.inverse() * Vector3.UP
 	params.changed.connect(update)
 
 
-func _init_mesh_buffer() -> void:
+func _init_mesh_uniforms() -> void:
 	var mesh_rid := mesh.get_rid()
-	var buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, 0)
-	vertex_uniform = ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
+	var buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
+	mesh_uniform = ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
 
-	buffer = RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, 0)
-	var index_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
+	var index_uniform := ComputeUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
 
-	buffer = RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, 0)
-	var attribute_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2)
+	var attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, surface.idx)
+	var attribute_uniform := ComputeUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2)
 
-	mesh_uniform_set = rd.uniform_set_create([vertex_uniform, index_uniform, attribute_uniform], shaders[0], 0)
+	mesh_uniform_sets[0] = rd.uniform_set_create([mesh_uniform], shaders[0], 0)
+	mesh_uniform_sets[1] = rd.uniform_set_create([index_uniform, attribute_uniform], shaders[0], 1)
 
 
-func _init_faces_buffer() -> void:
-	faces_buffer_size = FACES_BUFFER_OFFSET + params.index_count * 4 # Max faces buffer size is all verts stuffed into it
+func _init_faces_uniforms() -> void:
+	faces_buffer_size = FACES_HEADER + params.in_index_count * 4 # worst case: every vert is a face corner
 	faces_buffer = rd.storage_buffer_create(faces_buffer_size)
 
-	var count_uniform := ComputeUtil.create_uniform([faces_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
-	faces_uniform_set = rd.uniform_set_create([count_uniform], shaders[0], 1)
+	faces_uniform = ComputeUtil.create_uniform([faces_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
+	faces_uniform_set = rd.uniform_set_create([faces_uniform], shaders[0], 1)
 
 
-func _init_edges_buffer() -> void:
-	edges_buffer_size = EDGES_BUFFER_OFFSET + params.index_count * params.index_stride # Indices is 16-bit uint each = 2 bytes
+func _init_edges_uniforms() -> void:
+	# uvec3 dispatch + uint count + uvec2 edges[], worst case every face contributes 3 unique edges
+	edges_buffer_size = 16 + params.in_index_count * 8
 	edges_buffer = rd.storage_buffer_create(edges_buffer_size)
 
-	var edges_uniform := ComputeUtil.create_uniform([edges_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
+	edges_uniform = ComputeUtil.create_uniform([edges_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER)
 	edges_uniform_set = rd.uniform_set_create([edges_uniform], shaders[1], 1)
+
+
+func _init_verts_uniforms() -> void:
+	verts_in_uniform_set = rd.uniform_set_create([mesh_uniform], shaders[2], 0)
+
+	var faces_read := ComputeUtil.create_uniform([faces_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
+	var edges_read := ComputeUtil.create_uniform([edges_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
+	verts_selection_uniform_set = rd.uniform_set_create([faces_read, edges_read], shaders[2], 1)
 
 
 func clear() -> void:
 	rd.buffer_clear(faces_buffer, 0, faces_buffer_size)
+	rd.buffer_clear(edges_buffer, 0, edges_buffer_size)
 
 
-## Free up GPU memory after bake
+## Free buffers after bake, keep the owned surface's buffers
 func _cleanup_bake() -> void:
 	rd.free_rid(faces_uniform_set)
 	rd.free_rid(faces_buffer)
 	rd.free_rid(edges_uniform_set)
 	rd.free_rid(edges_buffer)
+	rd.free_rid(verts_selection_uniform_set)
 
 
-func _init_new_surface_buffer() -> void:
-	if owned_surface_uniform_set.is_valid():
-		rd.free_rid(owned_surface_uniform_set)
+func _init_out_uniform_sets(vertex_count: int) -> void:
+	if verts_out_uniform_set.is_valid():
+		rd.free_rid(verts_out_uniform_set)
+	if depth_in_uniform_set.is_valid():
+		rd.free_rid(depth_in_uniform_set)
+	if depth_out_uniform_set.is_valid():
+		rd.free_rid(depth_out_uniform_set)
+	if out_sources_buffer.is_valid():
+		rd.free_rid(out_sources_buffer)
 
 	var mesh_rid := mesh.get_rid()
-	var buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, owned_surface)
-	var target_vertex_uniform := ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
+	var out_vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
+	var out_index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
+	var out_attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, surface.idx)
 
-	owned_surface_uniform_set = rd.uniform_set_create([vertex_uniform, target_vertex_uniform], shaders[1], 0)
+	out_sources_buffer = rd.storage_buffer_create(vertex_count * 4)
+
+	var out_vertex_uniform := ComputeUtil.create_uniform([out_vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
+	var out_index_uniform := ComputeUtil.create_uniform([out_index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
+	var out_attribute_uniform := ComputeUtil.create_uniform([out_attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2)
+	var out_sources_uniform := ComputeUtil.create_uniform([out_sources_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 3)
+	verts_out_uniform_set = rd.uniform_set_create(
+		[out_vertex_uniform, out_index_uniform, out_attribute_uniform, out_sources_uniform], shaders[2], 2
+	)
+
+	depth_in_uniform_set = rd.uniform_set_create([mesh_uniform], shaders[3], 0)
+
+	var depth_vertex_uniform := ComputeUtil.create_uniform([out_vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
+	var depth_attribute_uniform := ComputeUtil.create_uniform([out_attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
+	var depth_sources_uniform := ComputeUtil.create_uniform([out_sources_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2)
+	depth_out_uniform_set = rd.uniform_set_create(
+		[depth_vertex_uniform, depth_attribute_uniform, depth_sources_uniform], shaders[3], 1
+	)
 
 
 func bake() -> void:
-	_bake()
-	_add_surface()
+	clear()
+	_bake_selection()
+	_bake_geometry_out()
 	_cleanup_bake()
 	update()
 
 
-func _bake() -> void:
+func _bake_selection() -> void:
 	var compute_list := rd.compute_list_begin()
 
-	# 1st pass: Identify eligible surfaces
+	# Faces
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
-	rd.compute_list_set_push_constant(compute_list, params.pack_faces(), params.SIZE_COUNT)
-	rd.compute_list_bind_uniform_set(compute_list, mesh_uniform_set, 0)
+	rd.compute_list_set_push_constant(compute_list, params.pack_faces(), ComputeParams.SIZE_FACES)
+	rd.compute_list_bind_uniform_set(compute_list, mesh_uniform_sets[0], 0)
+	rd.compute_list_bind_uniform_set(compute_list, mesh_uniform_sets[1], 1)
 	rd.compute_list_bind_uniform_set(compute_list, faces_uniform_set, 1)
 	rd.compute_list_dispatch(compute_list, 1, 1, 1)
 
-	# 2nd pass: Identify outer edges
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
+	rd.compute_list_add_barrier(compute_list)
+
+	# Edges
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[1])
 	rd.compute_list_bind_uniform_set(compute_list, faces_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, edges_uniform_set, 1)
 	rd.compute_list_dispatch_indirect(compute_list, faces_buffer, 0)
@@ -142,81 +190,55 @@ func _bake() -> void:
 	rd.compute_list_end()
 
 
-func _add_surface() -> void:
+## Spawns an empty mesh surface per the faces and edges counts, then dispatches verts.glsl to fill it GPU-side
+func _bake_geometry_out() -> void:
+	# Only read the counts - avoid a whole GPU-CPU-GPU data roundtrip
 	var face_count := rd.buffer_get_data(faces_buffer, 12, 4).decode_u32(0)
-	var face_indices := rd.buffer_get_data(faces_buffer, FACES_BUFFER_OFFSET, face_count * 12).to_int32_array()
+	var edge_count := rd.buffer_get_data(edges_buffer, 0, 4).decode_u32(0)
 
-	var edges_count := rd.buffer_get_data(edges_buffer, 0, 4).decode_u32(0)
-	var edge_indices := rd.buffer_get_data(edges_buffer, 4, edges_count * 8).to_int32_array()
+	var vertex_count := face_count * 3 + edge_count * 4
+	var index_count := face_count * 3 + edge_count * 6
 
-	surface.rebuild(face_indices, edge_indices, params.local_up)
+	surface.allocate(vertex_count, index_count)
 
-	params.target_vertex_count = surface.vertex_count
-	params.target_vertex_stride = surface.vertex_stride
-	source_map_buffer = rd.storage_buffer_create(surface.source_map.size() * 4, surface.source_map.to_byte_array())
+	var format := mesh.surface_get_format(surface.idx)
+	params.out_vertex_count = vertex_count
+	params.out_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(format, vertex_count)
+	params.out_normals_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_NORMAL)
+	params.out_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
+	params.out_markers_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_CUSTOM0)
+	params.out_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
+
+	_init_out_uniform_sets(vertex_count)
+
+	var compute_list := rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[2])
+	rd.compute_list_set_push_constant(compute_list, params.pack_verts(), ComputeParams.SIZE_VERTS)
+	rd.compute_list_bind_uniform_set(compute_list, verts_in_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, verts_selection_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, verts_out_uniform_set, 2)
+	rd.compute_list_dispatch_indirect(compute_list, edges_buffer, 0)
+	rd.compute_list_end()
 
 
 ## Reposition verts of the added mesh surface
 func update() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[1])
-	rd.compute_list_set_push_constant(compute_list, params.pack_position(), params.SIZE_POSITION)
-	rd.compute_list_bind_uniform_set(compute_list, owned_surface_uniform_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, faces_uniform_set, 1)
-	rd.compute_list_dispatch(compute_list, 1, 1, 1)
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[3])
+	rd.compute_list_set_push_constant(compute_list, params.pack_shape(), ComputeParams.SIZE_SHAPE)
+	rd.compute_list_bind_uniform_set(compute_list, depth_in_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, depth_out_uniform_set, 1)
+	rd.compute_list_dispatch(compute_list, ceili(params.out_vertex_count / 256.0), 1, 1)
 	rd.compute_list_end()
-	#var count := rd.compute_list_dispatch_indirect()
-	out()
-
-
-func out() -> void:
-	var bytes_out := rd.buffer_get_data(faces_buffer)
-	var counter := bytes_out.decode_u32(0)
-	#var arr := ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(bytes_out.slice(FACES_BUFFER_OFFSET)))
-
-	print_rich('Output: x%d | [color=pale_green][b]%s[/b][/color] %sB' % [
-		counter, ComputeUtil.to_vector3i_array(bytes_out.slice(4).to_int32_array()), count_buffer_size
-	])
-
-	output.emit("%s" % [counter])
 
 
 func _notification(what) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		print_rich('[color=dim_gray]Worker goodbye![/color]')
-
-		if mesh_uniform_set.is_valid():
-			rd.free_rid(mesh_uniform_set)
-		if faces_uniform_set.is_valid():
-			rd.free_rid(faces_uniform_set)
-		if faces_buffer.is_valid():
-			rd.free_rid(faces_buffer)
-		if edges_uniform_set.is_valid():
-			rd.free_rid(edges_uniform_set)
-		if edges_buffer.is_valid():
-			rd.free_rid(edges_buffer)
-
-
-#region Debug
-
-#prints("Normals:", format & Mesh.ARRAY_FORMAT_NORMAL != 0, "| Colours:", format & Mesh.ARRAY_FORMAT_COLOR != 0)
-#var format := p_mesh.surface_get_format(0)
-#var surface := RenderingServer.mesh_get_surface(mesh, 0)
-#prints("surface", surface)
-#prints("vertex_count", vertex_count, "index_count", index_count,
-	#"normals_offset", normals_offset, "indices_offset", indices_offset, "index_stride", index_stride)
-
-#var normal_tangent_stride := RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
-#var length := vertex_count * normal_tangent_stride
-#var normals_data := rd.buffer_get_data(buffer, 0, 16)
-#prints("\n", normals_data, "\n")
-#prints("vert buffer 16 bytes:", normals_data)
-#prints(" - try decode normal at [0]:", ComputeUtil.read_normal(normals_data, 0))
-#normals_data = rd.buffer_get_data(buffer, 72, 16)
-#prints("288 offset 16 bytes:", normals_data)
-#prints(" - try decode normal at [0]:", ComputeUtil.read_normal(normals_data, 0))
-#var index_data := rd.buffer_get_data(buffer)
-#var indices := ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(index_data))
-#prints("index buffer: ", index_data)
-
-#endregion
+		for rid in [
+			mesh_uniform_set, faces_uniform_set, faces_buffer,
+			edges_uniform_set, edges_buffer, verts_selection_uniform_set,
+			verts_in_uniform_set, verts_out_uniform_set,
+			depth_in_uniform_set, depth_out_uniform_set, out_sources_buffer
+		]:
+			if rid is RID and rid.is_valid():
+				rd.free_rid(rid)

@@ -3,14 +3,16 @@ class_name ComputeParams
 
 signal changed
 
-const SIZE_COUNT = 16
-const SIZE_POSITION = 28
+const SIZE_FACES = 44
+const SIZE_VERTS = 44
+const SIZE_SHAPE = 36
 const DEFAULT_DEPTH = 0.1
+const DEFAULT_MAX_SLOPE_DEGREES = 45.0
 
-## World up translated to model local space
+## World up translated to model local space, normalized
 var local_up := Vector3.UP:
 	set(value):
-		local_up = value
+		local_up = value.normalized()
 		changed.emit()
 
 ## Distance to extrude
@@ -20,50 +22,79 @@ var depth := DEFAULT_DEPTH:
 		changed.emit()
 
 ## Only horizontal surfaces (mesh faces) are eligible. 90deg to include verticals.
-var max_slope_degrees := 45.0:
+var max_slope_degrees := DEFAULT_MAX_SLOPE_DEGREES:
 	set(value):
 		max_slope_degrees = value
+		upright_dot = cos(deg_to_rad(value))
 		changed.emit()
 
-var source_index_count: int
-var source_index_stride: int
-var source_vertex_count: int
-var source_vertex_stride: int
-var source_normal_offset: int
-var source_normal_stride: int
-var source_colors_offset: int
-var source_attribute_stride: int
-var target_vertex_count: int
-var target_vertex_stride: int
+## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees
+var upright_dot := cos(deg_to_rad(DEFAULT_MAX_SLOPE_DEGREES))
+
+var in_vertex_count: int
+var in_vertex_stride: int
+var in_index_count: int
+var in_index_stride: int
+var in_normal_offset: int
+var in_normal_stride: int
+var in_color_offset: int
+var in_attribute_stride: int
+
+var out_vertex_count: int
+var out_vertex_stride: int
+var out_normal_offset: int
+var out_normal_stride: int
+var out_marker_offset: int
+var out_attribute_stride: int
 
 
-## 1st pass
+## faces.glsl
 func pack_faces() -> PackedByteArray:
 	var bytes := PackedByteArray()
-	bytes.resize(SIZE_COUNT)
+	bytes.resize(SIZE_FACES)
 	bytes.encode_float(0, local_up.x)
 	bytes.encode_float(4, local_up.y)
 	bytes.encode_float(8, local_up.z)
-	bytes.encode_float(12, max_slope_degrees)
-	bytes.encode_u32(16, source_vertex_count)
-	bytes.encode_u32(20, source_index_count)
-	bytes.encode_u32(24, source_index_stride)
-	bytes.encode_u32(28, source_normal_offset)
-	bytes.encode_u32(32, source_normal_stride)
-	bytes.encode_u32(36, source_colors_offset)
-	bytes.encode_u32(40, source_attribute_stride)
+	bytes.encode_float(12, upright_dot)
+	bytes.encode_u32(16, in_index_count)
+	bytes.encode_u32(20, in_vertex_count)
+	bytes.encode_u32(24, in_index_stride)
+	bytes.encode_u32(28, in_normal_offset)
+	bytes.encode_u32(32, in_normal_stride)
+	bytes.encode_u32(36, in_color_offset)
+	bytes.encode_u32(40, in_attribute_stride)
 	return bytes
 
 
-## 4th pass
-func pack_positions() -> PackedByteArray:
+## verts.glsl
+func pack_verts() -> PackedByteArray:
 	var bytes := PackedByteArray()
-	bytes.resize(SIZE_POSITION)
+	bytes.resize(SIZE_VERTS)
+	bytes.encode_float(0, local_up.x)
+	bytes.encode_float(4, local_up.y)
+	bytes.encode_float(8, local_up.z)
+	bytes.encode_u32(12, in_vertex_stride)
+	bytes.encode_u32(16, in_normal_offset)
+	bytes.encode_u32(20, in_normal_stride)
+	bytes.encode_u32(24, out_vertex_stride)
+	bytes.encode_u32(28, out_normal_offset)
+	bytes.encode_u32(32, out_normal_stride)
+	bytes.encode_u32(36, out_marker_offset)
+	bytes.encode_u32(40, out_attribute_stride)
+	return bytes
+
+
+## shape.glsl
+func pack_shape() -> PackedByteArray:
+	var bytes := PackedByteArray()
+	bytes.resize(SIZE_SHAPE)
 	bytes.encode_float(0, local_up.x)
 	bytes.encode_float(4, local_up.y)
 	bytes.encode_float(8, local_up.z)
 	bytes.encode_float(12, depth)
-	bytes.encode_u32(16, source_vertex_count)
-	bytes.encode_u32(20, source_vertex_stride)
-	bytes.encode_u32(24, target_vertex_stride)
+	bytes.encode_u32(16, out_vertex_count)
+	bytes.encode_u32(20, in_vertex_stride)
+	bytes.encode_u32(24, out_vertex_stride)
+	bytes.encode_u32(28, out_marker_offset)
+	bytes.encode_u32(32, out_attribute_stride)
 	return bytes

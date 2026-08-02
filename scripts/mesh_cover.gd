@@ -17,7 +17,7 @@ func _ready() -> void:
 		var worker := ComputeWorker.new(mesh_instance.mesh, i, mesh_instance.global_transform)
 		worker.output.connect(_on_output)
 		worker.bake()
-		mesh_instance.set_surface_override_material(worker.owned_surface, material)
+		mesh_instance.set_surface_override_material(worker.surface.idx, material)
 		workers.append(worker)
 
 
