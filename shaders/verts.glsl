@@ -25,31 +25,39 @@ layout(set = 0, binding = 0, std430) restrict readonly buffer InVertexBuffer {
 	uint in_words[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict readonly buffer FacesBuffer {
+layout(set = 0, binding = 1, std430) restrict readonly buffer InIndexBuffer {
+	uint in_index_words[]; // unused here
+};
+
+layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
+	uint in_attribute_words[]; // unused here
+};
+
+layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
 	uvec3 faces_dispatch;
 	uint faces_count;
 	uvec3 faces[];
 };
 
-layout(set = 2, binding = 1, scalar) restrict readonly buffer EdgesBuffer {
+layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
 	uvec3 edges_dispatch;
 	uint edges_count;
 	uvec2 edges[];
 };
 
-layout(set = 3, binding = 0, std430) restrict writeonly buffer OutVertexBuffer {
+layout(set = 2, binding = 0, std430) restrict writeonly buffer OutVertexBuffer {
 	uint out_words[];
 };
 
-layout(set = 3, binding = 1, std430) restrict writeonly buffer OutIndexBuffer {
+layout(set = 2, binding = 1, std430) restrict writeonly buffer OutIndexBuffer {
 	uint out_indices[];
 };
 
-layout(set = 3, binding = 2, std430) restrict writeonly buffer OutAttributeBuffer {
+layout(set = 2, binding = 2, std430) restrict writeonly buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
-layout(set = 3, binding = 3, std430) restrict writeonly buffer OutInMapBuffer {
+layout(set = 2, binding = 3, std430) restrict writeonly buffer OutInMapBuffer {
 	uint out_in_map[]; // per out vertex, its in vertex - shape.glsl reads position from here
 };
 

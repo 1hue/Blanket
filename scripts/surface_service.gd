@@ -1,4 +1,4 @@
-extends RefCounted
+extends Node
 
 const SHADER_PATHS: Array[String] = [
 	"res://shaders/faces.glsl",
@@ -40,6 +40,5 @@ func compile_shader(p_rd: RenderingDevice, p_shader_path: String) -> RID:
 	var shader_spirv: RDShaderSPIRV = shader_file.get_spirv()
 
 	var err = shader_spirv.get_stage_compile_error(RenderingDevice.SHADER_STAGE_COMPUTE)
-	if err: push_warning(err)
-
+	if err: push_error(err)
 	return p_rd.shader_create_from_spirv(shader_spirv)

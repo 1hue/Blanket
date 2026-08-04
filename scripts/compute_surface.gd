@@ -30,11 +30,11 @@ func allocate(new_vertex_count: int, new_index_count: int) -> void:
 
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
-	var markers := PackedByteArray()
+	var markers := PackedFloat32Array()
 	var indices := PackedInt32Array()
 	vertices.resize(new_vertex_count)
 	normals.resize(new_vertex_count)
-	markers.resize(new_vertex_count * 4)
+	markers.resize(new_vertex_count)
 	indices.resize(new_index_count)
 
 	var arrays := []

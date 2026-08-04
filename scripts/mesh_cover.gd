@@ -2,8 +2,7 @@ extends Node
 class_name MeshCover
 
 @export var material: StandardMaterial3D = preload("res://assets/snow.tres")
-
-@onready var debug: Label3D = $Label3D
+@export var debug: Label3D
 
 var workers: Array[ComputeWorker]
 

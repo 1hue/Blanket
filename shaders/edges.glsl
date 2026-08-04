@@ -1,4 +1,4 @@
-// Finds the outer boundary - edges belonging to only one selected face
+// Find the outer boundary - edges belonging to only one selected face.
 #[compute]
 #version 450
 
@@ -8,13 +8,13 @@ const uint VERTS_GROUP_SIZE = 256u;
 
 layout(local_size_x = 256) in;
 
-layout(set = 0, binding = 0, scalar) restrict readonly buffer FacesBuffer {
+layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
 	uvec3 faces_dispatch;
 	uint faces_count;
 	uvec3 faces[]; // input: eligible faces from faces.glsl
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer EdgesBuffer {
+layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
 	uvec3 dispatch; // indirect args for verts.glsl
 	uint edges_count;
 	uvec2 edges[]; // output: boundary edges (walls)

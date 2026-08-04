@@ -1,4 +1,4 @@
-// Offsets marked verts along local_up by depth, from their source position.
+// Offset marked verts along local_up by depth, from their source position.
 #[compute]
 #version 450
 
@@ -22,20 +22,28 @@ layout(set = 0, binding = 0, std430) restrict readonly buffer InVertexBuffer {
 	uint in_words[];
 };
 
-layout(set = 1, binding = 0, std430) restrict writeonly buffer OutVertexBuffer {
+layout(set = 0, binding = 1, std430) restrict readonly buffer InIndexBuffer {
+	uint in_index_words[]; // unused here
+};
+
+layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
+	uint in_attribute_words[]; // unused here
+};
+
+layout(set = 2, binding = 0, std430) restrict writeonly buffer OutVertexBuffer {
 	uint out_words[];
 };
 
-layout(set = 1, binding = 1, std430) restrict writeonly buffer OutIndexBuffer {
-	uint out_indices[];
+layout(set = 2, binding = 1, std430) restrict buffer OutIndexBuffer {
+	uint out_indices[]; // unused here
 };
 
-layout(set = 1, binding = 2, std430) restrict writeonly buffer OutAttributeBuffer {
+layout(set = 2, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
-layout(set = 1, binding = 3, std430) restrict writeonly buffer OutInMapBuffer {
-	uint out_in_map[]; // per out vertex, its in vertex - shape.glsl reads position from here
+layout(set = 2, binding = 3, std430) restrict buffer OutInMapBuffer {
+	uint out_in_map[];
 };
 
 vec3 read_in_position(uint in_index) {

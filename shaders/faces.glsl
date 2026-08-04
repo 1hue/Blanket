@@ -1,4 +1,4 @@
-// Finds faces facing within max_slope_degrees of local_up.
+// Find faces facing within max_slope_degrees of local_up.
 #[compute]
 #version 450
 
@@ -23,18 +23,24 @@ layout(set = 0, binding = 0, std430) restrict readonly buffer InVertexBuffer {
 	uint in_words[]; // positions, then normals+tangents
 };
 
-layout(set = 1, binding = 0, std430) restrict readonly buffer InIndexBuffer {
+layout(set = 0, binding = 1, std430) restrict readonly buffer InIndexBuffer {
 	uint in_index_words[]; // 16-bit or 32-bit indices, per in_index_stride
 };
 
-layout(set = 1, binding = 1, std430) restrict buffer InAttributeBuffer {
+layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
 	uint in_attribute_words[];
 };
 
-layout(set = 2, binding = 0, scalar) restrict buffer FacesBuffer {
+layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
 	uvec3 dispatch; // indirect args for edges.glsl
 	uint faces_count;
 	uvec3 faces[]; // eligible face vertex indices
+};
+
+layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
+	uvec3 edges_dispatch;
+	uint edges_count;
+	uvec2 edges[]; // unused here - declared so the set matches other passes
 };
 
 uint read_index(uint i) {
