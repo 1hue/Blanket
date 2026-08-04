@@ -9,15 +9,17 @@ const uint VERTS_GROUP_SIZE = 256u;
 layout(local_size_x = 256) in;
 
 layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
-	uvec3 faces_dispatch;
 	uint faces_count;
 	uvec3 faces[]; // input: eligible faces from faces.glsl
 };
 
 layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
-	uvec3 dispatch; // indirect args for verts.glsl
 	uint edges_count;
 	uvec2 edges[]; // output: boundary edges (walls)
+};
+
+layout(set = 2, binding = 0, std430) restrict buffer EdgesDispatchBuffer {
+	uvec3 dispatch;
 };
 
 uvec2 edge_at(uint edge) {

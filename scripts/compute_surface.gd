@@ -4,6 +4,7 @@ class_name ComputeSurface
 const SURFACE_FLAGS := (
 	Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER | (Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
 )
+const SURFACE_NAME = "AddedSurface"
 
 var mesh: ArrayMesh
 ## Original surface derived from
@@ -46,6 +47,7 @@ func allocate(new_vertex_count: int, new_index_count: int) -> void:
 
 	idx = mesh.get_surface_count()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, SURFACE_FLAGS)
+	mesh.surface_set_name(idx, SURFACE_NAME)
 	mesh.custom_aabb = source_aabb()
 
 

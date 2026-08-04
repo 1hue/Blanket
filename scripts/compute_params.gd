@@ -7,7 +7,7 @@ const SIZE_FACES = 44
 const SIZE_VERTS = 44
 const SIZE_SHAPE = 36
 const DEFAULT_DEPTH = 0.1
-const DEFAULT_MAX_SLOPE_DEGREES = 45.0
+const DEFAULT_MAX_SLOPE_DEGREES = 75.0
 
 ## World up translated to model local space, normalized
 var local_up := Vector3.UP:

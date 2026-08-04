@@ -34,13 +34,11 @@ layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
-	uvec3 faces_dispatch;
 	uint faces_count;
 	uvec3 faces[];
 };
 
 layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
-	uvec3 edges_dispatch;
 	uint edges_count;
 	uvec2 edges[];
 };
@@ -120,6 +118,7 @@ void main() {
 		out_indices[base] = base;
 		out_indices[base + 1u] = base + 1u;
 		out_indices[base + 2u] = base + 2u;
+		out_indices[0] = 555;
 		return;
 	}
 
@@ -149,4 +148,5 @@ void main() {
 	out_indices[index_base + 3u] = base;
 	out_indices[index_base + 4u] = base + 3u;
 	out_indices[index_base + 5u] = base + 2u;
+	out_indices[0] = 555;
 }

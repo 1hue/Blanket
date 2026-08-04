@@ -3,8 +3,8 @@ class_name ComputeWorker
 
 signal output(message: String)
 
-const FACES_HEADER = 16 # dispatch (12) + count (4)
-const EDGES_HEADER = 16 # dispatch (12) + count (4)
+const FACES_HEADER = 4 # count (4)
+const EDGES_HEADER = 4 # count (4)
 
 var rd: RenderingDevice
 var shaders: Array[RID]:
@@ -21,10 +21,14 @@ var in_uniform_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 var faces_buffer: RID
 var faces_buffer_size: int
 var faces_uniform: RDUniform
+var faces_dispatch_buffer: RID
+var faces_dispatch_uniform_set: RID
 
 var edges_buffer: RID
 var edges_buffer_size: int
 var edges_uniform: RDUniform
+var edges_dispatch_buffer: RID
+var edges_dispatch_uniform_set: RID
 
 var selection_uniform_set: RID
 
@@ -51,6 +55,7 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 
 	_init_params(global_transform)
 	_init_in_uniforms()
+	_init_indirect_dispatch()
 	_init_selection_uniforms()
 
 
@@ -89,11 +94,13 @@ func _init_in_uniforms() -> void:
 
 
 func _init_selection_uniforms() -> void:
+	# Faces
 	faces_buffer_size = FACES_HEADER + params.in_index_count * 4
 	faces_buffer = rd.storage_buffer_create(
 		faces_buffer_size, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
 	)
 
+	# Edges
 	edges_buffer_size = EDGES_HEADER + params.in_index_count * 8
 	edges_buffer = rd.storage_buffer_create(
 		edges_buffer_size, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
@@ -105,12 +112,24 @@ func _init_selection_uniforms() -> void:
 	], shaders[0], 1)
 
 
-func clear() -> void:
-	rd.buffer_clear(faces_buffer, 0, faces_buffer_size)
-	rd.buffer_clear(edges_buffer, 0, edges_buffer_size)
+## Separate dispatch buffers - must not be passed as uniform in target shader - engine constraint
+func _init_indirect_dispatch() -> void:
+	faces_dispatch_buffer = rd.storage_buffer_create(
+		12, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
+	)
+	faces_dispatch_uniform_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([faces_dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+	], shaders[0], 2)
+
+	edges_dispatch_buffer = rd.storage_buffer_create(
+		12, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
+	)
+	edges_dispatch_uniform_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([edges_dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+	], shaders[1], 2)
 
 
-## Free buffers after bake, keep the owned surface's buffers
+## Free scratch buffers after bake
 func _cleanup_bake() -> void:
 	rd.free_rid(selection_uniform_set)
 	rd.free_rid(faces_buffer)
@@ -118,12 +137,12 @@ func _cleanup_bake() -> void:
 
 
 func bake() -> void:
-	clear()
 	_bake_selection()
-	_init_geometry_out()
-	_bake_geometry_out()
-	_cleanup_bake()
-	update()
+	_allocate_geometry_out()
+	debug()
+	#_bake_geometry_out()
+	#_cleanup_bake()
+	#update()
 
 
 ## Select upright faces and outer edges
@@ -135,20 +154,27 @@ func _bake_selection() -> void:
 	rd.compute_list_set_push_constant(compute_list, params.pack_faces(), ComputeParams.SIZE_FACES)
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, faces_dispatch_uniform_set, 2)
 	rd.compute_list_dispatch(compute_list, ceili(params.in_index_count / 3.0 / 256.0), 1, 1)
+	rd.compute_list_end()
 
 	# Edges
+	compute_list = rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[1])
-	rd.compute_list_dispatch_indirect(compute_list, faces_buffer, 0)
-
+	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, edges_dispatch_uniform_set, 2)
+	rd.compute_list_dispatch_indirect(compute_list, faces_dispatch_buffer, 0)
 	rd.compute_list_end()
 
 
-## Spawn an empty mesh surface
-func _init_geometry_out() -> void:
+## Add an empty mesh surface
+func _allocate_geometry_out() -> void:
 	# Only read the counts - avoid a whole GPU-CPU-GPU data roundtrip
 	var face_count := rd.buffer_get_data(faces_buffer, 12, 4).decode_u32(0)
 	var edge_count := rd.buffer_get_data(edges_buffer, 12, 4).decode_u32(0)
+
+	assert(face_count > 0, "Face count: %d" % face_count)
+	#assert(edge_count > 0, "Edge count: %d" % edge_count)
 
 	var vertex_count := face_count * 3 + edge_count * 4
 	var index_count := face_count * 3 + edge_count * 6
@@ -166,7 +192,7 @@ func _init_geometry_out() -> void:
 	_init_geometry_out_uniforms(vertex_count)
 
 
-## Prepare for verts.glsl
+## Prepare buffers for verts.glsl
 func _init_geometry_out_uniforms(vertex_count: int) -> void:
 	if out_uniform_set.is_valid():
 		rd.free_rid(out_uniform_set)
@@ -211,14 +237,34 @@ func _compute_shape() -> void:
 	rd.compute_list_end()
 
 
+## Reposition the added mesh surface
 func update() -> void:
-	_compute_shape()
+	#_compute_shape()
+	prints("update()")
+
+
+func debug() -> void:
+	var data := RenderingServer.mesh_get_surface(mesh_rid, 1)
+	#print_rich("[color=rosy_brown]", data, "[/color]")
+	var vertex_data: PackedByteArray = data.vertex_data
+	print_rich("[color=pale_green]", data.vertex_count, " vertices selected:\n", vertex_data.to_vector3_array(), "[/color]\n")
+	print_rich(
+		"[color=peach_puff]",
+		" faces_dispatch=", rd.buffer_get_data(faces_dispatch_buffer, 0, 12).to_int32_array(),
+		" faces_count=", rd.buffer_get_data(faces_buffer, 0, 4).decode_u32(0),
+		"\n edges_dispatch=", rd.buffer_get_data(edges_dispatch_buffer, 0, 12).to_int32_array(),
+		" edges_count=", rd.buffer_get_data(edges_buffer, 0, 4).decode_u32(0),
+		"[/color]"
+	)
 
 
 func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
 
-	for rid in [in_uniform_set, selection_uniform_set, faces_buffer, edges_buffer, out_uniform_set, out_in_map_buffer]:
+	for rid in [
+		faces_dispatch_uniform_set, faces_dispatch_buffer, edges_dispatch_uniform_set, edges_dispatch_buffer,
+		in_uniform_set, selection_uniform_set, faces_buffer, edges_buffer, out_uniform_set, out_in_map_buffer
+	]:
 		if rid.is_valid():
 			rd.free_rid(rid)

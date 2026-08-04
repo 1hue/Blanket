@@ -1,4 +1,4 @@
-// Find faces facing within max_slope_degrees of local_up.
+// Find all faces facing within upright_dot of local_up.
 #[compute]
 #version 450
 
@@ -32,15 +32,17 @@ layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
-	uvec3 dispatch; // indirect args for edges.glsl
 	uint faces_count;
 	uvec3 faces[]; // eligible face vertex indices
 };
 
 layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
-	uvec3 edges_dispatch;
 	uint edges_count;
 	uvec2 edges[]; // unused here - declared so the set matches other passes
+};
+
+layout(set = 2, binding = 0, std430) restrict buffer FacesDispatchBuffer {
+	uvec3 dispatch;
 };
 
 uint read_index(uint i) {
@@ -109,7 +111,8 @@ void main() {
 	// Record this face as part of the snow cap
 	uint slot = atomicAdd(faces_count, 1u);
 	faces[slot] = face_indices;
-	atomicMax(dispatch.x, (slot + 256u) / 256u);
-	dispatch.y = 3u;
+// 	atomicMax(dispatch.x, (slot + 256u) / 256u);
+	dispatch.x = 1u;
+	dispatch.y = 2u;
 	dispatch.z = 1u;
 }
