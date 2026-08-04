@@ -5,6 +5,8 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
+const uint EDGES_GROUP_SIZE = 1u;
+
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
@@ -111,8 +113,7 @@ void main() {
 	// Record this face as part of the snow cap
 	uint slot = atomicAdd(faces_count, 1u);
 	faces[slot] = face_indices;
-// 	atomicMax(dispatch.x, (slot + 256u) / 256u);
-	dispatch.x = 1u;
-	dispatch.y = 2u;
+	atomicMax(dispatch.x, (slot + EDGES_GROUP_SIZE) / EDGES_GROUP_SIZE);
+	dispatch.y = 3u;
 	dispatch.z = 1u;
 }

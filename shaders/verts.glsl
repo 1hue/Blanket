@@ -118,7 +118,6 @@ void main() {
 		out_indices[base] = base;
 		out_indices[base + 1u] = base + 1u;
 		out_indices[base + 2u] = base + 2u;
-		out_indices[0] = 555;
 		return;
 	}
 
@@ -148,5 +147,4 @@ void main() {
 	out_indices[index_base + 3u] = base;
 	out_indices[index_base + 4u] = base + 3u;
 	out_indices[index_base + 5u] = base + 2u;
-	out_indices[0] = 555;
 }

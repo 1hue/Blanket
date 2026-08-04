@@ -4,6 +4,7 @@ class_name ComputeParams
 signal changed
 
 const SIZE_FACES = 44
+const SIZE_EDGES = 4
 const SIZE_VERTS = 44
 const SIZE_SHAPE = 36
 const DEFAULT_DEPTH = 0.1
@@ -63,6 +64,14 @@ func pack_faces() -> PackedByteArray:
 	bytes.encode_u32(32, in_normal_stride)
 	bytes.encode_u32(36, in_color_offset)
 	bytes.encode_u32(40, in_attribute_stride)
+	return bytes
+
+
+## Pack push constant bytes for edges.glsl
+func pack_edges() -> PackedByteArray:
+	var bytes := PackedByteArray()
+	bytes.resize(SIZE_FACES)
+	bytes.encode_u32(0, in_vertex_stride)
 	return bytes
 
 

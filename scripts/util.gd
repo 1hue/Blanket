@@ -57,6 +57,27 @@ static func to_int16_array(bytes: PackedByteArray, signed := false) -> PackedInt
 	return result
 
 
+static func to_uint32_array(bytes: PackedByteArray) -> PackedInt32Array:
+	var result := PackedInt32Array()
+	@warning_ignore("integer_division")
+	result.resize(bytes.size() / 2)
+
+	for i in result.size():
+		var offset := i * 2
+		result[i] = bytes.decode_u32(offset)
+
+	return result
+
+
+static func to_vector2i_array(indices: PackedInt32Array) -> Array[Vector2i]:
+	var triangles: Array[Vector2i] = []
+
+	for i in range(0, indices.size(), 2):
+		triangles.append(Vector2i(indices[i], indices[i + 1]))
+
+	return triangles
+
+
 static func to_vector3i_array(indices: PackedInt32Array) -> Array[Vector3i]:
 	var triangles: Array[Vector3i] = []
 

@@ -6,7 +6,24 @@
 
 const uint VERTS_GROUP_SIZE = 256u;
 
-layout(local_size_x = 256) in;
+// X = faces, Y = 3 verts per face
+layout(local_size_x = 1) in;
+
+layout(push_constant, std430) uniform PushParams {
+	uint in_vertex_stride;
+};
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer InVertexBuffer {
+	uint in_words[];
+};
+
+layout(set = 0, binding = 1, std430) restrict readonly buffer InIndexBuffer {
+	uint in_index_words[]; // unused here
+};
+
+layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
+	uint in_attribute_words[]; // unused here
+};
 
 layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
 	uint faces_count;
@@ -22,6 +39,15 @@ layout(set = 2, binding = 0, std430) restrict buffer EdgesDispatchBuffer {
 	uvec3 dispatch;
 };
 
+vec3 read_in_position(uint in_index) {
+	uint word = (in_index * in_vertex_stride) / 4u;
+	return vec3(
+		uintBitsToFloat(in_words[word]),
+		uintBitsToFloat(in_words[word + 1u]),
+		uintBitsToFloat(in_words[word + 2u])
+	);
+}
+
 uvec2 edge_at(uint edge) {
 	uvec3 face = faces[edge / 3u];
 	uint corner = edge % 3u;
@@ -36,7 +62,12 @@ uvec2 edge_at(uint edge) {
 }
 
 bool same_edge(uvec2 a, uvec2 b) {
-	return all(equal(a, b)) || all(equal(a, b.yx));
+	vec3 a0 = read_in_position(a.x);
+	vec3 a1 = read_in_position(a.y);
+	vec3 b0 = read_in_position(b.x);
+	vec3 b1 = read_in_position(b.y);
+
+	return (a0 == b0 && a1 == b1) || (a0 == b1 && a1 == b0);
 }
 
 void main() {

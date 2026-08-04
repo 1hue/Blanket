@@ -18,12 +18,14 @@ var mesh_rid: RID:
 	get: return mesh.get_rid()
 var in_uniform_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 
+## Vert indices of upright faces
 var faces_buffer: RID
 var faces_buffer_size: int
 var faces_uniform: RDUniform
 var faces_dispatch_buffer: RID
 var faces_dispatch_uniform_set: RID
 
+## Vert indices of outer edges
 var edges_buffer: RID
 var edges_buffer_size: int
 var edges_uniform: RDUniform
@@ -140,16 +142,15 @@ func bake() -> void:
 	_bake_selection()
 	_allocate_geometry_out()
 	debug()
-	#_bake_geometry_out()
-	#_cleanup_bake()
-	#update()
+	_bake_geometry_out()
+	_cleanup_bake()
+	update()
 
 
 ## Select upright faces and outer edges
 func _bake_selection() -> void:
-	var compute_list := rd.compute_list_begin()
-
 	# Faces
+	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
 	rd.compute_list_set_push_constant(compute_list, params.pack_faces(), ComputeParams.SIZE_FACES)
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
@@ -161,6 +162,8 @@ func _bake_selection() -> void:
 	# Edges
 	compute_list = rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[1])
+	rd.compute_list_set_push_constant(compute_list, params.pack_edges(), ComputeParams.SIZE_EDGES)
+	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, edges_dispatch_uniform_set, 2)
 	rd.compute_list_dispatch_indirect(compute_list, faces_dispatch_buffer, 0)
@@ -170,8 +173,8 @@ func _bake_selection() -> void:
 ## Add an empty mesh surface
 func _allocate_geometry_out() -> void:
 	# Only read the counts - avoid a whole GPU-CPU-GPU data roundtrip
-	var face_count := rd.buffer_get_data(faces_buffer, 12, 4).decode_u32(0)
-	var edge_count := rd.buffer_get_data(edges_buffer, 12, 4).decode_u32(0)
+	var face_count := rd.buffer_get_data(faces_buffer, 0, 4).decode_u32(0)
+	var edge_count := rd.buffer_get_data(edges_buffer, 0, 4).decode_u32(0)
 
 	assert(face_count > 0, "Face count: %d" % face_count)
 	#assert(edge_count > 0, "Edge count: %d" % edge_count)
@@ -239,15 +242,21 @@ func _compute_shape() -> void:
 
 ## Reposition the added mesh surface
 func update() -> void:
-	#_compute_shape()
-	prints("update()")
+	_compute_shape()
 
 
 func debug() -> void:
-	var data := RenderingServer.mesh_get_surface(mesh_rid, 1)
-	#print_rich("[color=rosy_brown]", data, "[/color]")
+	var data := RenderingServer.mesh_get_surface(mesh_rid, surface.source_idx)
+	print_rich("[color=rosy_brown]", data, "[/color]")
 	var vertex_data: PackedByteArray = data.vertex_data
-	print_rich("[color=pale_green]", data.vertex_count, " vertices selected:\n", vertex_data.to_vector3_array(), "[/color]\n")
+	print_rich("[color=pale_green]", data.vertex_count, " source verts:\n", vertex_data.to_vector3_array(), "[/color]\n")
+
+	var faces := rd.buffer_get_data(faces_buffer, FACES_HEADER, faces_buffer_size - FACES_HEADER)
+	print_rich("[color=pale_green] faces:\n", ComputeUtil.to_vector3i_array(faces.to_int32_array()), "[/color]\n")
+
+	var edges := rd.buffer_get_data(edges_buffer, EDGES_HEADER, edges_buffer_size - EDGES_HEADER)
+	print_rich("[color=pale_green] edges:\n", ComputeUtil.to_vector2i_array(edges.to_int32_array()), "[/color]\n")
+
 	print_rich(
 		"[color=peach_puff]",
 		" faces_dispatch=", rd.buffer_get_data(faces_dispatch_buffer, 0, 12).to_int32_array(),
