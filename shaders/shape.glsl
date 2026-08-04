@@ -34,8 +34,8 @@ layout(set = 1, binding = 2, std430) restrict writeonly buffer OutAttributeBuffe
 	uint out_attributes[];
 };
 
-layout(set = 1, binding = 3, std430) restrict writeonly buffer OutSourceBuffer {
-	uint out_sources[]; // per out vertex, its in vertex - shape.glsl reads position from here
+layout(set = 1, binding = 3, std430) restrict writeonly buffer OutInMapBuffer {
+	uint out_in_map[]; // per out vertex, its in vertex - shape.glsl reads position from here
 };
 
 vec3 read_in_position(uint in_index) {
@@ -66,7 +66,7 @@ void main() {
 		return;
 	}
 
-	vec3 position = read_in_position(out_sources[out_index]);
+	vec3 position = read_in_position(out_in_map[out_index]);
 	// Marker is 1.0 (shifted) or 0.0 (static), doubling as the multiplier - no branch needed
 	vec3 offset = local_up * depth * SHIFT_FACTOR * read_marker(out_index);
 
