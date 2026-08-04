@@ -48,7 +48,7 @@ var out_marker_offset: int
 var out_attribute_stride: int
 
 
-## faces.glsl
+## Pack push constant bytes for faces.glsl
 func pack_faces() -> PackedByteArray:
 	var bytes := PackedByteArray()
 	bytes.resize(SIZE_FACES)
@@ -66,7 +66,7 @@ func pack_faces() -> PackedByteArray:
 	return bytes
 
 
-## verts.glsl
+## Pack push constant bytes for verts.glsl
 func pack_verts() -> PackedByteArray:
 	var bytes := PackedByteArray()
 	bytes.resize(SIZE_VERTS)
@@ -84,7 +84,7 @@ func pack_verts() -> PackedByteArray:
 	return bytes
 
 
-## shape.glsl
+## Pack push constant bytes for shape.glsl
 func pack_shape() -> PackedByteArray:
 	var bytes := PackedByteArray()
 	bytes.resize(SIZE_SHAPE)

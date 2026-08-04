@@ -22,24 +22,28 @@ layout(set = 0, binding = 0, std430) restrict readonly buffer InVertexBuffer {
 	uint in_words[];
 };
 
-layout(set = 1, binding = 0, std430) restrict buffer OutVertexBuffer {
+layout(set = 1, binding = 0, std430) restrict writeonly buffer OutVertexBuffer {
 	uint out_words[];
 };
 
-layout(set = 1, binding = 1, std430) restrict readonly buffer OutAttributeBuffer {
+layout(set = 1, binding = 1, std430) restrict writeonly buffer OutIndexBuffer {
+	uint out_indices[];
+};
+
+layout(set = 1, binding = 2, std430) restrict writeonly buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
-layout(set = 1, binding = 2, std430) restrict readonly buffer OutSourceBuffer {
-	uint out_sources[];
+layout(set = 1, binding = 3, std430) restrict writeonly buffer OutSourceBuffer {
+	uint out_sources[]; // per out vertex, its in vertex - shape.glsl reads position from here
 };
 
 vec3 read_in_position(uint in_index) {
 	uint word = (in_index * in_vertex_stride) / 4u;
 	return vec3(
 		uintBitsToFloat(in_words[word]),
-				uintBitsToFloat(in_words[word + 1u]),
-				uintBitsToFloat(in_words[word + 2u])
+		uintBitsToFloat(in_words[word + 1u]),
+		uintBitsToFloat(in_words[word + 2u])
 	);
 }
 

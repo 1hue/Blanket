@@ -1,4 +1,4 @@
-// Builds the new surface geometry: cap verts from faces, wall verts from edges.
+// Build the new surface geometry: cap verts from faces, wall verts from edges.
 #[compute]
 #version 450
 
@@ -49,8 +49,8 @@ layout(set = 3, binding = 2, std430) restrict writeonly buffer OutAttributeBuffe
 	uint out_attributes[];
 };
 
-layout(set = 3, binding = 3, std430) restrict writeonly buffer OutSourceBuffer {
-	uint out_sources[]; // per out vertex, its in vertex - shape.glsl reads position from here
+layout(set = 3, binding = 3, std430) restrict writeonly buffer OutInMapBuffer {
+	uint out_in_map[]; // per out vertex, its in vertex - shape.glsl reads position from here
 };
 
 vec3 read_in_position(uint in_index) {
@@ -93,7 +93,7 @@ void write_vertex(uint out_index, uint in_index, vec3 position, vec3 normal, flo
 	uint marker_word = (out_marker_offset + out_index * out_attribute_stride) / 4u;
 	out_attributes[marker_word] = floatBitsToUint(marker);
 
-	out_sources[out_index] = in_index;
+	out_in_map[out_index] = in_index;
 }
 
 void main() {
