@@ -59,6 +59,10 @@ layout(set = 2, binding = 3, std430) restrict writeonly buffer OutInMapBuffer {
 	uint out_in_map[]; // per out vertex, its in vertex - shape.glsl reads position from here
 };
 
+layout(set = 3, binding = 0, std430) restrict buffer DebugBuffer {
+	uint debug_count;
+};
+
 vec3 read_in_position(uint in_index) {
 	uint word = (in_index * in_vertex_stride) / 4u;
 	return vec3(
@@ -147,4 +151,6 @@ void main() {
 	out_indices[index_base + 3u] = base;
 	out_indices[index_base + 4u] = base + 3u;
 	out_indices[index_base + 5u] = base + 2u;
+
+	atomicAdd(debug_count, 1u);
 }

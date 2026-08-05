@@ -1,10 +1,11 @@
 extends RefCounted
 class_name ComputeWorker
 
+@warning_ignore("unused_signal")
 signal output(message: String)
 
-const FACES_HEADER = 4 # count (4)
-const EDGES_HEADER = 4 # count (4)
+const FACES_HEADER = 4 # count
+const EDGES_HEADER = 4 # count
 
 var rd: RenderingDevice
 var shaders: Array[RID]:
@@ -37,6 +38,9 @@ var selection_uniform_set: RID
 var out_uniform_set: RID
 var out_in_map_buffer: RID
 
+var debug_buffer: RID
+var debug_uniform_set: RID
+
 var surface: ComputeSurface
 
 
@@ -56,6 +60,7 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	surface = ComputeSurface.new(p_mesh, surface_idx)
 
 	_init_params(global_transform)
+	_init_debug()
 	_init_in_uniforms()
 	_init_indirect_dispatch()
 	_init_selection_uniforms()
@@ -81,6 +86,13 @@ func _init_params(global_transform: Transform3D) -> void:
 	params.in_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
 	params.local_up = global_transform.basis.inverse() * Vector3.UP
 	params.changed.connect(update)
+
+
+func _init_debug() -> void:
+	debug_buffer = rd.storage_buffer_create(4)
+	debug_uniform_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([debug_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
+	], shaders[2], 3)
 
 
 func _init_in_uniforms() -> void:
@@ -110,7 +122,7 @@ func _init_selection_uniforms() -> void:
 
 	selection_uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([faces_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-		ComputeUtil.create_uniform([edges_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
+		ComputeUtil.create_uniform([edges_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
 	], shaders[0], 1)
 
 
@@ -141,8 +153,8 @@ func _cleanup_bake() -> void:
 func bake() -> void:
 	_bake_selection()
 	_allocate_geometry_out()
-	debug()
 	_bake_geometry_out()
+	debug()
 	_cleanup_bake()
 	update()
 
@@ -205,16 +217,14 @@ func _init_geometry_out_uniforms(vertex_count: int) -> void:
 	var out_vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
 	var out_index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
 	var out_attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, surface.idx)
-
 	out_in_map_buffer = rd.storage_buffer_create(vertex_count * 4)
 
-	var out_vertex_uniform := ComputeUtil.create_uniform([out_vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
-	var out_index_uniform := ComputeUtil.create_uniform([out_index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
-	var out_attribute_uniform := ComputeUtil.create_uniform([out_attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2)
-	var out_source_uniform := ComputeUtil.create_uniform([out_in_map_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 3)
-	out_uniform_set = rd.uniform_set_create(
-		[out_vertex_uniform, out_index_uniform, out_attribute_uniform, out_source_uniform], shaders[2], 2
-	)
+	out_uniform_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([out_vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		ComputeUtil.create_uniform([out_index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
+		ComputeUtil.create_uniform([out_attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
+		ComputeUtil.create_uniform([out_in_map_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 3)
+	], shaders[2], 2)
 
 
 ## Dispatch verts.glsl to fill the empty mesh surface GPU-side
@@ -225,7 +235,8 @@ func _bake_geometry_out() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 2)
-	rd.compute_list_dispatch_indirect(compute_list, edges_buffer, 0)
+	rd.compute_list_bind_uniform_set(compute_list, debug_uniform_set, 3)
+	rd.compute_list_dispatch_indirect(compute_list, edges_dispatch_buffer, 0)
 	rd.compute_list_end()
 
 
@@ -260,11 +271,22 @@ func debug() -> void:
 	print_rich(
 		"[color=peach_puff]",
 		" faces_dispatch=", rd.buffer_get_data(faces_dispatch_buffer, 0, 12).to_int32_array(),
-		" faces_count=", rd.buffer_get_data(faces_buffer, 0, 4).decode_u32(0),
+		" -> faces_count=", rd.buffer_get_data(faces_buffer, 0, 4).decode_u32(0),
 		"\n edges_dispatch=", rd.buffer_get_data(edges_dispatch_buffer, 0, 12).to_int32_array(),
-		" edges_count=", rd.buffer_get_data(edges_buffer, 0, 4).decode_u32(0),
+		" -> edges_count=", rd.buffer_get_data(edges_buffer, 0, 4).decode_u32(0),
+		"\n debug_count=", rd.buffer_get_data(debug_buffer, 0, 4).decode_u32(0),
 		"[/color]"
 	)
+
+	print_rich("[color=khaki] out_vertex_count=", params.out_vertex_count,
+	" out_vertex_stride=", params.out_vertex_stride,
+	" out_normal_offset=", params.out_normal_offset,
+	" out_normal_stride=", params.out_normal_stride,
+	" out_marker_offset=", params.out_marker_offset,
+	" out_attribute_stride=", params.out_attribute_stride, "[/color]")
+
+	var out_data := rd.buffer_get_data(RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx))
+	print_rich("[color=pale_green] out verts:\n", out_data.slice(0, params.out_vertex_count * params.out_vertex_stride).to_float32_array(), "[/color]")
 
 
 func _notification(what) -> void:
@@ -273,7 +295,8 @@ func _notification(what) -> void:
 
 	for rid in [
 		faces_dispatch_uniform_set, faces_dispatch_buffer, edges_dispatch_uniform_set, edges_dispatch_buffer,
-		in_uniform_set, selection_uniform_set, faces_buffer, edges_buffer, out_uniform_set, out_in_map_buffer
+		in_uniform_set, selection_uniform_set, faces_buffer, edges_buffer, out_uniform_set, out_in_map_buffer,
+		debug_uniform_set, debug_buffer,
 	]:
 		if rid.is_valid():
 			rd.free_rid(rid)

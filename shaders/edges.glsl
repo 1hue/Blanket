@@ -35,7 +35,7 @@ layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
 	uvec2 edges[]; // output: boundary edges (walls)
 };
 
-layout(set = 2, binding = 0, std430) restrict buffer EdgesDispatchBuffer {
+layout(set = 2, binding = 0, std430) restrict writeonly buffer EdgesDispatchBuffer {
 	uvec3 dispatch;
 };
 
