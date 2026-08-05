@@ -1,4 +1,5 @@
-// Build the new surface geometry: cap verts from faces, wall verts from edges.
+// Build the new surface geometry: top verts from faces, side verts from edges.
+// Copy (In) to (Out) using faces & edges selection indices.
 #[compute]
 #version 450
 
@@ -106,51 +107,55 @@ void write_vertex(uint out_index, uint in_index, vec3 position, vec3 normal, flo
 	out_in_map[out_index] = in_index;
 }
 
-void main() {
-	uint slot = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
-	uint cap_vertices = faces_count * 3u;
+void write_triangle(uint index_base, uint a, uint b, uint c) {
+	out_indices[index_base] = a;
+	out_indices[index_base + 1u] = b;
+	out_indices[index_base + 2u] = c;
+}
 
-	// Cap: one output triangle per face, verts copied straight from source with source normal
-	if (slot < faces_count) {
-		uvec3 face = faces[slot];
-		uint base = slot * 3u;
+// Top: copy the face's 3 verts as-is, keeping their source normals
+void write_top(uint face_index) {
+	uvec3 face = faces[face_index];
+	uint base = face_index * 3u;
 
-		write_vertex(base, face.x, read_in_position(face.x), read_in_normal(face.x), MARKER_SHIFTED);
-		write_vertex(base + 1u, face.y, read_in_position(face.y), read_in_normal(face.y), MARKER_SHIFTED);
-		write_vertex(base + 2u, face.z, read_in_position(face.z), read_in_normal(face.z), MARKER_SHIFTED);
+	write_vertex(base, face.x, read_in_position(face.x), read_in_normal(face.x), MARKER_SHIFTED);
+	write_vertex(base + 1u, face.y, read_in_position(face.y), read_in_normal(face.y), MARKER_SHIFTED);
+	write_vertex(base + 2u, face.z, read_in_position(face.z), read_in_normal(face.z), MARKER_SHIFTED);
 
-		out_indices[base] = base;
-		out_indices[base + 1u] = base + 1u;
-		out_indices[base + 2u] = base + 2u;
-		return;
-	}
+	write_triangle(base, base, base + 1u, base + 2u);
+}
 
-	// Wall: one quad per outer edge, split into 2 triangles
-	uint edge = slot - faces_count;
-
-	if (edge >= edges_count) {
-		return;
-	}
-
-	uvec2 pair = edges[edge];
+// Side: extrude the edge into a quad - bottom pair stays put, top pair gets shifted by shape.glsl
+void write_side(uint edge_index, uint vertex_base, uint index_base) {
+	uvec2 pair = edges[edge_index];
 	vec3 position_a = read_in_position(pair.x);
 	vec3 position_b = read_in_position(pair.y);
 	vec3 normal = normalize(cross(position_b - position_a, local_up)); // flat, faces outward
 
-	// 4 verts: bottom pair stays at the source surface, top pair gets shifted by shape.glsl
-	uint base = cap_vertices + edge * 4u;
+	uint base = vertex_base + edge_index * 4u;
 	write_vertex(base, pair.x, position_a, normal, MARKER_STATIC);
 	write_vertex(base + 1u, pair.y, position_b, normal, MARKER_STATIC);
 	write_vertex(base + 2u, pair.x, position_a, normal, MARKER_SHIFTED);
 	write_vertex(base + 3u, pair.y, position_b, normal, MARKER_SHIFTED);
 
-	uint index_base = cap_vertices + edge * 6u;
-	out_indices[index_base] = base;
-	out_indices[index_base + 1u] = base + 1u;
-	out_indices[index_base + 2u] = base + 3u;
-	out_indices[index_base + 3u] = base;
-	out_indices[index_base + 4u] = base + 3u;
-	out_indices[index_base + 5u] = base + 2u;
+	uint indices_at = index_base + edge_index * 6u;
+	write_triangle(indices_at, base, base + 1u, base + 3u);
+	write_triangle(indices_at + 3u, base, base + 3u, base + 2u);
+}
+
+void main() {
+	uint idx = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+
+	if (idx >= faces_count + edges_count) {
+		return;
+	}
 
 	atomicAdd(debug_count, 1u);
+
+	if (idx < faces_count) {
+		write_top(idx);
+		return;
+	}
+
+// 	write_side(idx - faces_count, faces_count * 3u, faces_count * 3u);
 }

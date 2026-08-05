@@ -4,8 +4,8 @@ class_name ComputeWorker
 @warning_ignore("unused_signal")
 signal output(message: String)
 
-const FACES_HEADER = 4 # count
-const EDGES_HEADER = 4 # count
+const FACES_HEADER = 4 # faces_count
+const EDGES_HEADER = 4 # edges_count
 
 var rd: RenderingDevice
 var shaders: Array[RID]:
@@ -19,14 +19,14 @@ var mesh_rid: RID:
 	get: return mesh.get_rid()
 var in_uniform_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 
-## Vert indices of upright faces
+## Source vert indices of upright faces as uvec3, e.g. [(0, 1, 2), (0, 3, 1)]
 var faces_buffer: RID
 var faces_buffer_size: int
 var faces_uniform: RDUniform
 var faces_dispatch_buffer: RID
 var faces_dispatch_uniform_set: RID
 
-## Vert indices of outer edges
+## Source vert indices of outer edges as uvec2, e.g. [(3, 1), (1, 2), (0, 2)]
 var edges_buffer: RID
 var edges_buffer_size: int
 var edges_uniform: RDUniform
@@ -155,7 +155,7 @@ func bake() -> void:
 	_allocate_geometry_out()
 	_bake_geometry_out()
 	debug()
-	_cleanup_bake()
+	#_cleanup_bake()
 	update()
 
 
@@ -253,7 +253,8 @@ func _compute_shape() -> void:
 
 ## Reposition the added mesh surface
 func update() -> void:
-	_compute_shape()
+	#_compute_shape()
+	pass
 
 
 func debug() -> void:
@@ -287,6 +288,13 @@ func debug() -> void:
 
 	var out_data := rd.buffer_get_data(RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx))
 	print_rich("[color=pale_green] out verts:\n", out_data.slice(0, params.out_vertex_count * params.out_vertex_stride).to_float32_array(), "[/color]")
+
+	var out_map_data := rd.buffer_get_data(out_in_map_buffer).to_int32_array()
+	var out_positions := out_data.slice(0, params.out_vertex_count * params.out_vertex_stride).to_float32_array()
+
+	for i in params.out_vertex_count:
+		var p := Vector3(out_positions[i*3], out_positions[i*3+1], out_positions[i*3+2])
+		print("out[%d] in=%d pos=%s" % [i, out_map_data[i], p])
 
 
 func _notification(what) -> void:

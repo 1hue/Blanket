@@ -43,7 +43,7 @@ layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
 	uvec2 edges[]; // unused here - declared so the set matches other passes
 };
 
-layout(set = 2, binding = 0, std430) restrict buffer FacesDispatchBuffer {
+layout(set = 2, binding = 0, std430) restrict writeonly buffer FacesDispatchBuffer {
 	uvec3 dispatch;
 };
 
