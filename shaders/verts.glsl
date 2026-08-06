@@ -1,12 +1,10 @@
-// Build the new surface geometry: top verts from faces, side verts from edges.
-// Copy (In) to (Out) using faces & edges selection indices.
+// Build the top surface: copy each face's 3 source verts into 3 new verts + 1 new triangle.
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
 
 const float MARKER_SHIFTED = 1.0;
-const float MARKER_STATIC = 0.0;
 
 layout(local_size_x = 256) in;
 
@@ -20,6 +18,7 @@ layout(push_constant, std430) uniform PushParams {
 	uint out_normal_stride;
 	uint out_marker_offset; // shifted vs static flag
 	uint out_attribute_stride;
+	uint out_index_stride; // bytes per index on the new surface, 2 or 4
 };
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer InVertexBuffer {
@@ -40,16 +39,16 @@ layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
 };
 
 layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
-	uint edges_count;
-	uvec2 edges[];
+	uint edges_count; // unused here
+	uvec2 edges[]; // unused here
 };
 
 layout(set = 2, binding = 0, std430) restrict writeonly buffer OutVertexBuffer {
 	uint out_words[];
 };
 
-layout(set = 2, binding = 1, std430) restrict writeonly buffer OutIndexBuffer {
-	uint out_indices[];
+layout(set = 2, binding = 1, std430) restrict buffer OutIndexBuffer {
+	uint out_index_words[];
 };
 
 layout(set = 2, binding = 2, std430) restrict writeonly buffer OutAttributeBuffer {
@@ -60,7 +59,7 @@ layout(set = 2, binding = 3, std430) restrict writeonly buffer OutInMapBuffer {
 	uint out_in_map[]; // per out vertex, its in vertex - shape.glsl reads position from here
 };
 
-layout(set = 3, binding = 0, std430) restrict buffer DebugBuffer {
+layout(set = 3, binding = 0, std430) restrict writeonly buffer DebugBuffer {
 	uint debug_count;
 };
 
@@ -68,8 +67,8 @@ vec3 read_in_position(uint in_index) {
 	uint word = (in_index * in_vertex_stride) / 4u;
 	return vec3(
 		uintBitsToFloat(in_words[word]),
-		uintBitsToFloat(in_words[word + 1u]),
-		uintBitsToFloat(in_words[word + 2u])
+				uintBitsToFloat(in_words[word + 1u]),
+				uintBitsToFloat(in_words[word + 2u])
 	);
 }
 
@@ -100,6 +99,7 @@ void write_vertex(uint out_index, uint in_index, vec3 position, vec3 normal, flo
 
 	uint normal_word = (out_normal_offset + out_index * out_normal_stride) / 4u;
 	out_words[normal_word] = oct_encode(normal);
+	out_words[normal_word + 1u] = 0u; // tangent placeholder, real tangent TODO once UVs exist
 
 	uint marker_word = (out_marker_offset + out_index * out_attribute_stride) / 4u;
 	out_attributes[marker_word] = floatBitsToUint(marker);
@@ -107,55 +107,36 @@ void write_vertex(uint out_index, uint in_index, vec3 position, vec3 normal, flo
 	out_in_map[out_index] = in_index;
 }
 
-void write_triangle(uint index_base, uint a, uint b, uint c) {
-	out_indices[index_base] = a;
-	out_indices[index_base + 1u] = b;
-	out_indices[index_base + 2u] = c;
-}
-
-// Top: copy the face's 3 verts as-is, keeping their source normals
-void write_top(uint face_index) {
-	uvec3 face = faces[face_index];
-	uint base = face_index * 3u;
-
-	write_vertex(base, face.x, read_in_position(face.x), read_in_normal(face.x), MARKER_SHIFTED);
-	write_vertex(base + 1u, face.y, read_in_position(face.y), read_in_normal(face.y), MARKER_SHIFTED);
-	write_vertex(base + 2u, face.z, read_in_position(face.z), read_in_normal(face.z), MARKER_SHIFTED);
-
-	write_triangle(base, base, base + 1u, base + 2u);
-}
-
-// Side: extrude the edge into a quad - bottom pair stays put, top pair gets shifted by shape.glsl
-void write_side(uint edge_index, uint vertex_base, uint index_base) {
-	uvec2 pair = edges[edge_index];
-	vec3 position_a = read_in_position(pair.x);
-	vec3 position_b = read_in_position(pair.y);
-	vec3 normal = normalize(cross(position_b - position_a, local_up)); // flat, faces outward
-
-	uint base = vertex_base + edge_index * 4u;
-	write_vertex(base, pair.x, position_a, normal, MARKER_STATIC);
-	write_vertex(base + 1u, pair.y, position_b, normal, MARKER_STATIC);
-	write_vertex(base + 2u, pair.x, position_a, normal, MARKER_SHIFTED);
-	write_vertex(base + 3u, pair.y, position_b, normal, MARKER_SHIFTED);
-
-	uint indices_at = index_base + edge_index * 6u;
-	write_triangle(indices_at, base, base + 1u, base + 3u);
-	write_triangle(indices_at + 3u, base, base + 3u, base + 2u);
+// Godot picks 16-bit or 32-bit indices for the new surface based on its vertex count -
+// write accordingly rather than assuming, since a wrong-width write corrupts neighboring indices.
+void write_index(uint i, uint value) {
+	if (out_index_stride == 2u) {
+		uint word = i / 2u;
+		uint shift = (i % 2u) * 16u;
+		atomicAnd(out_index_words[word], ~(0xFFFFu << shift));
+		atomicOr(out_index_words[word], (value & 0xFFFFu) << shift);
+		return;
+	}
+	out_index_words[i] = value;
 }
 
 void main() {
-	uint idx = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+	uint face_index = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
 
-	if (idx >= faces_count + edges_count) {
+	if (face_index >= faces_count) {
 		return;
 	}
 
 	atomicAdd(debug_count, 1u);
 
-	if (idx < faces_count) {
-		write_top(idx);
-		return;
-	}
+	uvec3 face = faces[face_index];
+	uint out_base = face_index * 3u;
 
-// 	write_side(idx - faces_count, faces_count * 3u, faces_count * 3u);
+	write_vertex(out_base, face.x, read_in_position(face.x), read_in_normal(face.x), MARKER_SHIFTED);
+	write_vertex(out_base + 1u, face.y, read_in_position(face.y), read_in_normal(face.y), MARKER_SHIFTED);
+	write_vertex(out_base + 2u, face.z, read_in_position(face.z), read_in_normal(face.z), MARKER_SHIFTED);
+
+	write_index(out_base, out_base);
+	write_index(out_base + 1u, out_base + 1u);
+	write_index(out_base + 2u, out_base + 2u);
 }

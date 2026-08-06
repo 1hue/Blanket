@@ -31,10 +31,12 @@ func allocate(new_vertex_count: int, new_index_count: int) -> void:
 
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
+	var tangents := PackedFloat32Array()
 	var markers := PackedFloat32Array()
 	var indices := PackedInt32Array()
 	vertices.resize(new_vertex_count)
 	normals.resize(new_vertex_count)
+	tangents.resize(new_vertex_count * 4)
 	markers.resize(new_vertex_count)
 	indices.resize(new_index_count)
 
@@ -42,6 +44,7 @@ func allocate(new_vertex_count: int, new_index_count: int) -> void:
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TANGENT] = tangents
 	arrays[Mesh.ARRAY_CUSTOM0] = markers
 	arrays[Mesh.ARRAY_INDEX] = indices
 

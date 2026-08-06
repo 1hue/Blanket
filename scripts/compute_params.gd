@@ -5,7 +5,7 @@ signal changed
 
 const SIZE_FACES = 44
 const SIZE_EDGES = 4
-const SIZE_VERTS = 44
+const SIZE_VERTS = 48
 const SIZE_SHAPE = 36
 const DEFAULT_DEPTH = 0.1
 const DEFAULT_MAX_SLOPE_DEGREES = 75.0
@@ -47,6 +47,7 @@ var out_normal_offset: int
 var out_normal_stride: int
 var out_marker_offset: int
 var out_attribute_stride: int
+var out_index_stride: int
 
 
 ## Pack push constant bytes for faces.glsl
@@ -90,6 +91,7 @@ func pack_verts() -> PackedByteArray:
 	bytes.encode_u32(32, out_normal_stride)
 	bytes.encode_u32(36, out_marker_offset)
 	bytes.encode_u32(40, out_attribute_stride)
+	bytes.encode_u32(44, out_index_stride)
 	return bytes
 
 

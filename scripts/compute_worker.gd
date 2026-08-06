@@ -155,7 +155,7 @@ func bake() -> void:
 	_allocate_geometry_out()
 	_bake_geometry_out()
 	debug()
-	#_cleanup_bake()
+	_cleanup_bake()
 	update()
 
 
@@ -203,6 +203,7 @@ func _allocate_geometry_out() -> void:
 	params.out_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
 	params.out_marker_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_CUSTOM0)
 	params.out_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
+	params.out_index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, vertex_count)
 
 	_init_geometry_out_uniforms(vertex_count)
 
@@ -253,21 +254,20 @@ func _compute_shape() -> void:
 
 ## Reposition the added mesh surface
 func update() -> void:
-	#_compute_shape()
-	pass
+	_compute_shape()
 
 
 func debug() -> void:
-	var data := RenderingServer.mesh_get_surface(mesh_rid, surface.source_idx)
-	print_rich("[color=rosy_brown]", data, "[/color]")
-	var vertex_data: PackedByteArray = data.vertex_data
-	print_rich("[color=pale_green]", data.vertex_count, " source verts:\n", vertex_data.to_vector3_array(), "[/color]\n")
+	#var data := RenderingServer.mesh_get_surface(mesh_rid, surface.source_idx)
+	#print_rich("[color=rosy_brown]", data, "[/color]")
+	#var vertex_data: PackedByteArray = data.vertex_data
+	#print_rich("[color=pale_green]", data.vertex_count, " source verts:\n", vertex_data.to_vector3_array(), "[/color]\n")
 
 	var faces := rd.buffer_get_data(faces_buffer, FACES_HEADER, faces_buffer_size - FACES_HEADER)
-	print_rich("[color=pale_green] faces:\n", ComputeUtil.to_vector3i_array(faces.to_int32_array()), "[/color]\n")
+	print_rich("[color=pale_green] faces:", ComputeUtil.to_vector3i_array(faces.to_int32_array()), "[/color]")
 
 	var edges := rd.buffer_get_data(edges_buffer, EDGES_HEADER, edges_buffer_size - EDGES_HEADER)
-	print_rich("[color=pale_green] edges:\n", ComputeUtil.to_vector2i_array(edges.to_int32_array()), "[/color]\n")
+	print_rich("[color=pale_green] edges:", ComputeUtil.to_vector2i_array(edges.to_int32_array()), "[/color]")
 
 	print_rich(
 		"[color=peach_puff]",
@@ -286,15 +286,19 @@ func debug() -> void:
 	" out_marker_offset=", params.out_marker_offset,
 	" out_attribute_stride=", params.out_attribute_stride, "[/color]")
 
-	var out_data := rd.buffer_get_data(RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx))
-	print_rich("[color=pale_green] out verts:\n", out_data.slice(0, params.out_vertex_count * params.out_vertex_stride).to_float32_array(), "[/color]")
+	var out_verts := rd.buffer_get_data(RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx))
+	var out_idx := rd.buffer_get_data(RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx))
+	print_rich(
+		"[color=pale_green] out verts:\n", out_verts.slice(0, params.out_vertex_count * params.out_vertex_stride).to_vector3_array(), "[/color]")
+	print_rich(
+		"[color=pale_green] out indices:\n", ComputeUtil.to_int16_array(out_idx), "[/color]")
 
-	var out_map_data := rd.buffer_get_data(out_in_map_buffer).to_int32_array()
-	var out_positions := out_data.slice(0, params.out_vertex_count * params.out_vertex_stride).to_float32_array()
+	#var out_map_data := rd.buffer_get_data(out_in_map_buffer).to_int32_array()
+	#var out_positions := out_data.slice(0, params.out_vertex_count * params.out_vertex_stride).to_float32_array()
 
-	for i in params.out_vertex_count:
-		var p := Vector3(out_positions[i*3], out_positions[i*3+1], out_positions[i*3+2])
-		print("out[%d] in=%d pos=%s" % [i, out_map_data[i], p])
+	#for i in params.out_vertex_count:
+		#var p := Vector3(out_positions[i*3], out_positions[i*3+1], out_positions[i*3+2])
+		#print("out[%d] in=%d pos=%s" % [i, out_map_data[i], p])
 
 
 func _notification(what) -> void:
