@@ -32,7 +32,7 @@ layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
 
 layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
 	uint edges_count;
-	uvec2 edges[]; // output: boundary edges (walls)
+	uvec3 edges[]; // (a, b, c) - c is the face's opposite vertex, used to determine outward normal
 };
 
 layout(set = 2, binding = 0, std430) restrict writeonly buffer EdgesDispatchBuffer {
@@ -48,20 +48,20 @@ vec3 read_in_position(uint in_index) {
 	);
 }
 
-uvec2 edge_at(uint edge) {
+uvec3 edge_at(uint edge) {
 	uvec3 face = faces[edge / 3u];
 	uint corner = edge % 3u;
 
 	if (corner == 0u) {
-		return face.xy;
+		return face;
 	}
 	if (corner == 1u) {
-		return face.yz;
+		return face.yzx;
 	}
-	return face.zx;
+	return face.zxy;
 }
 
-bool same_edge(uvec2 a, uvec2 b) {
+bool same_edge(uvec3 a, uvec3 b) {
 	vec3 a0 = read_in_position(a.x);
 	vec3 a1 = read_in_position(a.y);
 	vec3 b0 = read_in_position(b.x);
@@ -78,7 +78,7 @@ void main() {
 		return;
 	}
 
-	uvec2 current = edge_at(edge);
+	uvec3 current = edge_at(edge);
 
 	for (uint other = 0u; other < total_edges; other++) {
 		if (other != edge && same_edge(current, edge_at(other))) {

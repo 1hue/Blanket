@@ -4,11 +4,14 @@ class_name MeshCover
 @export var material: StandardMaterial3D = preload("res://assets/snow.tres")
 @export var debug: Label3D
 
+@onready var mesh_instance_3d: MeshInstance3D = $".."
+
+var debug_normal_mesh: MeshInstance3D
 var workers: Array[ComputeWorker]
 
 
 func _ready() -> void:
-	var mesh_instance: MeshInstance3D = get_parent()
+	var mesh_instance := mesh_instance_3d
 	convert_to_storage_buffer_mesh(mesh_instance)
 	validate(mesh_instance)
 
@@ -18,6 +21,47 @@ func _ready() -> void:
 		worker.bake()
 		mesh_instance.set_surface_override_material(worker.surface.idx, material)
 		workers.append(worker)
+
+	debug_normals(mesh_instance_3d)
+
+
+func debug_normals(mesh_instance: MeshInstance3D, surface_idx: int = 1, length: float = 0.2) -> void:
+	var arrays := (mesh_instance.mesh as ArrayMesh).surface_get_arrays(surface_idx)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+
+	if debug_normal_mesh:
+		debug_normal_mesh.queue_free()
+
+	debug_normal_mesh = draw_normal_debug(vertices, normals, mesh_instance.global_transform, length)
+
+
+func draw_normal_debug(
+	vertices: PackedVector3Array,
+	normals: PackedVector3Array,
+	transform: Transform3D,
+	length: float = 0.2
+) -> MeshInstance3D:
+	var im := ImmediateMesh.new()
+	var mat := ORMMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.no_depth_test = true
+
+	im.surface_begin(Mesh.PRIMITIVE_LINES, mat)
+	for i in vertices.size():
+		var world_pos := transform * vertices[i]
+		var world_normal := (transform.basis * normals[i]).normalized()
+
+		im.surface_set_color(Color.RED)
+		im.surface_add_vertex(world_pos)
+		im.surface_add_vertex(world_pos + world_normal * length)
+	im.surface_end()
+
+	var mi := MeshInstance3D.new()
+	mi.mesh = im
+	add_child(mi)
+	return mi
 
 
 func validate(mesh_instance: MeshInstance3D) -> void:
@@ -38,6 +82,10 @@ func change_depth(delta: int) -> void:
 			worker.params.depth = worker.params.DEFAULT_DEPTH
 		else:
 			worker.params.depth += delta
+
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	debug_normals(mesh_instance_3d)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

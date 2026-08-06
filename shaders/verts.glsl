@@ -1,10 +1,11 @@
-// Build the top surface: copy each face's 3 source verts into 3 new verts + 1 new triangle.
+// Build the new surface: top verts from faces, side verts from edges.
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
 
 const float MARKER_SHIFTED = 1.0;
+const float MARKER_STATIC = 0.0;
 
 layout(local_size_x = 256) in;
 
@@ -39,15 +40,15 @@ layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
 };
 
 layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
-	uint edges_count; // unused here
-	uvec2 edges[]; // unused here
+	uint edges_count;
+	uvec3 edges[];
 };
 
 layout(set = 2, binding = 0, std430) restrict writeonly buffer OutVertexBuffer {
 	uint out_words[];
 };
 
-layout(set = 2, binding = 1, std430) restrict buffer OutIndexBuffer {
+layout(set = 2, binding = 1, std430) restrict writeonly buffer OutIndexBuffer {
 	uint out_index_words[];
 };
 
@@ -67,8 +68,8 @@ vec3 read_in_position(uint in_index) {
 	uint word = (in_index * in_vertex_stride) / 4u;
 	return vec3(
 		uintBitsToFloat(in_words[word]),
-				uintBitsToFloat(in_words[word + 1u]),
-				uintBitsToFloat(in_words[word + 2u])
+		uintBitsToFloat(in_words[word + 1u]),
+		uintBitsToFloat(in_words[word + 2u])
 	);
 }
 
@@ -92,23 +93,26 @@ uint oct_encode(vec3 n) {
 }
 
 void write_vertex(uint out_index, uint in_index, vec3 position, vec3 normal, float marker) {
+	// Position
 	uint position_word = (out_index * out_vertex_stride) / 4u;
 	out_words[position_word] = floatBitsToUint(position.x);
 	out_words[position_word + 1u] = floatBitsToUint(position.y);
 	out_words[position_word + 2u] = floatBitsToUint(position.z);
 
+	// Normal, tangent left blank until UVs exist
 	uint normal_word = (out_normal_offset + out_index * out_normal_stride) / 4u;
 	out_words[normal_word] = oct_encode(normal);
-	out_words[normal_word + 1u] = 0u; // tangent placeholder, real tangent TODO once UVs exist
+	out_words[normal_word + 1u] = 0u;
 
+	// Shifted vs static flag, read back by shape.glsl
 	uint marker_word = (out_marker_offset + out_index * out_attribute_stride) / 4u;
 	out_attributes[marker_word] = floatBitsToUint(marker);
 
+	// Source vertex this came from, read back by shape.glsl
 	out_in_map[out_index] = in_index;
 }
 
-// Godot picks 16-bit or 32-bit indices for the new surface based on its vertex count -
-// write accordingly rather than assuming, since a wrong-width write corrupts neighboring indices.
+// Godot picks 16-bit or 32-bit indices based on vertex count - write accordingly
 void write_index(uint i, uint value) {
 	if (out_index_stride == 2u) {
 		uint word = i / 2u;
@@ -120,23 +124,64 @@ void write_index(uint i, uint value) {
 	out_index_words[i] = value;
 }
 
-void main() {
-	uint face_index = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+// Top: copy the face's 3 verts as-is, keeping their source normals
+void write_top(uint face_index) {
+	uvec3 face = faces[face_index];
+	uint base = face_index * 3u;
 
-	if (face_index >= faces_count) {
+	write_vertex(base, face.x, read_in_position(face.x), read_in_normal(face.x), MARKER_SHIFTED);
+	write_vertex(base + 1u, face.y, read_in_position(face.y), read_in_normal(face.y), MARKER_SHIFTED);
+	write_vertex(base + 2u, face.z, read_in_position(face.z), read_in_normal(face.z), MARKER_SHIFTED);
+
+	write_index(base, base);
+	write_index(base + 1u, base + 1u);
+	write_index(base + 2u, base + 2u);
+}
+
+// Side: extrude the edge into a quad - bottom pair stays put, top pair gets shifted by shape.glsl
+void write_side(uint edge_index, uint vertex_base, uint index_base) {
+	uvec3 edge = edges[edge_index];
+	vec3 position_a = read_in_position(edge.x);
+	vec3 position_b = read_in_position(edge.y);
+	vec3 position_third = read_in_position(edge.z);
+
+	vec3 normal = normalize(cross(position_b - position_a, local_up));
+
+	// third is inside the face this edge came from - wall must face away from it
+	if (dot(normal, position_third - position_a) > 0.0) {
+		normal = -normal;
+	}
+
+	uint base = vertex_base + edge_index * 4u;
+	write_vertex(base, edge.x, position_a, normal, MARKER_STATIC);
+	write_vertex(base + 1u, edge.y, position_b, normal, MARKER_STATIC);
+	write_vertex(base + 2u, edge.x, position_a, normal, MARKER_SHIFTED);
+	write_vertex(base + 3u, edge.y, position_b, normal, MARKER_SHIFTED);
+
+	uint indices_at = index_base + edge_index * 6u;
+	write_index(indices_at, base);
+	write_index(indices_at + 1u, base + 1u);
+	write_index(indices_at + 2u, base + 3u);
+	write_index(indices_at + 3u, base);
+	write_index(indices_at + 4u, base + 3u);
+	write_index(indices_at + 5u, base + 2u);
+}
+
+void main() {
+	uint idx = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+
+	if (idx >= faces_count + edges_count) {
 		return;
 	}
 
 	atomicAdd(debug_count, 1u);
 
-	uvec3 face = faces[face_index];
-	uint out_base = face_index * 3u;
+	// Top pass: one invocation per face
+	if (idx < faces_count) {
+		write_top(idx);
+		return;
+	}
 
-	write_vertex(out_base, face.x, read_in_position(face.x), read_in_normal(face.x), MARKER_SHIFTED);
-	write_vertex(out_base + 1u, face.y, read_in_position(face.y), read_in_normal(face.y), MARKER_SHIFTED);
-	write_vertex(out_base + 2u, face.z, read_in_position(face.z), read_in_normal(face.z), MARKER_SHIFTED);
-
-	write_index(out_base, out_base);
-	write_index(out_base + 1u, out_base + 1u);
-	write_index(out_base + 2u, out_base + 2u);
+	// Side pass: one invocation per edge, verts placed after all top verts
+	write_side(idx - faces_count, faces_count * 3u, faces_count * 3u);
 }

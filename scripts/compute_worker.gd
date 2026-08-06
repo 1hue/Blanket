@@ -115,7 +115,7 @@ func _init_selection_uniforms() -> void:
 	)
 
 	# Edges
-	edges_buffer_size = EDGES_HEADER + params.in_index_count * 8
+	edges_buffer_size = EDGES_HEADER + params.in_index_count * 12
 	edges_buffer = rd.storage_buffer_create(
 		edges_buffer_size, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
 	)
