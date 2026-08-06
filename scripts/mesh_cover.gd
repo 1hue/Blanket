@@ -5,30 +5,31 @@ class_name MeshCover
 @export var debug: Label3D
 @export var draw_debug_normals := false
 
-@onready var mesh_instance_3d: MeshInstance3D = $".."
+@onready var mesh_instance: MeshInstance3D = $".."
 
+var mesh: ArrayMesh:
+	get: return mesh_instance.mesh
 var debug_normal_mesh: MeshInstance3D
 var workers: Array[ComputeWorker]
 
 
 func _ready() -> void:
-	var mesh_instance := mesh_instance_3d
-	convert_to_storage_buffer_mesh(mesh_instance)
-	validate(mesh_instance)
+	convert_to_storage_buffer_mesh()
+	validate()
 
-	for i in mesh_instance.mesh.get_surface_count():
-		var worker := ComputeWorker.new(mesh_instance.mesh, i, mesh_instance.global_transform)
+	for i in mesh.get_surface_count():
+		var worker := ComputeWorker.new(mesh, i, mesh_instance.global_transform)
 		worker.output.connect(_on_output)
 		worker.bake()
 		mesh_instance.set_surface_override_material(worker.surface.idx, material)
 		workers.append(worker)
 
 	if draw_debug_normals:
-		debug_normals(mesh_instance_3d)
+		debug_normals()
 
 
-func debug_normals(mesh_instance: MeshInstance3D, surface_idx: int = 1, length: float = 0.2) -> void:
-	var arrays := (mesh_instance.mesh as ArrayMesh).surface_get_arrays(surface_idx)
+func debug_normals(surface_idx: int = 1, length: float = 0.2) -> void:
+	var arrays := mesh.surface_get_arrays(surface_idx)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 
@@ -66,8 +67,9 @@ func draw_normal_debug(
 	return mi
 
 
-func validate(mesh_instance: MeshInstance3D) -> void:
-	# Must be an ArrayMesh - primitives like BoxMesh cannot have the STORAGE_BUFFER flag
+func validate() -> void:
+	assert(mesh_instance.mesh is ArrayMesh,
+		"Must be an ArrayMesh - primitives like BoxMesh cannot have the STORAGE_BUFFER flag")
 	var array_mesh: ArrayMesh = mesh_instance.mesh
 	var format := array_mesh.surface_get_format(0)
 	var uses_storage_buffer := (format & Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER) != 0
@@ -88,7 +90,7 @@ func change_depth(delta: int) -> void:
 	if draw_debug_normals:
 		await RenderingServer.frame_post_draw
 		await RenderingServer.frame_post_draw
-		debug_normals(mesh_instance_3d)
+		debug_normals()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -114,8 +116,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
-func convert_to_storage_buffer_mesh(mesh_instance: MeshInstance3D) -> void:
-	var source_mesh := mesh_instance.mesh as ArrayMesh
+func convert_to_storage_buffer_mesh() -> void:
+	var source_mesh := mesh
 	var new_mesh := ArrayMesh.new()
 
 	for i in source_mesh.get_surface_count():

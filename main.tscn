@@ -58,12 +58,11 @@ current = true
 [node name="cube" parent="." unique_id=127492725 instance=ExtResource("4_1bvp3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1)
 
-[node name="Cube" parent="cube" index="0" unique_id=1284184747]
-transform = Transform3D(0.8439293, -0.5364545, 0, 0.5364545, 0.8439293, 0, 0, 0, 1, 0, 0.5, 1)
+[node name="Cube" parent="cube" index="0" unique_id=944052182]
+transform = Transform3D(0.8439293, -0.5364545, 0, 0.5364545, 0.8439293, 0, 0, 0, 1, 0, -0.51714265, 1)
 
-[node name="MeshCover" type="Node" parent="cube/Cube" index="0" unique_id=1033344705 node_paths=PackedStringArray("debug")]
+[node name="MeshCover" type="Node" parent="cube/Cube" index="0" unique_id=1233406307]
 script = ExtResource("5_lquwl")
-debug = NodePath("../../../Label3D")
 metadata/_custom_type_script = "uid://dtnblg1g7ceap"
 
 [editable path="cube"]
