@@ -11,6 +11,7 @@ layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
 	vec3 local_up; // model space, normalized
+	uint in_vertex_count;
 	uint in_vertex_stride;
 	uint in_normal_offset;
 	uint in_normal_stride;
@@ -60,8 +61,13 @@ layout(set = 2, binding = 3, std430) restrict writeonly buffer OutInMapBuffer {
 	uint out_in_map[]; // per out vertex, its in vertex - shape.glsl reads position from here
 };
 
-layout(set = 3, binding = 0, std430) restrict writeonly buffer DebugBuffer {
-	uint debug_count;
+layout(set = 3, binding = 0, std430) restrict buffer SlotBuffer {
+	uint unique_count;
+	uint slots[];
+};
+
+layout(set = 3, binding = 1, std430) restrict buffer UsedBuffer {
+	uint used[];
 };
 
 vec3 read_in_position(uint in_index) {
@@ -124,18 +130,14 @@ void write_index(uint i, uint value) {
 	out_index_words[i] = value;
 }
 
-// Top: copy the face's 3 verts as-is, keeping their source normals
 void write_top(uint face_index) {
 	uvec3 face = faces[face_index];
 	uint base = face_index * 3u;
 
-	write_vertex(base, face.x, read_in_position(face.x), read_in_normal(face.x), MARKER_SHIFTED);
-	write_vertex(base + 1u, face.y, read_in_position(face.y), read_in_normal(face.y), MARKER_SHIFTED);
-	write_vertex(base + 2u, face.z, read_in_position(face.z), read_in_normal(face.z), MARKER_SHIFTED);
-
-	write_index(base, base);
-	write_index(base + 1u, base + 1u);
-	write_index(base + 2u, base + 2u);
+	// Verts already written by the dedupe-driven pass below; only indices needed here
+	write_index(base, slots[face.x]);
+	write_index(base + 1u, slots[face.y]);
+	write_index(base + 2u, slots[face.z]);
 }
 
 // Side: extrude the edge into a quad - bottom pair stays put, top pair gets shifted by shape.glsl
@@ -170,18 +172,20 @@ void write_side(uint edge_index, uint vertex_base, uint index_base) {
 void main() {
 	uint idx = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
 
-	if (idx >= faces_count + edges_count) {
-		return;
+	// Vertex data: one invocation per source vertex, only canonicals write
+	if (idx < in_vertex_count) {
+		if (used[idx] == 1u && slots[idx] != 0xFFFFFFFFu) {
+			write_vertex(slots[idx], idx, read_in_position(idx), read_in_normal(idx), MARKER_SHIFTED);
+		}
 	}
 
-	atomicAdd(debug_count, 1u);
-
-	// Top pass: one invocation per face
+	// Top indices: one invocation per face
 	if (idx < faces_count) {
 		write_top(idx);
-		return;
 	}
 
-	// Side pass: one invocation per edge, verts placed after all top verts
-	write_side(idx - faces_count, faces_count * 3u, faces_count * 3u);
+	// Sides: one invocation per edge, appended after all unique top verts, undeduped
+	if (idx < edges_count) {
+		write_side(idx, unique_count, faces_count * 3u);
+	}
 }

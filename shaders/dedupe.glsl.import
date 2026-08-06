@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://cqql14b1v0pcv"
+path="res://.godot/imported/dedupe.glsl-81b96bddeb6e7f2f35963efdd79e3390.res"
+
+[deps]
+
+source_file="res://shaders/dedupe.glsl"
+dest_files=["res://.godot/imported/dedupe.glsl-81b96bddeb6e7f2f35963efdd79e3390.res"]
+
+[params]
+

@@ -47,6 +47,15 @@ layout(set = 2, binding = 0, std430) restrict writeonly buffer FacesDispatchBuff
 	uvec3 dispatch;
 };
 
+layout(set = 3, binding = 0, std430) restrict buffer SlotBuffer {
+	uint unique_count;
+	uint slots[];
+};
+
+layout(set = 3, binding = 1, std430) restrict buffer UsedBuffer {
+	uint used[];
+};
+
 uint read_index(uint i) {
 	if (in_index_stride == 2u) {
 		u16vec2 pair = unpackUint2x16(in_index_words[i / 2u]);
@@ -113,6 +122,12 @@ void main() {
 	// Record this face as part of the snow cap
 	uint slot = atomicAdd(faces_count, 1u);
 	faces[slot] = face_indices;
+
+	// Mark corners so the dedupe pass knows which source verts matter
+	used[face_indices.x] = 1u;
+	used[face_indices.y] = 1u;
+	used[face_indices.z] = 1u;
+
 	atomicMax(dispatch.x, (slot + EDGES_GROUP_SIZE) / EDGES_GROUP_SIZE);
 	dispatch.y = 3u;
 	dispatch.z = 1u;

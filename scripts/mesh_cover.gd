@@ -3,6 +3,7 @@ class_name MeshCover
 
 @export var material: StandardMaterial3D = preload("res://assets/snow.tres")
 @export var debug: Label3D
+@export var draw_debug_normals := false
 
 @onready var mesh_instance_3d: MeshInstance3D = $".."
 
@@ -22,7 +23,8 @@ func _ready() -> void:
 		mesh_instance.set_surface_override_material(worker.surface.idx, material)
 		workers.append(worker)
 
-	debug_normals(mesh_instance_3d)
+	if draw_debug_normals:
+		debug_normals(mesh_instance_3d)
 
 
 func debug_normals(mesh_instance: MeshInstance3D, surface_idx: int = 1, length: float = 0.2) -> void:
@@ -83,9 +85,10 @@ func change_depth(delta: int) -> void:
 		else:
 			worker.params.depth += delta
 
-	await RenderingServer.frame_post_draw
-	await RenderingServer.frame_post_draw
-	debug_normals(mesh_instance_3d)
+	if draw_debug_normals:
+		await RenderingServer.frame_post_draw
+		await RenderingServer.frame_post_draw
+		debug_normals(mesh_instance_3d)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

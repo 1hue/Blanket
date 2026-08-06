@@ -11,6 +11,7 @@ layout(local_size_x = 1) in;
 
 layout(push_constant, std430) uniform PushParams {
 	uint in_vertex_stride;
+	uint in_vertex_count;
 };
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer InVertexBuffer {
@@ -88,7 +89,9 @@ void main() {
 
 	uint slot = atomicAdd(edges_count, 1u);
 	edges[slot] = current;
-	atomicMax(dispatch.x, (faces_count + slot + VERTS_GROUP_SIZE) / VERTS_GROUP_SIZE);
+
+	uint invocations = max(max(in_vertex_count, faces_count), slot + 1u);
+	atomicMax(dispatch.x, (invocations + VERTS_GROUP_SIZE - 1u) / VERTS_GROUP_SIZE);
 	dispatch.y = 1u;
 	dispatch.z = 1u;
 }

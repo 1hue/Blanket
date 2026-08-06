@@ -20,6 +20,7 @@ bump_strength = 10.3
 
 [resource]
 render_priority = 1
+cull_mode = 2
 albedo_color = Color(0.8928, 0.9052, 0.93, 1)
 roughness = 0.4
 emission_enabled = true

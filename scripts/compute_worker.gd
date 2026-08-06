@@ -33,7 +33,11 @@ var edges_uniform: RDUniform
 var edges_dispatch_buffer: RID
 var edges_dispatch_uniform_set: RID
 
-var selection_uniform_set: RID
+var selection_uniform_set: RID # 0 = Faces, 1 = Edges
+
+var slot_buffer: RID
+var used_buffer: RID
+var dedupe_uniform_set: RID
 
 var out_uniform_set: RID
 var out_in_map_buffer: RID
@@ -60,10 +64,11 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	surface = ComputeSurface.new(p_mesh, surface_idx)
 
 	_init_params(global_transform)
-	_init_debug()
+	#_init_debug()
 	_init_in_uniforms()
 	_init_indirect_dispatch()
 	_init_selection_uniforms()
+	_init_dedupe_uniforms()
 
 
 func _init_params(global_transform: Transform3D) -> void:
@@ -126,6 +131,28 @@ func _init_selection_uniforms() -> void:
 	], shaders[0], 1)
 
 
+func _init_dedupe_uniforms() -> void:
+	# unique_count (4) + one slot per source vertex
+	var slot_buffer_size := 4 + params.in_vertex_count * 4
+	slot_buffer = rd.storage_buffer_create(slot_buffer_size)
+
+	var used_buffer_size := params.in_vertex_count * 4
+	used_buffer = rd.storage_buffer_create(used_buffer_size)
+
+	dedupe_uniform_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([slot_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		ComputeUtil.create_uniform([used_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
+	], shaders[2], 3)
+
+	# unique_count zeroed, slots[] filled with the unused sentinel
+	var slot_init := PackedByteArray()
+	slot_init.resize(slot_buffer_size)
+	slot_init.encode_u32(0, 0)
+	for i in params.in_vertex_count:
+		slot_init.encode_u32(4 + i * 4, 0xFFFFFFFF)
+	rd.buffer_update(slot_buffer, 0, slot_buffer_size, slot_init)
+
+
 ## Separate dispatch buffers - must not be passed as uniform in target shader - engine constraint
 func _init_indirect_dispatch() -> void:
 	faces_dispatch_buffer = rd.storage_buffer_create(
@@ -151,47 +178,25 @@ func _cleanup_bake() -> void:
 
 
 func bake() -> void:
-	_bake_selection()
-	_allocate_geometry_out()
-	_bake_geometry_out()
+	_compute_selection()
+	_compute_dedupe()
+	_allocate_verts_out()
+	_compute_verts()
 	debug()
 	_cleanup_bake()
 	update()
 
 
-## Select upright faces and outer edges
-func _bake_selection() -> void:
-	# Faces
-	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
-	rd.compute_list_set_push_constant(compute_list, params.pack_faces(), ComputeParams.SIZE_FACES)
-	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
-	rd.compute_list_bind_uniform_set(compute_list, faces_dispatch_uniform_set, 2)
-	rd.compute_list_dispatch(compute_list, ceili(params.in_index_count / 3.0 / 256.0), 1, 1)
-	rd.compute_list_end()
-
-	# Edges
-	compute_list = rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[1])
-	rd.compute_list_set_push_constant(compute_list, params.pack_edges(), ComputeParams.SIZE_EDGES)
-	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
-	rd.compute_list_bind_uniform_set(compute_list, edges_dispatch_uniform_set, 2)
-	rd.compute_list_dispatch_indirect(compute_list, faces_dispatch_buffer, 0)
-	rd.compute_list_end()
-
-
 ## Add an empty mesh surface
-func _allocate_geometry_out() -> void:
+func _allocate_verts_out() -> void:
 	# Only read the counts - avoid a whole GPU-CPU-GPU data roundtrip
-	var face_count := rd.buffer_get_data(faces_buffer, 0, 4).decode_u32(0)
+	var unique_count := rd.buffer_get_data(slot_buffer, 0, 4).decode_u32(0)
 	var edge_count := rd.buffer_get_data(edges_buffer, 0, 4).decode_u32(0)
-
+	var face_count := rd.buffer_get_data(faces_buffer, 0, 4).decode_u32(0)
 	assert(face_count > 0, "Face count: %d" % face_count)
 	#assert(edge_count > 0, "Edge count: %d" % edge_count)
 
-	var vertex_count := face_count * 3 + edge_count * 4
+	var vertex_count := unique_count + edge_count * 4
 	var index_count := face_count * 3 + edge_count * 6
 
 	surface.allocate(vertex_count, index_count)
@@ -205,11 +210,11 @@ func _allocate_geometry_out() -> void:
 	params.out_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
 	params.out_index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, vertex_count)
 
-	_init_geometry_out_uniforms(vertex_count)
+	_init_verts_out_uniforms(vertex_count)
 
 
 ## Prepare buffers for verts.glsl
-func _init_geometry_out_uniforms(vertex_count: int) -> void:
+func _init_verts_out_uniforms(vertex_count: int) -> void:
 	if out_uniform_set.is_valid():
 		rd.free_rid(out_uniform_set)
 	if out_in_map_buffer.is_valid():
@@ -225,18 +230,52 @@ func _init_geometry_out_uniforms(vertex_count: int) -> void:
 		ComputeUtil.create_uniform([out_index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
 		ComputeUtil.create_uniform([out_attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
 		ComputeUtil.create_uniform([out_in_map_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 3)
-	], shaders[2], 2)
+	], shaders[3], 2)
+
+
+## Select upright faces and outer edges
+func _compute_selection() -> void:
+	# Faces
+	var compute_list := rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
+	rd.compute_list_set_push_constant(compute_list, params.pack_faces(), ComputeParams.SIZE_FACES)
+	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, faces_dispatch_uniform_set, 2)
+	rd.compute_list_bind_uniform_set(compute_list, dedupe_uniform_set, 3)
+	rd.compute_list_dispatch(compute_list, ceili(params.in_index_count / 3.0 / 256.0), 1, 1)
+	rd.compute_list_end()
+
+	# Edges
+	compute_list = rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[1])
+	rd.compute_list_set_push_constant(compute_list, params.pack_edges(), ComputeParams.SIZE_EDGES)
+	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, edges_dispatch_uniform_set, 2)
+	rd.compute_list_dispatch_indirect(compute_list, faces_dispatch_buffer, 0)
+	rd.compute_list_end()
+
+
+func _compute_dedupe() -> void:
+	var compute_list := rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[2])
+	rd.compute_list_set_push_constant(compute_list, params.pack_dedupe(), ComputeParams.SIZE_DEDUPE)
+	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, dedupe_uniform_set, 3)
+	rd.compute_list_dispatch(compute_list, ceili(params.in_vertex_count / 256.0), 1, 1)
+	rd.compute_list_end()
 
 
 ## Dispatch verts.glsl to fill the empty mesh surface GPU-side
-func _bake_geometry_out() -> void:
+func _compute_verts() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[2])
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[3])
 	rd.compute_list_set_push_constant(compute_list, params.pack_verts(), ComputeParams.SIZE_VERTS)
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 2)
-	rd.compute_list_bind_uniform_set(compute_list, debug_uniform_set, 3)
+	rd.compute_list_bind_uniform_set(compute_list, dedupe_uniform_set, 3)
 	rd.compute_list_dispatch_indirect(compute_list, edges_dispatch_buffer, 0)
 	rd.compute_list_end()
 
@@ -244,7 +283,7 @@ func _bake_geometry_out() -> void:
 ## Dispatch shape.glsl to reposition the spawned mesh surface
 func _compute_shape() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[3])
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[4])
 	rd.compute_list_set_push_constant(compute_list, params.pack_shape(), ComputeParams.SIZE_SHAPE)
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 2)
@@ -275,7 +314,7 @@ func debug() -> void:
 		" -> faces_count=", rd.buffer_get_data(faces_buffer, 0, 4).decode_u32(0),
 		"\n edges_dispatch=", rd.buffer_get_data(edges_dispatch_buffer, 0, 12).to_int32_array(),
 		" -> edges_count=", rd.buffer_get_data(edges_buffer, 0, 4).decode_u32(0),
-		"\n debug_count=", rd.buffer_get_data(debug_buffer, 0, 4).decode_u32(0),
+		"\n unique_count=", rd.buffer_get_data(slot_buffer, 0, 4).decode_u32(0),
 		"[/color]"
 	)
 
@@ -309,6 +348,7 @@ func _notification(what) -> void:
 		faces_dispatch_uniform_set, faces_dispatch_buffer, edges_dispatch_uniform_set, edges_dispatch_buffer,
 		in_uniform_set, selection_uniform_set, faces_buffer, edges_buffer, out_uniform_set, out_in_map_buffer,
 		debug_uniform_set, debug_buffer,
+		dedupe_uniform_set, slot_buffer, used_buffer,
 	]:
 		if rid.is_valid():
 			rd.free_rid(rid)

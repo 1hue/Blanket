@@ -59,7 +59,7 @@ current = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1)
 
 [node name="Cube" parent="cube" index="0" unique_id=1284184747]
-transform = Transform3D(0.75090325, -0.6574605, 0.062370043, 0.6593022, 0.7408167, -0.12849715, 0.03827697, 0.13760956, 0.9897467, 0, 0.5, 1)
+transform = Transform3D(0.8439293, -0.5364545, 0, 0.5364545, 0.8439293, 0, 0, 0, 1, 0, 0.5, 1)
 
 [node name="MeshCover" type="Node" parent="cube/Cube" index="0" unique_id=1033344705 node_paths=PackedStringArray("debug")]
 script = ExtResource("5_lquwl")

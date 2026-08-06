@@ -4,11 +4,13 @@ class_name ComputeParams
 signal changed
 
 const SIZE_FACES = 44
-const SIZE_EDGES = 4
-const SIZE_VERTS = 48
+const SIZE_EDGES = 8
+const SIZE_DEDUPE = 16
+const SIZE_VERTS = 52
 const SIZE_SHAPE = 36
 const DEFAULT_DEPTH = 0.1
 const DEFAULT_MAX_SLOPE_DEGREES = 75.0
+
 
 ## World up translated to model local space, normalized
 var local_up := Vector3.UP:
@@ -71,8 +73,19 @@ func pack_faces() -> PackedByteArray:
 ## Pack push constant bytes for edges.glsl
 func pack_edges() -> PackedByteArray:
 	var bytes := PackedByteArray()
-	bytes.resize(SIZE_FACES)
+	bytes.resize(SIZE_EDGES)
 	bytes.encode_u32(0, in_vertex_stride)
+	bytes.encode_u32(4, in_vertex_count)
+	return bytes
+
+
+func pack_dedupe() -> PackedByteArray:
+	var bytes := PackedByteArray()
+	bytes.resize(SIZE_DEDUPE)
+	bytes.encode_u32(0, in_vertex_count)
+	bytes.encode_u32(4, in_vertex_stride)
+	bytes.encode_u32(8, in_normal_offset)
+	bytes.encode_u32(12, in_normal_stride)
 	return bytes
 
 
@@ -83,15 +96,16 @@ func pack_verts() -> PackedByteArray:
 	bytes.encode_float(0, local_up.x)
 	bytes.encode_float(4, local_up.y)
 	bytes.encode_float(8, local_up.z)
-	bytes.encode_u32(12, in_vertex_stride)
-	bytes.encode_u32(16, in_normal_offset)
-	bytes.encode_u32(20, in_normal_stride)
-	bytes.encode_u32(24, out_vertex_stride)
-	bytes.encode_u32(28, out_normal_offset)
-	bytes.encode_u32(32, out_normal_stride)
-	bytes.encode_u32(36, out_marker_offset)
-	bytes.encode_u32(40, out_attribute_stride)
-	bytes.encode_u32(44, out_index_stride)
+	bytes.encode_u32(12, in_vertex_count)
+	bytes.encode_u32(16, in_vertex_stride)
+	bytes.encode_u32(20, in_normal_offset)
+	bytes.encode_u32(24, in_normal_stride)
+	bytes.encode_u32(28, out_vertex_stride)
+	bytes.encode_u32(32, out_normal_offset)
+	bytes.encode_u32(36, out_normal_stride)
+	bytes.encode_u32(40, out_marker_offset)
+	bytes.encode_u32(44, out_attribute_stride)
+	bytes.encode_u32(48, out_index_stride)
 	return bytes
 
 

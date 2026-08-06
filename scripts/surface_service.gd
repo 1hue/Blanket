@@ -3,6 +3,7 @@ extends Node
 const SHADER_PATHS: Array[String] = [
 	"res://shaders/faces.glsl",
 	"res://shaders/edges.glsl",
+	"res://shaders/dedupe.glsl",
 	"res://shaders/verts.glsl",
 	"res://shaders/shape.glsl"
 ]
@@ -19,12 +20,14 @@ func _init() -> void:
 		compile_shader(rd, SHADER_PATHS[1]),
 		compile_shader(rd, SHADER_PATHS[2]),
 		compile_shader(rd, SHADER_PATHS[3]),
+		compile_shader(rd, SHADER_PATHS[4]),
 	]
 	pipelines = [
 		rd.compute_pipeline_create(shaders[0]),
 		rd.compute_pipeline_create(shaders[1]),
 		rd.compute_pipeline_create(shaders[2]),
 		rd.compute_pipeline_create(shaders[3]),
+		rd.compute_pipeline_create(shaders[4]),
 	]
 
 
