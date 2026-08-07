@@ -1,0 +1,7 @@
+[gd_resource type="VisualShader" format=3 uid="uid://c32g3nff78grb"]
+
+[resource]
+modes/cull = 2
+flags/depth_test_disabled = true
+flags/unshaded = true
+flags/wireframe = true

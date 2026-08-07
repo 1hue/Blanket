@@ -1,5 +1,8 @@
 [gd_resource type="StandardMaterial3D" format=3 uid="uid://ctfd1qkvn7unr"]
 
+[ext_resource type="Material" uid="uid://coxgqkfh2corg" path="res://assets/wireframe.tres" id="1_jt5sk"]
+
 [resource]
+next_pass = ExtResource("1_jt5sk")
 vertex_color_use_as_albedo = true
 albedo_color = Color(0.44, 0.44, 0.44, 0.7254902)

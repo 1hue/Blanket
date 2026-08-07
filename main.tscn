@@ -56,10 +56,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2951946, 3.5272152)
 current = true
 
 [node name="cube" parent="." unique_id=127492725 instance=ExtResource("4_1bvp3")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1)
 
 [node name="Cube" parent="cube" index="0" unique_id=944052182]
-transform = Transform3D(0.8439293, -0.5364545, 0, 0.5364545, 0.8439293, 0, 0, 0, 1, 0, -0.51714265, 1)
+transform = Transform3D(0.84392923, -0.53645444, -1.4332123e-08, 0.49513632, 0.77892905, 0.38484973, -0.2064544, -0.32478598, 0.92297906, 0, 0, 0)
 
 [node name="MeshCover" type="Node" parent="cube/Cube" index="0" unique_id=1233406307]
 script = ExtResource("5_lquwl")

@@ -9,7 +9,7 @@ const SIZE_DEDUPE = 16
 const SIZE_VERTS = 52
 const SIZE_SHAPE = 36
 const DEFAULT_DEPTH = 0.1
-const DEFAULT_MAX_SLOPE_DEGREES = 75.0
+const DEFAULT_MAX_SLOPE_DEGREES = 65.0
 
 
 ## World up translated to model local space, normalized
