@@ -4,7 +4,10 @@
 [ext_resource type="ArrayMesh" uid="uid://dbhf8wkaa3bgj" path="res://assets/cube.obj" id="2_0xm2m"]
 [ext_resource type="Script" uid="uid://8ehypqim7667" path="res://scripts/camera_rig.gd" id="3_h2yge"]
 [ext_resource type="PackedScene" uid="uid://c3ruydhlr5ywd" path="res://assets/cube.blend" id="4_1bvp3"]
-[ext_resource type="Script" uid="uid://dtnblg1g7ceap" path="res://scripts/mesh_cover.gd" id="5_lquwl"]
+[ext_resource type="PackedScene" uid="uid://bkhwwpnlnilpo" path="res://assets/basic.blend" id="5_7mycd"]
+[ext_resource type="Script" uid="uid://bdbnd4rwx5btq" path="res://scripts/mesh_bevel.gd" id="5_lquwl"]
+[ext_resource type="Material" uid="uid://bt3h2rh0fwcs8" path="res://assets/wireframe_backgound_material.tres" id="6_5vw27"]
+[ext_resource type="Material" uid="uid://bq4fsw1x303w" path="res://assets/snow.tres" id="6_272bh"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_7dm0k"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -52,16 +55,27 @@ script = ExtResource("3_h2yge")
 metadata/_custom_type_script = "uid://8ehypqim7667"
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig" unique_id=807859617]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2951946, 3.5272152)
+transform = Transform3D(1, 0, 0, 0, 0.90222085, 0.43127427, 0, -0.43127427, 0.90222085, 0, 2.3824725, 3.5272152)
 current = true
 
 [node name="cube" parent="." unique_id=127492725 instance=ExtResource("4_1bvp3")]
+visible = false
 
 [node name="Cube" parent="cube" index="0" unique_id=944052182]
 transform = Transform3D(0.84392923, -0.53645444, -1.4332123e-08, 0.49513632, 0.77892905, 0.38484973, -0.2064544, -0.32478598, 0.92297906, 0, 0, 0)
 
-[node name="MeshCover" type="Node" parent="cube/Cube" index="0" unique_id=1233406307]
+[node name="basic" parent="." unique_id=721285078 instance=ExtResource("5_7mycd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.010825396, 0, 0)
+
+[node name="Plane" parent="basic" index="0" unique_id=401062250]
+surface_material_override/0 = ExtResource("6_5vw27")
+
+[node name="MeshBevel" type="Node" parent="basic/Plane" index="0" unique_id=1206601670]
 script = ExtResource("5_lquwl")
-metadata/_custom_type_script = "uid://dtnblg1g7ceap"
+metadata/_custom_type_script = "uid://bdbnd4rwx5btq"
+
+[node name="Plane_001" parent="basic" index="1" unique_id=111876922]
+material_override = ExtResource("6_272bh")
 
 [editable path="cube"]
+[editable path="basic"]

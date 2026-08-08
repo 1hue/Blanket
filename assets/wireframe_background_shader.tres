@@ -1,4 +1,4 @@
-[gd_resource type="VisualShader" format=3 uid="uid://c32g3nff78grb"]
+[gd_resource type="VisualShader" format=3 uid="uid://b71ckuctsq5us"]
 
 [sub_resource type="VisualShaderNodeInput" id="VisualShaderNodeInput_6dr6d"]
 input_name = "color"
@@ -10,8 +10,6 @@ default_value_enabled = true
 default_value = 1.0
 
 [resource]
-modes/cull = 2
-flags/depth_test_disabled = true
 flags/unshaded = true
 flags/wireframe = true
 flags/shadows_disabled = true

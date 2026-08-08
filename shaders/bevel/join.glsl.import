@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://p0rf1pyuc44b"
+path="res://.godot/imported/join.glsl-9bc51a66273bd5f7e77f8f55c91787ad.res"
+
+[deps]
+
+source_file="res://shaders/bevel/join.glsl"
+dest_files=["res://.godot/imported/join.glsl-9bc51a66273bd5f7e77f8f55c91787ad.res"]
+
+[params]
+

@@ -4,9 +4,6 @@
 
 #extension GL_EXT_scalar_block_layout : require
 
-const float MARKER_SHIFTED = 1.0;
-const float MARKER_STATIC = 0.0;
-
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
@@ -69,6 +66,9 @@ layout(set = 3, binding = 0, std430) restrict buffer SlotBuffer {
 layout(set = 3, binding = 1, std430) restrict buffer UsedBuffer {
 	uint used[];
 };
+
+const float MARKER_SHIFTED = 1.0;
+const float MARKER_STATIC = 0.0;
 
 vec3 read_in_position(uint in_index) {
 	uint word = (in_index * in_vertex_stride) / 4u;

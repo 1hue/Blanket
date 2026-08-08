@@ -8,9 +8,12 @@ const SIZE_EDGES = 8
 const SIZE_DEDUPE = 16
 const SIZE_VERTS = 52
 const SIZE_SHAPE = 36
+const SIZE_SHRINK = 24
+const SIZE_JOIN = 16
 const DEFAULT_DEPTH = 0.1
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
-
+const MAX_VALENCE = 32
+const DEFAULT_SHRINK = 0.3
 
 ## World up translated to model local space, normalized
 var local_up := Vector3.UP:

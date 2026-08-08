@@ -5,12 +5,21 @@ const SHADER_PATHS: Array[String] = [
 	"res://shaders/edges.glsl",
 	"res://shaders/dedupe.glsl",
 	"res://shaders/verts.glsl",
-	"res://shaders/shape.glsl"
+	"res://shaders/shape.glsl",
+	"res://shaders/bevel/shrink.glsl",
+	"res://shaders/bevel/join.glsl",
+	"res://shaders/bevel/fill.glsl",
 ]
 
 var rd: RenderingDevice
 var shaders: Array[RID]
 var pipelines: Array[RID]
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F5:
+		_notification(NOTIFICATION_PREDELETE)
+		_init()
 
 
 func _init() -> void:
@@ -21,6 +30,9 @@ func _init() -> void:
 		compile_shader(rd, SHADER_PATHS[2]),
 		compile_shader(rd, SHADER_PATHS[3]),
 		compile_shader(rd, SHADER_PATHS[4]),
+		compile_shader(rd, SHADER_PATHS[5]),
+		compile_shader(rd, SHADER_PATHS[6]),
+		compile_shader(rd, SHADER_PATHS[7]),
 	]
 	pipelines = [
 		rd.compute_pipeline_create(shaders[0]),
@@ -28,6 +40,9 @@ func _init() -> void:
 		rd.compute_pipeline_create(shaders[2]),
 		rd.compute_pipeline_create(shaders[3]),
 		rd.compute_pipeline_create(shaders[4]),
+		rd.compute_pipeline_create(shaders[5]),
+		rd.compute_pipeline_create(shaders[6]),
+		rd.compute_pipeline_create(shaders[7]),
 	]
 
 

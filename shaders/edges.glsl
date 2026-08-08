@@ -4,8 +4,6 @@
 
 #extension GL_EXT_scalar_block_layout : require
 
-const uint VERTS_GROUP_SIZE = 256u;
-
 // X = faces, Y = 3 verts per face
 layout(local_size_x = 1) in;
 
@@ -39,6 +37,8 @@ layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
 layout(set = 2, binding = 0, std430) restrict writeonly buffer EdgesDispatchBuffer {
 	uvec3 dispatch;
 };
+
+const uint VERTS_GROUP_SIZE = 256u;
 
 vec3 read_in_position(uint in_index) {
 	uint word = (in_index * in_vertex_stride) / 4u;

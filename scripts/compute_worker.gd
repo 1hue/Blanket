@@ -19,6 +19,8 @@ var mesh_rid: RID:
 	get: return mesh.get_rid()
 var in_uniform_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 
+var surface: ComputeSurface
+
 ## Source vert indices of upright faces as uvec3, e.g. [(0, 1, 2), (0, 3, 1)]
 var faces_buffer: RID
 var faces_buffer_size: int
@@ -45,7 +47,14 @@ var out_in_map_buffer: RID
 var debug_buffer: RID
 var debug_uniform_set: RID
 
-var surface: ComputeSurface
+var neighbour_buffer: RID
+var neighbour_buffer_size: int
+var neighbour_uniform_set: RID
+
+var bevel_vertex_buffer: RID
+var bevel_index_buffer: RID
+var bevel_src_uniform_set: RID
+var bevel_dst_uniform_set: RID
 
 
 func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -> void:
@@ -68,6 +77,7 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	_init_in_uniforms()
 	_init_indirect_dispatch()
 	_init_selection_uniforms()
+	_init_bevel_uniforms()
 	_init_dedupe_uniforms()
 
 
@@ -110,6 +120,23 @@ func _init_in_uniforms() -> void:
 		ComputeUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
 		ComputeUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
 	], shaders[0], 0)
+
+
+func _init_bevel_uniforms() -> void:
+	faces_buffer_size = FACES_HEADER + params.in_index_count * 4
+	faces_buffer = rd.storage_buffer_create(
+		faces_buffer_size, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
+	)
+
+	edges_buffer_size = EDGES_HEADER + params.in_index_count * 12
+	edges_buffer = rd.storage_buffer_create(
+		edges_buffer_size, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
+	)
+
+	selection_uniform_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([faces_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		ComputeUtil.create_uniform([edges_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
+	], shaders[0], 1)
 
 
 func _init_selection_uniforms() -> void:
@@ -178,13 +205,14 @@ func _cleanup_bake() -> void:
 
 
 func bake() -> void:
-	_compute_selection()
-	_compute_dedupe()
-	_allocate_verts_out()
-	_compute_verts()
-	debug()
-	_cleanup_bake()
-	update()
+	_compute_bevel()
+	#_compute_selection()
+	#_compute_dedupe()
+	#_allocate_verts_out()
+	#_compute_verts()
+	#debug()
+	#_cleanup_bake()
+	#update()
 
 
 ## Add an empty mesh surface
@@ -231,6 +259,27 @@ func _init_verts_out_uniforms(vertex_count: int) -> void:
 		ComputeUtil.create_uniform([out_attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
 		ComputeUtil.create_uniform([out_in_map_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 3)
 	], shaders[3], 2)
+
+
+func _compute_bevel() -> void:
+	var compute_list := rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[5])
+	rd.compute_list_set_push_constant(compute_list, params.pack_shrink(), ComputeParams.SIZE_SHRINK)
+	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, faces_dispatch_uniform_set, 2)
+	rd.compute_list_bind_uniform_set(compute_list, dedupe_uniform_set, 3)
+	rd.compute_list_dispatch(compute_list, ceili(params.in_index_count / 3.0 / 256.0), 1, 1)
+	rd.compute_list_end()
+
+	compute_list = rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[6])
+	rd.compute_list_set_push_constant(compute_list, params.pack_join(), ComputeParams.SIZE_JOIN)
+	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, edges_dispatch_uniform_set, 2)
+	rd.compute_list_dispatch_indirect(compute_list, faces_dispatch_buffer, 0)
+	rd.compute_list_end()
 
 
 ## Select upright faces and outer edges
@@ -293,7 +342,8 @@ func _compute_shape() -> void:
 
 ## Reposition the added mesh surface
 func update() -> void:
-	_compute_shape()
+	#_compute_shape()
+	pass
 
 
 func debug() -> void:
@@ -323,7 +373,17 @@ func debug() -> void:
 	" out_normal_offset=", params.out_normal_offset,
 	" out_normal_stride=", params.out_normal_stride,
 	" out_marker_offset=", params.out_marker_offset,
-	" out_attribute_stride=", params.out_attribute_stride, "[/color]")
+	" out_attribute_stride=", params.out_attribute_stride,
+	" out_index_stride=", params.out_index_stride,
+	"[/color]")
+
+	print_rich("[color=khaki] in_vertex_count=", params.in_vertex_count,
+	" in_vertex_stride=", params.in_vertex_stride,
+	" in_normal_offset=", params.in_normal_offset,
+	" in_normal_stride=", params.in_normal_stride,
+	" in_attribute_stride=", params.in_attribute_stride,
+	" in_index_stride=", params.in_index_stride,
+	"[/color]")
 
 	var out_verts := rd.buffer_get_data(RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx))
 	var out_idx := rd.buffer_get_data(RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx))

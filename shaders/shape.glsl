@@ -4,8 +4,6 @@
 
 #extension GL_EXT_scalar_block_layout : require
 
-const float SHIFT_FACTOR = 0.1;
-
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
@@ -45,6 +43,8 @@ layout(set = 2, binding = 2, std430) restrict buffer OutAttributeBuffer {
 layout(set = 2, binding = 3, std430) restrict buffer OutInMapBuffer {
 	uint out_in_map[];
 };
+
+const float SHIFT_FACTOR = 0.1;
 
 vec3 read_in_position(uint in_index) {
 	uint word = (in_index * in_vertex_stride) / 4u;
