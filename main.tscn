@@ -7,7 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://bkhwwpnlnilpo" path="res://assets/basic.blend" id="5_7mycd"]
 [ext_resource type="Script" uid="uid://bdbnd4rwx5btq" path="res://scripts/mesh_bevel.gd" id="5_lquwl"]
 [ext_resource type="Material" uid="uid://bt3h2rh0fwcs8" path="res://assets/wireframe_backgound_material.tres" id="6_5vw27"]
-[ext_resource type="Material" uid="uid://bq4fsw1x303w" path="res://assets/snow.tres" id="6_272bh"]
+[ext_resource type="PackedScene" uid="uid://rur1jbhne453" path="res://assets/complex.blend" id="8_5vw27"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_7dm0k"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -75,7 +75,22 @@ script = ExtResource("5_lquwl")
 metadata/_custom_type_script = "uid://bdbnd4rwx5btq"
 
 [node name="Plane_001" parent="basic" index="1" unique_id=111876922]
-material_override = ExtResource("6_272bh")
+surface_material_override/0 = ExtResource("6_5vw27")
+
+[node name="MeshBevel" type="Node" parent="basic/Plane_001" index="0" unique_id=1918295593]
+script = ExtResource("5_lquwl")
+metadata/_custom_type_script = "uid://bdbnd4rwx5btq"
+
+[node name="complex" parent="." unique_id=1469824708 instance=ExtResource("8_5vw27")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.3597674, 0, 0)
+
+[node name="Cube" parent="complex" index="0" unique_id=261364045]
+surface_material_override/0 = ExtResource("6_5vw27")
+
+[node name="MeshBevel" type="Node" parent="complex/Cube" index="0" unique_id=2066583375]
+script = ExtResource("5_lquwl")
+metadata/_custom_type_script = "uid://bdbnd4rwx5btq"
 
 [editable path="cube"]
 [editable path="basic"]
+[editable path="complex"]

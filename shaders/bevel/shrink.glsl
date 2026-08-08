@@ -84,7 +84,7 @@ bvec3 find_shared_edges(uint face) {
 	return result;
 }
 
-// Corner c retreats along its two edges - toward b if edge ab is shared, toward c if edge ca is
+// Each corner retreats along its two edges (or between, towards face center) based on whether edge is shared
 vec3 inset_corner(vec3 own, vec3 next, vec3 prev, bool next_shared, bool prev_shared) {
 	if (!next_shared && !prev_shared) {
 		return own;
