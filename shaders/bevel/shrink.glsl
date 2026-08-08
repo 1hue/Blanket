@@ -12,6 +12,7 @@ const uint EDGE_BC = 1u;
 const uint EDGE_CB = 1u;
 const uint EDGE_CA = 2u;
 const uint EDGE_AC = 2u;
+const uint NONE = 0xFFFFFFFFu;
 
 layout(local_size_x = 256) in;
 
@@ -43,6 +44,19 @@ layout(set = 1, binding = 2, std430) restrict writeonly buffer OutAttributeBuffe
 	uint out_attributes[];
 };
 
+layout(set = 2, binding = 0, scalar) restrict writeonly buffer SharedEdgeBuffer {
+	uint shared_count;
+	uvec2 shared_edges[]; // corner in face A, matching corner in face B
+};
+
+layout(set = 3, binding = 0, std430) restrict buffer DispatchBuffer {
+	uvec3 dispatch; // indirect args for wedge.glsl
+};
+
+layout(set = 4, binding = 0, std430) restrict buffer DebugBuffer {
+	vec3 debug;
+};
+
 mat3 get_face_positions(uint face) {
 	uvec3 corners = uvec3(in_faces[face]);
 	return mat3(
@@ -56,9 +70,10 @@ bool edges_match(vec3 a0, vec3 a1, vec3 b0, vec3 b1) {
 	return (a0 == b0 && a1 == b1) || (a0 == b1 && a1 == b0);
 }
 
-bvec3 find_shared_edges(uint face) {
+// Twin corner index per edge, or 0xFFFFFFFF if the edge is a boundary
+uvec3 find_shared_edges(uint face) {
 	mat3 positions_self = get_face_positions(face);
-	bvec3 result = bvec3(false);
+	uvec3 result = uvec3(NONE);
 
 	for (uint f = 0u; f < in_face_count; f++) {
 		if (face == f) continue; // Don't compare with self
@@ -74,7 +89,7 @@ bvec3 find_shared_edges(uint face) {
 				vec3 other_b = positions_other[(i_other + 1u) % 3u];
 
 				if (edges_match(self_a, self_b, other_a, other_b)) {
-					result[i_self] = true;
+					result[i_self] = f * 3u + i_other;
 					break;
 				}
 			}
@@ -102,6 +117,7 @@ void write_out_color(uint out_index, vec4 color) {
 void main() {
 	uint face = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
 
+	debug.x = shared_edges.length();
 	if (face >= in_face_count) return;
 
 	uvec3 corners = uvec3(in_faces[face]);
@@ -110,18 +126,33 @@ void main() {
 	vec3 c = in_positions[corners.z];
 	vec3 center = (a + b + c) / 3.0;
 
-	bvec3 is_shared = find_shared_edges(face);
+	uvec3 edges = find_shared_edges(face);
 	uint base = face * 3u;
 
-	out_positions[base] = inset_corner(a, b, c, is_shared[EDGE_AB], is_shared[EDGE_AC]);
-	out_positions[base + 1u] = inset_corner(b, c, a, is_shared[EDGE_BC], is_shared[EDGE_BA]);
-	out_positions[base + 2u] = inset_corner(c, a, b, is_shared[EDGE_CA], is_shared[EDGE_CB]);
+	out_positions[base] = inset_corner(a, b, c, edges[EDGE_AB] != NONE, edges[EDGE_AC] != NONE);
+	out_positions[base + 1u] = inset_corner(b, c, a, edges[EDGE_BC] != NONE, edges[EDGE_BA] != NONE);
+	out_positions[base + 2u] = inset_corner(c, a, b, edges[EDGE_CA] != NONE, edges[EDGE_CB] != NONE);
 
 	out_faces[face] = u16vec3(base, base + 1u, base + 2u);
 
 	// Red if either of a vert's edges is shared
 	vec4 red = vec4(1, 0, 0, 1);
-	write_out_color(base, is_shared[EDGE_AB] || is_shared[EDGE_AC] ? red : vec4(1));
-	write_out_color(base + 1u, is_shared[EDGE_BC] || is_shared[EDGE_BA] ? red : vec4(1));
-	write_out_color(base + 2u, is_shared[EDGE_CA] || is_shared[EDGE_CB] ? red : vec4(1));
+	write_out_color(base, edges[EDGE_AB] != NONE || edges[EDGE_AC] != NONE ? red : vec4(1));
+	write_out_color(base + 1u, edges[EDGE_BC] != NONE || edges[EDGE_BA] != NONE ? red : vec4(1));
+	write_out_color(base + 2u, edges[EDGE_CA] != NONE || edges[EDGE_CB] != NONE ? red : vec4(1));
+
+
+	// Register shared edges for the wedge pass - lower corner wins so each edge lands once
+	for (uint e = 0u; e < 3u; e++) {
+		uint corner = base + e;
+		uint twin = edges[e];
+
+		if (twin == NONE || twin < corner) continue;
+
+		uint slot = atomicAdd(shared_count, 1u);
+		shared_edges[slot] = uvec2(corner, twin);
+		atomicMax(dispatch.x, (slot + 256u) / 256u);
+		dispatch.y = 1u;
+		dispatch.z = 1u;
+	}
 }

@@ -8,10 +8,6 @@ const FACES_HEADER = 4 # faces_count
 const EDGES_HEADER = 4 # edges_count
 
 var rd: RenderingDevice
-var shaders: Array[RID]:
-	get: return SurfaceService.shaders
-var pipelines: Array[RID]:
-	get: return SurfaceService.pipelines
 var params: ComputeParams
 
 var mesh: ArrayMesh
@@ -60,11 +56,7 @@ var bevel_dst_uniform_set: RID
 func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -> void:
 	rd = RenderingServer.get_rendering_device()
 	assert(rd != null, "No RenderingDevice - compute requires Forward+ or Mobile renderer")
-
-	assert(SurfaceService is Node, "SurfaceService autoload missing - check Project Settings > Autoload")
-	assert(not SurfaceService.shaders.is_empty(), "SurfaceService shaders not compiled")
-	assert(SurfaceService.shaders.size() == SurfaceService.pipelines.size(), "Shader/pipeline count mismatch")
-
+	assert(SurfaceShaders is Node, "SurfaceShaders autoload missing - check Project Settings > Autoload")
 	assert(p_mesh != null, "Mesh is null")
 	assert(surface_idx >= 0 and surface_idx < p_mesh.get_surface_count(),
 		"Surface %d out of range on %s (%d surfaces)" % [surface_idx, p_mesh, p_mesh.get_surface_count()])
@@ -107,7 +99,7 @@ func _init_debug() -> void:
 	debug_buffer = rd.storage_buffer_create(4)
 	debug_uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([debug_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
-	], shaders[2], 3)
+	], SurfaceShaders.verts.shader, 3)
 
 
 func _init_in_uniforms() -> void:
@@ -119,7 +111,7 @@ func _init_in_uniforms() -> void:
 		ComputeUtil.create_uniform([vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 		ComputeUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
 		ComputeUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
-	], shaders[0], 0)
+	], SurfaceShaders.selection_faces.shader, 0)
 
 
 func _init_bevel_uniforms() -> void:
@@ -136,7 +128,7 @@ func _init_bevel_uniforms() -> void:
 	selection_uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([faces_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 		ComputeUtil.create_uniform([edges_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
-	], shaders[0], 1)
+	], SurfaceShaders.selection_faces.shader, 1)
 
 
 func _init_selection_uniforms() -> void:
@@ -155,7 +147,7 @@ func _init_selection_uniforms() -> void:
 	selection_uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([faces_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 		ComputeUtil.create_uniform([edges_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1)
-	], shaders[0], 1)
+	], SurfaceShaders.selection_faces.shader, 1)
 
 
 func _init_dedupe_uniforms() -> void:
@@ -169,7 +161,7 @@ func _init_dedupe_uniforms() -> void:
 	dedupe_uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([slot_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 		ComputeUtil.create_uniform([used_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
-	], shaders[2], 3)
+	], SurfaceShaders.dedupe.shader, 3)
 
 	# unique_count zeroed, slots[] filled with the unused sentinel
 	var slot_init := PackedByteArray()
@@ -187,14 +179,14 @@ func _init_indirect_dispatch() -> void:
 	)
 	faces_dispatch_uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([faces_dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-	], shaders[0], 2)
+	], SurfaceShaders.selection_faces.shader, 2)
 
 	edges_dispatch_buffer = rd.storage_buffer_create(
 		12, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
 	)
 	edges_dispatch_uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([edges_dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-	], shaders[1], 2)
+	], SurfaceShaders.selection_edges.shader, 2)
 
 
 ## Free scratch buffers after bake
@@ -205,7 +197,8 @@ func _cleanup_bake() -> void:
 
 
 func bake() -> void:
-	_compute_bevel()
+	pass
+	#_compute_bevel()
 	#_compute_selection()
 	#_compute_dedupe()
 	#_allocate_verts_out()
@@ -258,35 +251,14 @@ func _init_verts_out_uniforms(vertex_count: int) -> void:
 		ComputeUtil.create_uniform([out_index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
 		ComputeUtil.create_uniform([out_attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
 		ComputeUtil.create_uniform([out_in_map_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 3)
-	], shaders[3], 2)
-
-
-func _compute_bevel() -> void:
-	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[5])
-	rd.compute_list_set_push_constant(compute_list, params.pack_shrink(), ComputeParams.SIZE_SHRINK)
-	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
-	rd.compute_list_bind_uniform_set(compute_list, faces_dispatch_uniform_set, 2)
-	rd.compute_list_bind_uniform_set(compute_list, dedupe_uniform_set, 3)
-	rd.compute_list_dispatch(compute_list, ceili(params.in_index_count / 3.0 / 256.0), 1, 1)
-	rd.compute_list_end()
-
-	compute_list = rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[6])
-	rd.compute_list_set_push_constant(compute_list, params.pack_join(), ComputeParams.SIZE_JOIN)
-	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
-	rd.compute_list_bind_uniform_set(compute_list, edges_dispatch_uniform_set, 2)
-	rd.compute_list_dispatch_indirect(compute_list, faces_dispatch_buffer, 0)
-	rd.compute_list_end()
+	], SurfaceShaders.verts.shader, 2)
 
 
 ## Select upright faces and outer edges
 func _compute_selection() -> void:
 	# Faces
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[0])
+	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.selection_faces.pipeline)
 	rd.compute_list_set_push_constant(compute_list, params.pack_faces(), ComputeParams.SIZE_FACES)
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
@@ -297,7 +269,7 @@ func _compute_selection() -> void:
 
 	# Edges
 	compute_list = rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[1])
+	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.selection_edges.pipeline)
 	rd.compute_list_set_push_constant(compute_list, params.pack_edges(), ComputeParams.SIZE_EDGES)
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
@@ -308,7 +280,7 @@ func _compute_selection() -> void:
 
 func _compute_dedupe() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[2])
+	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.dedupe.pipeline)
 	rd.compute_list_set_push_constant(compute_list, params.pack_dedupe(), ComputeParams.SIZE_DEDUPE)
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, dedupe_uniform_set, 3)
@@ -319,7 +291,7 @@ func _compute_dedupe() -> void:
 ## Dispatch verts.glsl to fill the empty mesh surface GPU-side
 func _compute_verts() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[3])
+	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.verts.pipeline)
 	rd.compute_list_set_push_constant(compute_list, params.pack_verts(), ComputeParams.SIZE_VERTS)
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
@@ -332,7 +304,7 @@ func _compute_verts() -> void:
 ## Dispatch shape.glsl to reposition the spawned mesh surface
 func _compute_shape() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipelines[4])
+	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.shape.pipeline)
 	rd.compute_list_set_push_constant(compute_list, params.pack_shape(), ComputeParams.SIZE_SHAPE)
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 2)
@@ -356,7 +328,7 @@ func debug() -> void:
 	print_rich("[color=pale_green] faces:", ComputeUtil.to_vector3i_array(faces.to_int32_array()), "[/color]")
 
 	var edges := rd.buffer_get_data(edges_buffer, EDGES_HEADER, edges_buffer_size - EDGES_HEADER)
-	print_rich("[color=pale_green] edges:", ComputeUtil.to_vector2i_array(edges.to_int32_array()), "[/color]")
+	print_rich("[color=pale_green] edges:", ComputeUtil.to_vector2i_array(edges), "[/color]")
 
 	print_rich(
 		"[color=peach_puff]",

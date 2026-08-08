@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://emwxtd006bae"
+path="res://.godot/imported/wedge.glsl-ee14fe3e1152abef560734257da71f7f.res"
+
+[deps]
+
+source_file="res://shaders/bevel/wedge.glsl"
+dest_files=["res://.godot/imported/wedge.glsl-ee14fe3e1152abef560734257da71f7f.res"]
+
+[params]
+

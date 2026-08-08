@@ -18,7 +18,7 @@ config/icon="res://assets/icon.svg"
 
 [autoload]
 
-SurfaceService="*uid://dti65e44scy38"
+SurfaceShaders="*uid://dti65e44scy38"
 
 [display]
 
