@@ -1,4 +1,4 @@
-// Build the ring points that fill the gap at one end of a shared edge.
+// Fill the gap at one end of a shared edge with a fan anchored at the original vertex.
 #[compute]
 #version 450
 
@@ -6,6 +6,8 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
 const uint SEGMENTS = 4u; // per side of the crease, must be even
+const uint RING_COUNT = SEGMENTS * 2u; // apex + both rings, crease point shared between them
+const uint TRI_COUNT = RING_COUNT - 2u; // fan triangles between apex and the ring sequence
 
 layout(local_size_x = 256, local_size_y = 2) in;
 
@@ -25,7 +27,15 @@ layout(set = 1, binding = 0, scalar) restrict buffer OutVertexBuffer {
 	vec3 out_positions[];
 };
 
-layout(set = 2, binding = 0, scalar) restrict readonly buffer SharedEdgeBuffer {
+layout(set = 1, binding = 1, scalar) restrict buffer OutIndexBuffer {
+	u16vec3 out_faces[];
+};
+
+layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {
+	uint out_attributes[]; // unused here, declared to match shrink.glsl's set 1
+};
+
+layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
 	uvec2 shared_edges[];
 };
@@ -43,7 +53,9 @@ void main() {
 	uint edge = gl_GlobalInvocationID.x;
 	uint end = gl_GlobalInvocationID.y; // 0 or 1 - which end of the shared edge
 
-	if (edge >= shared_count) return;
+	if (edge >= shared_count) {
+		return;
+	}
 
 	uvec2 corners = shared_edges[edge];
 
@@ -68,5 +80,23 @@ void main() {
 		float t = float(i + 1u) / float(SEGMENTS);
 		ring_a[i] = mix(stand_in_a, midpoint, t);
 		ring_b[i] = mix(stand_in_b, midpoint, t);
+	}
+
+	// Fixed budget per wedge - one wedge per (edge, end) pair
+	uint wedge_index = edge * 2u + end;
+	uint vertex_base = wedge_index * RING_COUNT;
+	uint face_base = wedge_index * TRI_COUNT;
+
+	// Sequence after the apex: stand_in_a -> ... -> crease -> ... -> stand_in_b
+	out_positions[vertex_base] = origin;
+	for (uint i = 0u; i < SEGMENTS; i++) {
+		out_positions[vertex_base + 1u + i] = ring_a[i];
+	}
+	for (uint i = 0u; i < SEGMENTS - 1u; i++) {
+		out_positions[vertex_base + 1u + SEGMENTS + i] = ring_b[SEGMENTS - 2u - i];
+	}
+
+	for (uint i = 0u; i < TRI_COUNT; i++) {
+		out_faces[face_base + i] = u16vec3(vertex_base, vertex_base + 1u + i, vertex_base + 2u + i);
 	}
 }

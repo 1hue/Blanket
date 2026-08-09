@@ -53,10 +53,11 @@ func _allocate() -> void:
 	var colors := PackedColorArray()
 	var normals := PackedVector3Array()
 	var indices := PackedInt32Array()
-	vertices.resize(params.out_vertex_count)
-	colors.resize(params.out_vertex_count)
-	normals.resize(params.out_vertex_count)
-	indices.resize((params.out_vertex_count / 3) * 3)
+	var vertex_count := params.out_vertex_count * 2
+	vertices.resize(vertex_count)
+	colors.resize(vertex_count)
+	normals.resize(vertex_count)
+	indices.resize((vertex_count / 3) * 3)
 
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -93,8 +94,10 @@ func _init_uniforms() -> void:
 	params.out_color_offset = RenderingServer.mesh_surface_get_format_offset(format, params.out_vertex_count, Mesh.ARRAY_COLOR)
 	params.out_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, params.out_vertex_count)
 
-	var shared_edge_size := 4 + (params.in_index_count / 3) * 3 * 8
+	# 3 edges per face
+	var shared_edge_size := 4 + (params.in_index_count * 16)
 	shared_edge_buffer = rd.storage_buffer_create(shared_edge_size)
+	rd.buffer_clear(shared_edge_buffer, 0, shared_edge_size)
 	shared_edge_uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([shared_edge_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.bevel_shrink.shader, 2)
@@ -107,8 +110,8 @@ func _init_uniforms() -> void:
 		ComputeUtil.create_uniform([dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.bevel_shrink.shader, 3)
 
-	debug_buffer = rd.storage_buffer_create(12)
-	rd.buffer_clear(debug_buffer, 0, 12)
+	debug_buffer = rd.storage_buffer_create(24*4)
+	rd.buffer_clear(debug_buffer, 0, 24*4)
 	debug_uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([debug_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.bevel_shrink.shader, 4)
@@ -123,7 +126,7 @@ func _compute_shrink() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, shared_edge_uniform_set, 2)
 	rd.compute_list_bind_uniform_set(compute_list, dispatch_uniform_set, 3)
 	rd.compute_list_bind_uniform_set(compute_list, debug_uniform_set, 4)
-	rd.compute_list_dispatch(compute_list, ceili((params.in_index_count / 3) / 256.0), 1, 1)
+	rd.compute_list_dispatch(compute_list, ceili(params.in_index_count / (128.0 * 3.0)), 1, 1)
 	rd.compute_list_end()
 
 
@@ -147,7 +150,15 @@ func debug() -> void:
 		"\ndispatch: x=%d y=%d z=%d" % [dispatch.decode_u32(0), dispatch.decode_u32(4), dispatch.decode_u32(8)],
 		"[/color]",
 		"\nshared_count: ", shared_edges.decode_u32(0),
-		"\n\n[color=dark_khaki]shared edges: ", ComputeUtil.to_vector2i_array(shared_edges.slice(4)), "[/color]",
+		"\n\n[color=dark_khaki]shared edges: ", ComputeUtil.to_vector4i_array(shared_edges.slice(4)), "[/color]",
+	)
+
+	var out_vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, idx)
+	var out_index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, idx)
+	print_rich("[color=pale_green]",
+		"\nverts: ", rd.buffer_get_data(out_vertex_buffer).to_vector3_array(),
+		"\nindices: ", ComputeUtil.to_int16_array(rd.buffer_get_data(out_index_buffer)),
+		"[/color]"
 	)
 
 

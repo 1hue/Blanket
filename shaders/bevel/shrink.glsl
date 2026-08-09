@@ -5,16 +5,11 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
-// Edge i runs from corner i to corner i+1, so corner i touches edges i and i-1
-const uint EDGE_AB = 0u;
-const uint EDGE_BA = 0u;
-const uint EDGE_BC = 1u;
-const uint EDGE_CB = 1u;
-const uint EDGE_CA = 2u;
-const uint EDGE_AC = 2u;
-const uint NONE = 0xFFFFFFFFu;
+// const uint NONE = 0xFFFFFFFFu;
+const uint WEDGES_GROUP_SIZE = 256;
 
-layout(local_size_x = 256) in;
+// X = face index, Y = face corner index
+layout(local_size_x = 128, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
 	float shrink; // 0 = unchanged, 1 = collapsed to centroid
@@ -37,7 +32,7 @@ layout(set = 1, binding = 0, scalar) restrict writeonly buffer OutVertexBuffer {
 };
 
 layout(set = 1, binding = 1, scalar) restrict writeonly buffer OutIndexBuffer {
-	u16vec3 out_faces[];
+	uint16_t out_faces[];
 };
 
 layout(set = 1, binding = 2, std430) restrict writeonly buffer OutAttributeBuffer {
@@ -46,7 +41,7 @@ layout(set = 1, binding = 2, std430) restrict writeonly buffer OutAttributeBuffe
 
 layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
-	uvec2 shared_edges[]; // corner in face A, matching corner in face B
+	uvec4 shared_edges[]; // Pairs of uvec2
 };
 
 layout(set = 3, binding = 0, std430) restrict buffer DispatchBuffer {
@@ -54,102 +49,124 @@ layout(set = 3, binding = 0, std430) restrict buffer DispatchBuffer {
 };
 
 layout(set = 4, binding = 0, std430) restrict buffer DebugBuffer {
-	float debug_out[3];
+	float debug_out[12];
 };
 
-mat3 get_face_positions(uint face) {
-	uvec3 corners = uvec3(in_faces[face]);
-	return mat3(
-		in_positions[corners.x],
-		in_positions[corners.y],
-		in_positions[corners.z]
+// Mark which of 3 face edges are shared - neighbour verts need to know where to move
+shared bool shared_flags[gl_WorkGroupSize.x][gl_WorkGroupSize.y];
+
+uint next_corner(uint corner) {
+	return (corner + 1u) % 3u;
+}
+
+bool is_degen(uvec2 parts) {
+	return parts[0] == parts[1];
+}
+
+bool is_degen(mat2x3 parts) {
+	return parts[0] == parts[1];
+}
+
+bool edges_match(mat2x3 a, mat2x3 b) {
+	// TODO Compare position equality within a proximity margin
+	return a == b || (a[0] == b[1] && a[1] == b[0]);
+}
+
+bool edges_match(uvec2 a, uvec2 b) {
+	return a == b || (a[0] == b[1] && a[1] == b[0]);
+}
+
+// Find the first pair of matching edge positions and exit.
+// Return actual vert indices.
+uvec2 find_shared_edge(uint face, uvec2 edge) {
+	mat2x3 edge_pos = mat2x3(
+		in_positions[edge[0]], // This corner
+		in_positions[edge[1]] // Next corner
 	);
-}
 
-bool edges_match(vec3 a0, vec3 a1, vec3 b0, vec3 b1) {
-	return (a0 == b0 && a1 == b1) || (a0 == b1 && a1 == b0);
-}
+	if (is_degen(edge) || is_degen(edge_pos)) return uvec2(0);
 
-// Twin corner index per edge, or NONE if the edge is a boundary
-uvec3 find_shared_edges(uint face, uint in_face_count) {
-	mat3 positions_self = get_face_positions(face);
-	uvec3 result = uvec3(NONE);
+	// Loop only up to self - any matching edges in faces above will be matched in their invocations
+	for (uint f = 0; f < in_faces.length() && f < face; f++) {
+		// Compare with the 3 edges of the other face
+		for (uint i = 0; i < 3; i++) {
+			uvec2 other_edge = uvec2(
+				in_faces[f][i],
+				in_faces[f][next_corner(i)]
+			);
+			mat2x3 other_edge_pos = mat2x3(
+				in_positions[other_edge[0]],
+				in_positions[other_edge[1]]
+			);
 
-	for (uint f = 0u; f < in_face_count; f++) {
-		if (face == f) continue; // Don't compare with self
-
-		mat3 positions_other = get_face_positions(f);
-
-		for (uint i_self = 0u; i_self < 3u; i_self++) {
-			vec3 self_a = positions_self[i_self];
-			vec3 self_b = positions_self[(i_self + 1u) % 3u];
-
-			for (uint i_other = 0u; i_other < 3u; i_other++) {
-				vec3 other_a = positions_other[i_other];
-				vec3 other_b = positions_other[(i_other + 1u) % 3u];
-
-				if (edges_match(self_a, self_b, other_a, other_b)) {
-					result[i_self] = f * 3u + i_other;
-					break;
-				}
+			if (is_degen(other_edge) || is_degen(other_edge_pos)) {
+				continue; // Degenerate triangle
+			}
+			if (edges_match(edge, other_edge) || edges_match(edge_pos, other_edge_pos)) {
+				return other_edge;
 			}
 		}
 	}
 
-	return result;
+	return uvec2(0); // 0 is a valid index but 0,0 is a degenerate edge - use as falsy
 }
 
-// Each corner retreats along its two edges (or between, towards face center) based on whether edge is shared
-vec3 inset_corner(vec3 own, vec3 next, vec3 prev, bool next_shared, bool prev_shared) {
+// Each corner retreats along its two edges (or towards face center) based on whether edge is shared
+vec3 inset_corner(uint face, uint corner) {
+	uint next = next_corner(corner);
+	uint prev = (corner + 2u) % 3u;
+
+	vec3 self_pos = in_positions[in_faces[face][corner]];
+	vec3 next_pos = in_positions[in_faces[face][next]];
+	vec3 prev_pos = in_positions[in_faces[face][prev]];
+
+	bool next_shared = shared_flags[gl_LocalInvocationID.x][corner];
+	bool prev_shared = shared_flags[gl_LocalInvocationID.x][prev];
+
 	if (!next_shared && !prev_shared) {
-		return own;
+		return self_pos;
 	}
 
 	float bias = next_shared && prev_shared ? 0.5 : (next_shared ? 1.0 : 0.0);
-	return mix(own, mix(next, prev, bias), shrink);
+	return mix(self_pos, mix(next_pos, prev_pos, bias), shrink);
 }
 
 void write_out_color(uint out_index, vec4 color) {
-	uint word = (out_color_offset + out_index * out_attribute_stride) / 4u;
+	uint word = (out_color_offset + out_index * out_attribute_stride) / 4;
 	out_attributes[word] = packUnorm4x8(color);
 }
 
 void main() {
-	uint face = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
-	uint in_face_count = in_index_count / 3u;
+	uint face = gl_GlobalInvocationID.x; // Vert index
+	uint corner = gl_GlobalInvocationID.y; // Index offset 0..2 within a face like (3,4,5)
 
-	if (face >= in_face_count) return;
+	if (face >= in_index_count / 3) return;
 
-	uvec3 corners = uvec3(in_faces[face]);
-	vec3 a = in_positions[corners.x];
-	vec3 b = in_positions[corners.y];
-	vec3 c = in_positions[corners.z];
+// 	uint idx = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+	uvec2 edge = uvec2(
+		in_faces[face][corner],
+		in_faces[face][next_corner(corner)]
+	);
+	uvec2 twin = find_shared_edge(face, edge);
+	bool is_shared = twin != uvec2(0);
 
-	uvec3 edges = find_shared_edges(face, in_face_count);
-	uint base = face * 3u;
+	shared_flags[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = is_shared;
 
-	out_positions[base] = inset_corner(a, b, c, edges[EDGE_AB] != NONE, edges[EDGE_AC] != NONE);
-	out_positions[base + 1u] = inset_corner(b, c, a, edges[EDGE_BC] != NONE, edges[EDGE_BA] != NONE);
-	out_positions[base + 2u] = inset_corner(c, a, b, edges[EDGE_CA] != NONE, edges[EDGE_CB] != NONE);
+	barrier(); // wait for all 3 corners of this face to finish their own detection
 
-	out_faces[face] = u16vec3(base, base + 1u, base + 2u);
+	// Copied vertex keeps its original index, but moves position
+	uint base = face * 3u + corner;
+	out_positions[base] = inset_corner(face, corner);
+	out_faces[base] = uint16_t(base);
 
-	vec4 red = vec4(1, 0, 0, 1);
-	write_out_color(base, edges[EDGE_AB] != NONE || edges[EDGE_AC] != NONE ? red : vec4(1));
-	write_out_color(base + 1u, edges[EDGE_BC] != NONE || edges[EDGE_BA] != NONE ? red : vec4(1));
-	write_out_color(base + 2u, edges[EDGE_CA] != NONE || edges[EDGE_CB] != NONE ? red : vec4(1));
+	// Debug visualization: red where this corner touches a shared edge
+	write_out_color(base, is_shared ? vec4(1, 0, 0, 1) : vec4(1));
 
-	// Register shared edges for the wedge pass - lower corner wins so each edge lands once
-	for (uint e = 0u; e < 3u; e++) {
-		uint corner = base + e;
-		uint twin = edges[e];
+	if (!is_shared) return;
 
-		if (twin == NONE || twin < corner) continue;
-
-		uint slot = atomicAdd(shared_count, 1u);
-		shared_edges[slot] = uvec2(corner, twin);
-		atomicMax(dispatch.x, (slot + 256u) / 256u);
-		dispatch.y = 2u; // one invocation per edge endpoint
-		dispatch.z = 1u;
-	}
+	uint slot = atomicAdd(shared_count, 1u);
+	shared_edges[slot] = uvec4(edge, twin);
+	atomicMax(dispatch.x, (slot + WEDGES_GROUP_SIZE) / WEDGES_GROUP_SIZE);
+	dispatch.y = 1u;
+	dispatch.z = 1u;
 }

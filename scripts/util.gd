@@ -81,6 +81,23 @@ static func to_vector2i_array(bytes: PackedByteArray) -> Array[Vector2i]:
 	return result
 
 
+static func to_vector4i_array(bytes: PackedByteArray) -> Array[Vector4i]:
+	var result: Array[Vector4i] = []
+	@warning_ignore("integer_division")
+	result.resize(bytes.size() / 16)
+
+	for i in result.size():
+		var offset := i * 16
+		result[i] = Vector4i(
+			bytes.decode_u32(offset),
+			bytes.decode_u32(offset + 4),
+			bytes.decode_u32(offset + 8),
+			bytes.decode_u32(offset + 12)
+		)
+
+	return result
+
+
 static func to_vector3i_array(indices: PackedInt32Array) -> Array[Vector3i]:
 	var triangles: Array[Vector3i] = []
 
