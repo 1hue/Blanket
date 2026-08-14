@@ -1,16 +1,16 @@
-// Fill the gap at one end of a shared edge with a fan anchored at the original vertex.
+// Bridge a shared edge: an arc per end, a fan behind each, and a strip between them.
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
-// X = shared edge, Y = which end of it
-layout(local_size_x = 256, local_size_y = 2) in;
+layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
 	float shrink; // Must match shrink.glsl
-	uint segments;
+	float bevel; // 0 = bend at the crease, 1 = straight chord
+	uint segments; // Per side of the crease
 	uint out_color_offset;
 	uint out_attribute_stride;
 };
@@ -41,68 +41,101 @@ layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 };
 
 uint corner_vertex(uint corner) {
-	return uint(in_faces[corner / 3u][corner % 3u]);
-}
-
-void write_color(uint vert, vec4 color) {
-	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4u] = packUnorm4x8(color);
+	return uint(in_faces[corner / 3][corner % 3]);
 }
 
 void write_vertex(uint vert, vec3 position, vec4 color) {
 	out_positions[vert] = position;
-	write_color(vert, color);
+	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = packUnorm4x8(color);
 }
 
 void write_triangle(uint at, uvec3 verts) {
 	out_faces[at] = uint16_t(verts.x);
-	out_faces[at + 1u] = uint16_t(verts.y);
-	out_faces[at + 2u] = uint16_t(verts.z);
+	out_faces[at + 1] = uint16_t(verts.y);
+	out_faces[at + 2] = uint16_t(verts.z);
 }
 
-// Walks retracted_a -> crease -> retracted_b, crease landing exactly on step SEGMENTS
-vec3 ring_point(mat3 anchors, uint step) {
-	bool past_crease = step > segments;
-	float t = float(past_crease ? step - segments : step) / float(segments);
+// Anchors: retracted A, crease, retracted B. bevel 0 = sharp crease, 1 = smooth curve.
+vec3 arc_point(mat3 anchors, uint step) {
+	float t = float(step) / float(segments * 2);
 
-	return past_crease
-		? mix(anchors[1], anchors[2], t)
-		: mix(anchors[0], anchors[1], t);
+	vec3 sharp = step > segments
+		? mix(anchors[1], anchors[2], float(step - segments) / float(segments))
+		: mix(anchors[0], anchors[1], float(step) / float(segments));
+
+	vec3 smoothed_a = mix(anchors[0], anchors[1], t);
+	vec3 smoothed_b = mix(anchors[1], anchors[2], t);
+	vec3 smoothed = mix(smoothed_a, smoothed_b, t);
+
+	return mix(sharp, smoothed, bevel);
+}
+
+// Retracted corners of both faces plus the point still on the original edge
+mat3 arc_anchors(uvec4 corners, uint end) {
+	uint corner_a = end == 0 ? corners.x : corners.y;
+	uint corner_b = end == 0 ? corners.w : corners.z;
+	uint far = end == 0 ? corners.y : corners.x;
+
+	vec3 origin = in_positions[corner_vertex(corner_a)];
+	vec3 crease = mix(origin, in_positions[corner_vertex(far)], shrink);
+
+	return mat3(out_positions[corner_a], crease, out_positions[corner_b]);
 }
 
 void main() {
 	uint edge = gl_GlobalInvocationID.x;
-	uint end = gl_GlobalInvocationID.y;
 
 	if (edge >= shared_count) return;
 
 	uvec4 corners = shared_edges[edge];
 
-	// Faces run the edge in opposite directions, so the ends pair crosswise
-	uint corner_a = end == 0u ? corners.x : corners.y;
-	uint corner_b = end == 0u ? corners.w : corners.z;
-	uint far = end == 0u ? corners.y : corners.x;
+	uint arc_steps = segments * 2; // Last step index, so arc_steps + 1 points
+	uint interior = arc_steps - 1; // Endpoints already exist as retracted corners
+	uint corner_count = uint(in_faces.length()) * 3;
 
-	vec3 origin = in_positions[corner_vertex(corner_a)];
-	vec3 crease = mix(origin, in_positions[corner_vertex(far)], shrink); // On the edge, so in both planes
+	uint vert_base = corner_count + edge * (2 + interior * 2);
+	uint apex_base = vert_base;
+	uint interior_base = vert_base + 2;
 
-	mat3 anchors = mat3(out_positions[corner_a], crease, out_positions[corner_b]);
+	// Two arcs cross the shared edge, retracted corner A -> crease -> retracted B
+	mat3 anchors[2] = mat3[](arc_anchors(corners, 0), arc_anchors(corners, 1));
+	uint arc_ends[2][2] = uint[2][2](
+		uint[2](corners.x, corners.w),
+		uint[2](corners.y, corners.z)
+	);
 
-	uint ring_count = segments * 2u + 1u;
-	uint vert_count = ring_count + 1u;
-	uint tri_count = ring_count - 1u;
+	for (uint end = 0; end < 2; end++) {
+		write_vertex(apex_base + end, in_positions[corner_vertex(arc_ends[end][0])], vec4(0, 0, 1, 1));
 
-	uint wedge = edge * 2u + end;
-	uint corner_count = in_faces.length() * 3u;
-	uint vert_base = corner_count + wedge * vert_count;
-	uint index_base = corner_count + wedge * tri_count * 3u;
-
-	write_vertex(vert_base, origin, vec4(0, 0, 1, 1));
-
-	for (uint i = 0u; i < ring_count; i++) {
-		write_vertex(vert_base + 1u + i, ring_point(anchors, i), vec4(0, 1, 0, 1));
+		for (uint i = 1; i < arc_steps; i++) {
+			uint vert = interior_base + end * interior + i - 1;
+			write_vertex(vert, arc_point(anchors[end], i), vec4(0, 1, 0, 1));
+		}
 	}
 
-	for (uint i = 0u; i < tri_count; i++) {
-		write_triangle(index_base + i * 3u, uvec3(vert_base, vert_base + 1u + i, vert_base + 2u + i));
+	uint fan_tris = arc_steps;
+	uint tri_base = corner_count + edge * fan_tris * 4;
+
+	for (uint end = 0; end < 2; end++) {
+		for (uint i = 0; i < arc_steps; i++) {
+			uint from = i == 0 ? arc_ends[end][0] : interior_base + end * interior + i - 1;
+			uint to = i == arc_steps - 1 ? arc_ends[end][1] : interior_base + end * interior + i;
+			uvec2 wound = end == 0 ?uvec2(to, from) : uvec2(from, to);
+
+			write_triangle((tri_base + end * fan_tris + i) * 3, uvec3(apex_base + end, wound.x, wound.y));
+		}
+	}
+
+	// Close the void between the two arcs
+	uint strip_base = tri_base + fan_tris * 2;
+
+	for (uint i = 0; i < arc_steps; i++) {
+		uint near_from = i == 0 ? arc_ends[0][0] : interior_base + i - 1;
+		uint near_to = i == arc_steps - 1 ? arc_ends[0][1] : interior_base + i;
+		uint far_from = i == 0 ? arc_ends[1][0] : interior_base + interior + i - 1;
+		uint far_to = i == arc_steps - 1 ? arc_ends[1][1] : interior_base + interior + i;
+
+		write_triangle((strip_base + i * 2) * 3, uvec3(near_from, near_to, far_to));
+		write_triangle((strip_base + i * 2 + 1) * 3, uvec3(near_from, far_to, far_from));
 	}
 }

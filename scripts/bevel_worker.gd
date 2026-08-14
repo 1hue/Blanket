@@ -35,7 +35,7 @@ func bake() -> void:
 	_init_uniforms()
 	_compute_shrink()
 	_compute_wedge()
-	_compute_fill()
+	#_compute_fill()
 	debug()
 
 
