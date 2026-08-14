@@ -2,7 +2,7 @@ extends RefCounted
 class_name BevelParams
 
 const SIZE_SHRINK = 12
-const SIZE_JOIN = 4
+const SIZE_WEDGE = 12
 const DEFAULT_SHRINK = 0.3
 
 var shrink := DEFAULT_SHRINK
@@ -24,6 +24,8 @@ func pack_shrink() -> PackedByteArray:
 
 func pack_wedge() -> PackedByteArray:
 	var bytes := PackedByteArray()
-	bytes.resize(SIZE_JOIN)
+	bytes.resize(SIZE_WEDGE)
 	bytes.encode_float(0, shrink)
+	bytes.encode_u32(4, out_color_offset)
+	bytes.encode_u32(8, out_attribute_stride)
 	return bytes

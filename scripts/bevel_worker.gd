@@ -34,7 +34,7 @@ func bake() -> void:
 	_allocate()
 	_init_uniforms()
 	_compute_shrink()
-	#_compute_wedge()
+	_compute_wedge()
 	debug()
 
 
@@ -133,7 +133,7 @@ func _compute_shrink() -> void:
 func _compute_wedge() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_wedge.pipeline)
-	rd.compute_list_set_push_constant(compute_list, params.pack_wedge(), BevelParams.SIZE_JOIN)
+	rd.compute_list_set_push_constant(compute_list, params.pack_wedge(), BevelParams.SIZE_WEDGE)
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, shared_edge_uniform_set, 2)
