@@ -45,10 +45,6 @@ layout(set = 3, binding = 0, std430) restrict buffer DispatchBuffer {
 	uvec3 dispatch; // Indirect args for wedge.glsl
 };
 
-layout(set = 4, binding = 0, std430) restrict buffer DebugBuffer {
-	float debug_out[12];
-};
-
 uint next_corner(uint corner) {
 	return (corner + 1u) % 3u;
 }
@@ -75,7 +71,10 @@ bool is_degen(mat2x3 edge) {
 // Correctly wound neighbours run their shared edge in opposite directions.
 // A degenerate edge can never satisfy this, so it needs no separate check.
 bool is_twin(mat2x3 edge, mat2x3 other) {
-	return edge[0] == other[1] && edge[1] == other[0];
+	return (
+		(edge[0] == other[1] && edge[1] == other[0]) ||
+		(edge[1] == other[0] && edge[0] == other[1])
+	);
 }
 
 // Twin corner index per edge, or NONE where the edge is a boundary
@@ -157,8 +156,7 @@ void main() {
 		uint twin = twins[e];
 		if (twin == NONE || base + e > twin) continue;
 
-		pending[pending_count] = uvec4(edge_verts(face, e), edge_verts(twin / 3u, twin % 3u));
-		pending_count++;
+		pending[pending_count++] = uvec4(edge_verts(face, e), edge_verts(twin / 3u, twin % 3u));
 	}
 
 	if (pending_count == 0u) return;

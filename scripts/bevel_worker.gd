@@ -35,13 +35,19 @@ func bake() -> void:
 	_init_uniforms()
 	_compute_shrink()
 	_compute_wedge()
+	_compute_fill()
 	debug()
 
 
 func _size() -> void:
 	params.in_vertex_count = mesh.surface_get_array_len(source_idx)
 	params.in_index_count = mesh.surface_get_array_index_len(source_idx)
-	params.out_vertex_count = params.in_vertex_count * (1 + 1 + 1 * 2)
+	params.out_vertex_count = params.in_vertex_count + get_bevel_vertex_count()
+
+
+func get_bevel_vertex_count() -> int:
+	var face_count := params.in_index_count
+	return face_count * params.segments * 4 * 3 # 4 faces per long segment: 2 wedges + 1 quad
 
 
 func _allocate() -> void:
@@ -53,11 +59,10 @@ func _allocate() -> void:
 	var colors := PackedColorArray()
 	var normals := PackedVector3Array()
 	var indices := PackedInt32Array()
-	var vertex_count := params.out_vertex_count * 2
-	vertices.resize(vertex_count)
-	colors.resize(vertex_count)
-	normals.resize(vertex_count)
-	indices.resize((vertex_count / 3) * 3)
+	vertices.resize(params.out_vertex_count)
+	colors.resize(params.out_vertex_count)
+	normals.resize(params.out_vertex_count)
+	indices.resize(params.out_vertex_count)
 
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -114,7 +119,7 @@ func _init_uniforms() -> void:
 	rd.buffer_clear(debug_buffer, 0, 24*4)
 	debug_uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([debug_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-	], SurfaceShaders.bevel_shrink.shader, 4)
+	], SurfaceShaders.bevel_fill.shader, 4)
 
 
 func _compute_shrink() -> void:
@@ -125,7 +130,6 @@ func _compute_shrink() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, shared_edge_uniform_set, 2)
 	rd.compute_list_bind_uniform_set(compute_list, dispatch_uniform_set, 3)
-	rd.compute_list_bind_uniform_set(compute_list, debug_uniform_set, 4)
 	rd.compute_list_dispatch(compute_list, ceili(params.in_index_count / (128.0 * 3.0)), 1, 1)
 	rd.compute_list_end()
 
@@ -137,6 +141,18 @@ func _compute_wedge() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, shared_edge_uniform_set, 2)
+	rd.compute_list_dispatch_indirect(compute_list, dispatch_buffer, 0)
+	rd.compute_list_end()
+
+
+func _compute_fill() -> void:
+	var compute_list := rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_fill.pipeline)
+	rd.compute_list_set_push_constant(compute_list, params.pack_fill(), BevelParams.SIZE_FILL)
+	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, shared_edge_uniform_set, 2)
+	rd.compute_list_bind_uniform_set(compute_list, debug_uniform_set, 4)
 	rd.compute_list_dispatch_indirect(compute_list, dispatch_buffer, 0)
 	rd.compute_list_end()
 
@@ -154,9 +170,11 @@ func debug() -> void:
 	)
 
 	var out_vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, idx)
+	var out_attr_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, idx)
 	var out_index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, idx)
 	print_rich("[color=pale_green]",
-		"\nverts: ", rd.buffer_get_data(out_vertex_buffer).to_vector3_array(),
+		#"\nverts: ", rd.buffer_get_data(out_vertex_buffer).to_vector3_array(),
+		"\nattrs: ", rd.buffer_get_data(out_attr_buffer),
 		"\nindices: ", ComputeUtil.to_int16_array(rd.buffer_get_data(out_index_buffer)),
 		"[/color]"
 	)
