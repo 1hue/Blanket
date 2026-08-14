@@ -46,8 +46,9 @@ func _size() -> void:
 
 
 func get_bevel_vertex_count() -> int:
-	var face_count := params.in_index_count
-	return face_count * params.segments * 4 * 3 # 4 faces per long segment: 2 wedges + 1 quad
+	var face_count := params.in_index_count / 3
+	var segment_verts := params.segments * 4 * 3 # 4 faces per long segment: 2 wedges + 1 quad
+	return face_count * segment_verts * 3 # Each face can have 3 shared edges
 
 
 func _allocate() -> void:
