@@ -5,16 +5,12 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
-const uint SEGMENTS = 2u; // Per side of the crease
-const uint RING_COUNT = SEGMENTS * 2u + 1u;
-const uint VERT_COUNT = RING_COUNT + 1u;
-const uint TRI_COUNT = RING_COUNT - 1u;
-
 // X = shared edge, Y = which end of it
 layout(local_size_x = 256, local_size_y = 2) in;
 
 layout(push_constant, std430) uniform PushParams {
 	float shrink; // Must match shrink.glsl
+	uint segments;
 	uint out_color_offset;
 	uint out_attribute_stride;
 };
@@ -65,8 +61,8 @@ void write_triangle(uint at, uvec3 verts) {
 
 // Walks retracted_a -> crease -> retracted_b, crease landing exactly on step SEGMENTS
 vec3 ring_point(mat3 anchors, uint step) {
-	bool past_crease = step > SEGMENTS;
-	float t = float(past_crease ? step - SEGMENTS : step) / float(SEGMENTS);
+	bool past_crease = step > segments;
+	float t = float(past_crease ? step - segments : step) / float(segments);
 
 	return past_crease
 		? mix(anchors[1], anchors[2], t)
@@ -91,18 +87,22 @@ void main() {
 
 	mat3 anchors = mat3(out_positions[corner_a], crease, out_positions[corner_b]);
 
+	uint ring_count = segments * 2u + 1u;
+	uint vert_count = ring_count + 1u;
+	uint tri_count = ring_count - 1u;
+
 	uint wedge = edge * 2u + end;
-	uint corner_count = uint(in_faces.length()) * 3u; // Shrink filled everything below this
-	uint vert_base = corner_count + wedge * VERT_COUNT;
-	uint index_base = corner_count + wedge * TRI_COUNT * 3u;
+	uint corner_count = in_faces.length() * 3u;
+	uint vert_base = corner_count + wedge * vert_count;
+	uint index_base = corner_count + wedge * tri_count * 3u;
 
 	write_vertex(vert_base, origin, vec4(0, 0, 1, 1));
 
-	for (uint i = 0u; i < RING_COUNT; i++) {
+	for (uint i = 0u; i < ring_count; i++) {
 		write_vertex(vert_base + 1u + i, ring_point(anchors, i), vec4(0, 1, 0, 1));
 	}
 
-	for (uint i = 0u; i < TRI_COUNT; i++) {
+	for (uint i = 0u; i < tri_count; i++) {
 		write_triangle(index_base + i * 3u, uvec3(vert_base, vert_base + 1u + i, vert_base + 2u + i));
 	}
 }
