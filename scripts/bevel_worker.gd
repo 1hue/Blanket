@@ -34,21 +34,21 @@ func bake() -> void:
 	_allocate()
 	_init_uniforms()
 	_compute_shrink()
-	_compute_wedge()
-	#_compute_fill()
+	_compute_fill()
 	debug()
 
 
 func _size() -> void:
 	params.in_vertex_count = mesh.surface_get_array_len(source_idx)
 	params.in_index_count = mesh.surface_get_array_index_len(source_idx)
-	params.out_vertex_count = params.in_vertex_count + get_bevel_vertex_count()
 
+	var arc_steps := params.segments * 2
+	var arc_count := arc_steps + 1
+	var fan_verts := 1 + params.WEDGE_SEGMENTS * arc_count
+	var fan_tris := arc_steps + (params.WEDGE_SEGMENTS - 1) * arc_steps * 2
 
-func get_bevel_vertex_count() -> int:
-	var face_count := params.in_index_count / 3
-	var segment_verts := params.segments * 4 * 3 # 4 faces per long segment: 2 wedges + 1 quad
-	return face_count * segment_verts * 3 # Each face can have 3 shared edges
+	params.out_vertex_count = params.in_index_count + params.max_shared_edges * fan_verts * 2
+	params.out_index_count = (params.in_index_count + params.max_shared_edges * (fan_tris * 2 + arc_steps * 2)) * 3
 
 
 func _allocate() -> void:
@@ -63,7 +63,7 @@ func _allocate() -> void:
 	vertices.resize(params.out_vertex_count)
 	colors.resize(params.out_vertex_count)
 	normals.resize(params.out_vertex_count)
-	indices.resize(params.out_vertex_count)
+	indices.resize(params.out_index_count)
 
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -101,7 +101,7 @@ func _init_uniforms() -> void:
 	params.out_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, params.out_vertex_count)
 
 	# 3 edges per face
-	var shared_edge_size := 4 + (params.in_index_count * 16)
+	var shared_edge_size := 4 + params.max_shared_edges * 16
 	shared_edge_buffer = rd.storage_buffer_create(shared_edge_size)
 	rd.buffer_clear(shared_edge_buffer, 0, shared_edge_size)
 	shared_edge_uniform_set = rd.uniform_set_create([
@@ -135,17 +135,6 @@ func _compute_shrink() -> void:
 	rd.compute_list_end()
 
 
-func _compute_wedge() -> void:
-	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_wedge.pipeline)
-	rd.compute_list_set_push_constant(compute_list, params.pack_wedge(), BevelParams.SIZE_WEDGE)
-	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
-	rd.compute_list_bind_uniform_set(compute_list, shared_edge_uniform_set, 2)
-	rd.compute_list_dispatch_indirect(compute_list, dispatch_buffer, 0)
-	rd.compute_list_end()
-
-
 func _compute_fill() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_fill.pipeline)
@@ -174,8 +163,8 @@ func debug() -> void:
 	var out_attr_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, idx)
 	var out_index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, idx)
 	print_rich("[color=pale_green]",
-		#"\nverts: ", rd.buffer_get_data(out_vertex_buffer).to_vector3_array(),
-		"\nattrs: ", rd.buffer_get_data(out_attr_buffer),
+		"\nverts: ", rd.buffer_get_data(out_vertex_buffer).to_vector3_array(),
+		#"\nattrs: ", rd.buffer_get_data(out_attr_buffer),
 		"\nindices: ", ComputeUtil.to_int16_array(rd.buffer_get_data(out_index_buffer)),
 		"[/color]"
 	)

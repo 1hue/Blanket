@@ -1,15 +1,17 @@
-// Fill the strip left between the two wedge fans along a shared edge.
+// Bridge a shared edge: an arc per end, a fan behind each, and a strip between them.
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
+const uint WEDGE_SEGMENTS = 2; // Tip triangle, then WEDGE_SEGMENTS-1 quad bands outward
+
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
 	float shrink; // Must match shrink.glsl
-	uint segments; // Must match wedge.glsl
+	uint segments; // Per side of the crease
 	uint out_color_offset;
 	uint out_attribute_stride;
 };
@@ -44,39 +46,45 @@ layout(set = 4, binding = 0, scalar) restrict buffer DebugBuffer {
 };
 
 uint corner_vertex(uint corner) {
-	return uint(in_faces[corner / 3u][corner % 3u]);
+	return uint(in_faces[corner / 3][corner % 3]);
 }
 
 void write_vertex(uint vert, vec3 position, vec4 color) {
 	out_positions[vert] = position;
-	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4u] = packUnorm4x8(color);
+	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = packUnorm4x8(color);
 }
 
-void write_triangle(uint at, uvec3 verts) {
-	out_faces[at] = uint16_t(verts.x);
-	out_faces[at + 1u] = uint16_t(verts.y);
-	out_faces[at + 2u] = uint16_t(verts.z);
+void write_triangle(uint tri, uvec3 verts, bool reverse) {
+	uvec3 wound = reverse ? verts.xzy : verts;
+	uint at = tri * 3;
+
+	out_faces[at] = uint16_t(wound.x);
+	out_faces[at + 1] = uint16_t(wound.y);
+	out_faces[at + 2] = uint16_t(wound.z);
 }
 
-vec3 ring_point(mat3 anchors, uint step) {
-	bool past_crease = step > segments;
-	float t = float(past_crease ? step - segments : step) / float(segments);
-
-	return past_crease
-		? mix(anchors[1], anchors[2], t)
-		: mix(anchors[0], anchors[1], t);
+// anchors: retracted A, crease, retracted B
+vec3 arc_point(mat3 anchors, uint step) {
+	return step > segments
+	? mix(anchors[1], anchors[2], float(step - segments) / float(segments))
+	: mix(anchors[0], anchors[1], float(step) / float(segments));
 }
 
-// Recomputed rather than read from wedge.glsl, which may still be in flight
-mat3 ring_anchors(uvec4 corners, uint end) {
-	uint corner_a = end == 0u ? corners.x : corners.y;
-	uint corner_b = end == 0u ? corners.w : corners.z;
-	uint far = end == 0u ? corners.y : corners.x;
+mat3 arc_anchors(uvec4 corners, uint end) {
+	uint near = end == 0 ? corners.x : corners.y;
+	uint far = end == 0 ? corners.w : corners.z;
+	uint along = end == 0 ? corners.y : corners.x;
 
-	vec3 origin = in_positions[corner_vertex(corner_a)];
-	vec3 crease = mix(origin, in_positions[corner_vertex(far)], shrink);
+	vec3 origin = in_positions[corner_vertex(near)];
+	vec3 crease = mix(origin, in_positions[corner_vertex(along)], shrink);
 
-	return mat3(out_positions[corner_a], crease, out_positions[corner_b]);
+	return mat3(out_positions[near], crease, out_positions[far]);
+}
+
+// Ring 1 hugs the apex, ring WEDGE_SEGMENTS is the arc itself
+uint ring_vert(uint ring_base, uint end, uint ring, uint step) {
+	uint arc_count = segments * 2 + 1;
+	return ring_base + (end * WEDGE_SEGMENTS + ring - 1) * arc_count + step;
 }
 
 void main() {
@@ -84,35 +92,72 @@ void main() {
 
 	if (edge >= shared_count) return;
 
-	uint ring_count = segments * 2u + 1u;
-	uint vert_count = ring_count + 1u;
-	uint tri_count = ring_count - 1u;
+	uvec4 corners = shared_edges[edge];
 
-	mat3 near = ring_anchors(shared_edges[edge], 0u);
-	mat3 far = ring_anchors(shared_edges[edge], 1u);
+	uint arc_steps = segments * 2;
+	uint arc_count = arc_steps + 1;
+	uint bands = WEDGE_SEGMENTS - 1;
 
-	uint corner_count = uint(in_faces.length()) * 3u;
-	uint wedge_verts = shared_count * 2u * vert_count;
-	uint wedge_indices = shared_count * 2u * tri_count * 3u;
+	uint fan_verts = 1 + WEDGE_SEGMENTS * arc_count;
+	uint fan_tris = arc_steps + bands * arc_steps * 2;
+	uint corner_count = uint(in_faces.length()) * 3;
 
-	uint vert_base = corner_count + wedge_verts + edge * ring_count * 2u;
-	uint index_base = corner_count + wedge_indices + edge * tri_count * 6u;
+	uint apex_base = corner_count + edge * fan_verts * 2;
+	uint ring_base = apex_base + 2;
+	uint tri_base = corner_count + edge * (fan_tris * 2 + arc_steps * 2);
 
-	debug = vec4(ring_count, vert_count, tri_count, corner_count);
+	for (uint end = 0; end < 2; end++) {
+		mat3 anchors = arc_anchors(corners, end);
+		vec3 apex = in_positions[corner_vertex(end == 0 ? corners.x : corners.y)];
 
-	for (uint i = 0u; i < ring_count; i++) {
-		write_vertex(vert_base + i, ring_point(near, i), vec4(1, 1, 0, 1));
-		write_vertex(vert_base + ring_count + i, ring_point(far, i), vec4(1, 1, 0, 1));
+		write_vertex(apex_base + end, apex, vec4(0, 0, 1, 1));
+
+		for (uint ring = 1; ring <= WEDGE_SEGMENTS; ring++) {
+			float t = float(ring) / float(WEDGE_SEGMENTS);
+			vec4 color = ring == WEDGE_SEGMENTS ? vec4(0, 1, 0, 1) : vec4(1, 0, 1, 1);
+
+			for (uint i = 0; i <= arc_steps; i++) {
+				vec3 point = mix(apex, arc_point(anchors, i), t);
+				write_vertex(ring_vert(ring_base, end, ring, i), point, color);
+			}
+		}
 	}
 
-	// Rings run in step, so each pair of adjacent steps closes a quad
-	for (uint i = 0u; i < tri_count; i++) {
-		uint a = vert_base + i;
-		uint b = vert_base + i + 1u;
-		uint c = vert_base + ring_count + i + 1u;
-		uint d = vert_base + ring_count + i;
+	for (uint end = 0; end < 2; end++) {
+		bool reverse = end == 1; // Ends sit at opposite ends of the edge
+		uint fan_base = tri_base + end * fan_tris;
 
-		write_triangle(index_base + i * 6u, uvec3(a, b, c));
-		write_triangle(index_base + i * 6u + 3u, uvec3(a, c, d));
+		for (uint i = 0; i < arc_steps; i++) {
+			uint inner = ring_vert(ring_base, end, 1, i);
+			write_triangle(fan_base + i, uvec3(apex_base + end, inner + 1, inner), reverse);
+		}
+
+		for (uint ring = 1; ring < WEDGE_SEGMENTS; ring++) {
+			uint band_base = fan_base + arc_steps + (ring - 1) * arc_steps * 2;
+
+			for (uint i = 0; i < arc_steps; i++) {
+				uint inner = ring_vert(ring_base, end, ring, i);
+				uint outer = ring_vert(ring_base, end, ring + 1, i);
+
+				// Alternate which diagonal splits the quad
+				bool flip = (i + ring) % 2 == 1;
+
+				uvec3 a = flip ? uvec3(inner, outer + 1, outer) : uvec3(inner, inner + 1, outer);
+				uvec3 b = flip ? uvec3(inner, inner + 1, outer + 1) : uvec3(inner + 1, outer + 1, outer);
+
+				write_triangle(band_base + i * 2, a, reverse);
+				write_triangle(band_base + i * 2 + 1, b, reverse);
+			}
+		}
+	}
+
+	uint strip_base = tri_base + fan_tris * 2;
+
+	for (uint i = 0; i < arc_steps; i++) {
+		uint near = ring_vert(ring_base, 0, WEDGE_SEGMENTS, i);
+		uint far = ring_vert(ring_base, 1, WEDGE_SEGMENTS, i);
+
+		write_triangle(strip_base + i * 2, uvec3(near, near + 1, far + 1), false);
+		write_triangle(strip_base + i * 2 + 1, uvec3(near, far + 1, far), false);
 	}
 }

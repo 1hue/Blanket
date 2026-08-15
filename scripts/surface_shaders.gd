@@ -33,7 +33,6 @@ var dedupe: ShaderPipeline
 var verts: ShaderPipeline
 var shape: ShaderPipeline
 var bevel_shrink: ShaderPipeline
-var bevel_wedge: ShaderPipeline
 var bevel_fill: ShaderPipeline
 
 
@@ -50,5 +49,4 @@ func _init() -> void:
 	verts = ShaderPipeline.new("res://shaders/verts.glsl")
 	shape = ShaderPipeline.new("res://shaders/shape.glsl")
 	bevel_shrink = ShaderPipeline.new("res://shaders/bevel/shrink.glsl")
-	bevel_wedge = ShaderPipeline.new("res://shaders/bevel/wedge.glsl")
 	bevel_fill = ShaderPipeline.new("res://shaders/bevel/fill.glsl")
