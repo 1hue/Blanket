@@ -3,7 +3,6 @@ class_name ComputeParams
 
 signal changed
 
-const SIZE_FACES = 44
 const SIZE_EDGES = 8
 const SIZE_DEDUPE = 16
 const SIZE_VERTS = 52
@@ -53,33 +52,6 @@ var out_normal_stride: int
 var out_marker_offset: int
 var out_attribute_stride: int
 var out_index_stride: int
-
-
-## Pack push constant bytes for faces.glsl
-func pack_faces() -> PackedByteArray:
-	var bytes := PackedByteArray()
-	bytes.resize(SIZE_FACES)
-	bytes.encode_float(0, local_up.x)
-	bytes.encode_float(4, local_up.y)
-	bytes.encode_float(8, local_up.z)
-	bytes.encode_float(12, upright_dot)
-	bytes.encode_u32(16, in_index_count)
-	bytes.encode_u32(20, in_vertex_count)
-	bytes.encode_u32(24, in_index_stride)
-	bytes.encode_u32(28, in_normal_offset)
-	bytes.encode_u32(32, in_normal_stride)
-	bytes.encode_u32(36, in_color_offset)
-	bytes.encode_u32(40, in_attribute_stride)
-	return bytes
-
-
-## Pack push constant bytes for edges.glsl
-func pack_edges() -> PackedByteArray:
-	var bytes := PackedByteArray()
-	bytes.resize(SIZE_EDGES)
-	bytes.encode_u32(0, in_vertex_stride)
-	bytes.encode_u32(4, in_vertex_count)
-	return bytes
 
 
 func pack_dedupe() -> PackedByteArray:

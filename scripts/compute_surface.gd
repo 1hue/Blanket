@@ -7,6 +7,8 @@ const SURFACE_FLAGS := (
 const SURFACE_NAME = "AddedSurface"
 
 var mesh: ArrayMesh
+var mesh_rid: RID:
+	get: return mesh.get_rid()
 ## Original surface derived from
 var source_idx: int
 ## Index of the new surface on the mesh

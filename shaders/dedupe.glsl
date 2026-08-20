@@ -74,9 +74,7 @@ uint canonical_of(uint i) {
 void main() {
 	uint i = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
 
-	if (i >= in_vertex_count || used[i] == 0u) {
-		return;
-	}
+	if (i >= in_vertex_count || used[i] == 0u) return;
 
 	uint canonical = canonical_of(i);
 

@@ -29,12 +29,12 @@ layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
 	uvec3 faces[]; // input: eligible faces from faces.glsl
 };
 
-layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
+layout(set = 2, binding = 1, scalar) restrict buffer EdgesBuffer {
 	uint edges_count;
 	uvec3 edges[]; // (a, b, c) - c is the face's opposite vertex, used to determine outward normal
 };
 
-layout(set = 2, binding = 0, std430) restrict writeonly buffer EdgesDispatchBuffer {
+layout(set = 3, binding = 0, std430) restrict writeonly buffer EdgesDispatchBuffer {
 	uvec3 dispatch;
 };
 

@@ -21,6 +21,14 @@ var dispatch_uniform_set: RID
 var debug_buffer: RID
 var debug_uniform_set: RID
 
+var slot_buffer: RID
+var used_buffer: RID
+var dedupe_uniform_set: RID
+
+var normal_sum_buffer: RID
+var normal_sum_size: int
+var normal_sum_uniform_set: RID
+
 
 func _init(p_mesh: ArrayMesh, p_source_idx: int) -> void:
 	rd = RenderingServer.get_rendering_device()
@@ -33,8 +41,10 @@ func bake() -> void:
 	_size()
 	_allocate()
 	_init_uniforms()
+	_init_dedupe_uniforms()
 	_compute_shrink()
 	_compute_fill()
+	_compute_dedupe()
 	debug()
 
 
@@ -75,6 +85,28 @@ func _allocate() -> void:
 	idx = mesh.get_surface_count()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER)
 	mesh.custom_aabb = _source_aabb()
+
+
+func _init_dedupe_uniforms() -> void:
+	# unique_count (4) + one slot per source vertex
+	var slot_buffer_size := 4 + params.in_vertex_count * 4
+	slot_buffer = rd.storage_buffer_create(slot_buffer_size)
+
+	var used_buffer_size := params.in_vertex_count * 4
+	used_buffer = rd.storage_buffer_create(used_buffer_size)
+
+	dedupe_uniform_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([slot_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		ComputeUtil.create_uniform([used_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
+	], SurfaceShaders.dedupe.shader, 3)
+
+	# unique_count zeroed, slots[] filled with the unused sentinel
+	var slot_init := PackedByteArray()
+	slot_init.resize(slot_buffer_size)
+	slot_init.encode_u32(0, 0)
+	for i in params.in_vertex_count:
+		slot_init.encode_u32(4 + i * 4, 0xFFFFFFFF)
+	rd.buffer_update(slot_buffer, 0, slot_buffer_size, slot_init)
 
 
 func _init_uniforms() -> void:
@@ -123,18 +155,6 @@ func _init_uniforms() -> void:
 	], SurfaceShaders.bevel_fill.shader, 4)
 
 
-func _compute_shrink() -> void:
-	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_shrink.pipeline)
-	rd.compute_list_set_push_constant(compute_list, params.pack_shrink(), BevelParams.SIZE_SHRINK)
-	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
-	rd.compute_list_bind_uniform_set(compute_list, shared_edge_uniform_set, 2)
-	rd.compute_list_bind_uniform_set(compute_list, dispatch_uniform_set, 3)
-	rd.compute_list_dispatch(compute_list, ceili(params.in_index_count / (128.0 * 3.0)), 1, 1)
-	rd.compute_list_end()
-
-
 func _compute_fill() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_fill.pipeline)
@@ -146,6 +166,44 @@ func _compute_fill() -> void:
 	rd.compute_list_dispatch_indirect(compute_list, dispatch_buffer, 0)
 	rd.compute_list_end()
 
+
+func _compute_dedupe() -> void:
+	var compute_list := rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.dedupe.pipeline)
+	rd.compute_list_set_push_constant(compute_list, params.pack_dedupe(), ComputeParams.SIZE_DEDUPE)
+	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, dedupe_uniform_set, 3)
+	rd.compute_list_dispatch(compute_list, ceili(params.in_vertex_count / 256.0), 1, 1)
+	rd.compute_list_end()
+
+
+func _init_normal_uniforms() -> void:
+	normal_sum_size = params.out_vertex_count * 12
+	normal_sum_buffer = rd.storage_buffer_create(normal_sum_size)
+
+	normal_sum_uniform_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([normal_sum_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+	], SurfaceShaders.bevel_normals.shader, 3)
+
+
+## Rerun after anything that moves verts - shape.glsl changes every wall's tilt
+func compute_normals() -> void:
+	rd.buffer_clear(normal_sum_buffer, 0, normal_sum_size)
+
+	var compute_list := rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_normals.pipeline)
+	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, normal_sum_uniform_set, 3)
+	rd.compute_list_dispatch(compute_list, ceili(params.out_index_count / 3.0 / 256.0), 1, 1)
+	rd.compute_list_end()
+
+	compute_list = rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_normals_finish.pipeline)
+	rd.compute_list_set_push_constant(compute_list, params.pack_normals(), BevelParams.SIZE_NORMALS)
+	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, normal_sum_uniform_set, 3)
+	rd.compute_list_dispatch(compute_list, ceili(params.out_vertex_count / 256.0), 1, 1)
+	rd.compute_list_end()
 
 func debug() -> void:
 	var dispatch := rd.buffer_get_data(dispatch_buffer)

@@ -8,7 +8,7 @@ class_name MeshBevel
 @onready var mesh_instance: MeshInstance3D = $".."
 
 var debug_normal_mesh: MeshInstance3D
-var workers: Array[BevelWorker]
+var workers: Array[ComputeWorker]
 
 
 func _ready() -> void:
@@ -17,7 +17,7 @@ func _ready() -> void:
 	var mesh := mesh_instance.mesh
 
 	for i in mesh.get_surface_count():
-		var worker := BevelWorker.new(mesh, i)
+		var worker := Compute.new(mesh, i)
 		worker.bake()
 		if material:
 			mesh_instance.set_surface_override_material(worker.idx, material)

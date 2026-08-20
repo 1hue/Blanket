@@ -1,5 +1,5 @@
 extends Node
-class_name MeshCover
+class_name MeshCover3D
 
 @export var material: StandardMaterial3D = preload("res://assets/snow.tres")
 @export var debug: Label3D
@@ -18,7 +18,7 @@ func _ready() -> void:
 	validate()
 
 	for i in mesh.get_surface_count():
-		var worker := ComputeWorker.new(mesh, i, mesh_instance.global_transform)
+		var worker := Compute.new(mesh, i, mesh_instance.global_transform)
 		worker.output.connect(_on_output)
 		worker.bake()
 		mesh_instance.set_surface_override_material(worker.surface.idx, material)

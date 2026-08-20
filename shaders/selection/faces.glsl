@@ -38,11 +38,6 @@ layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
 	uvec3 faces[]; // eligible face vertex indices
 };
 
-layout(set = 1, binding = 1, scalar) restrict buffer EdgesBuffer {
-	uint edges_count;
-	uvec2 edges[]; // unused here - declared so the set matches other passes
-};
-
 layout(set = 2, binding = 0, std430) restrict writeonly buffer FacesDispatchBuffer {
 	uvec3 dispatch;
 };
