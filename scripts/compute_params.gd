@@ -3,8 +3,6 @@ class_name ComputeParams
 
 signal changed
 
-const SIZE_EDGES = 8
-const SIZE_DEDUPE = 16
 const SIZE_VERTS = 52
 const SIZE_SHAPE = 36
 const SIZE_SHRINK = 24
@@ -52,16 +50,6 @@ var out_normal_stride: int
 var out_marker_offset: int
 var out_attribute_stride: int
 var out_index_stride: int
-
-
-func pack_dedupe() -> PackedByteArray:
-	var bytes := PackedByteArray()
-	bytes.resize(SIZE_DEDUPE)
-	bytes.encode_u32(0, in_vertex_count)
-	bytes.encode_u32(4, in_vertex_stride)
-	bytes.encode_u32(8, in_normal_offset)
-	bytes.encode_u32(12, in_normal_stride)
-	return bytes
 
 
 ## Pack push constant bytes for verts.glsl

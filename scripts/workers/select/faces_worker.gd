@@ -5,9 +5,8 @@ const SIZE_PARAMS = 44
 const FACES_BUFFER_HEADER = 4 # faces_count
 
 ## Source vert indices of upright faces as uvec3, e.g. [(0, 1, 2), (0, 3, 1)]
-var faces_buffer: RID
-var faces_buffer_size: int
-var faces_uniform_set: RID
+var buffer: RID
+var uniform_set: RID
 var dispatch_buffer: RID
 var dispatch_uniform_set: RID
 
@@ -19,17 +18,17 @@ func _pre() -> void:
 
 
 func _init_uniforms() -> void:
-	faces_buffer_size = FACES_BUFFER_HEADER + params.in_index_count * 4
+	var buffer_size := FACES_BUFFER_HEADER + params.in_index_count * 4
 
-	faces_buffer = rd.storage_buffer_create(
-		faces_buffer_size, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
+	buffer = rd.storage_buffer_create(
+		buffer_size, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
 	)
 
-	faces_uniform_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([faces_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
+	uniform_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
 	], SurfaceShaders.selection_faces.shader, 1)
 
-	uniforms.faces_set = faces_uniform_set
+	uniforms.faces_set = uniform_set
 
 
 ## Separate dispatch buffers. WARNING: must not be passed into target shader - engine constraint.
@@ -67,8 +66,17 @@ func compute() -> void:
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.selection_faces.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, uniforms.source_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, faces_uniform_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, uniform_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, dispatch_uniform_set, 2)
 	rd.compute_list_bind_uniform_set(compute_list, uniforms.dedupe_set, 3)
 	rd.compute_list_dispatch(compute_list, ceili(params.in_index_count / 3.0 / 256.0), 1, 1)
 	rd.compute_list_end()
+
+
+func _notification(what) -> void:
+	if what != NOTIFICATION_PREDELETE:
+		return
+
+	for rid in [uniform_set, buffer, dispatch_uniform_set, dispatch_buffer]:
+		if rid.is_valid():
+			rd.free_rid(rid)

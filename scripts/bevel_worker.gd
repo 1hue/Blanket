@@ -105,7 +105,7 @@ func _init_dedupe_uniforms() -> void:
 	slot_init.resize(slot_buffer_size)
 	slot_init.encode_u32(0, 0)
 	for i in params.in_vertex_count:
-		slot_init.encode_u32(4 + i * 4, 0xFFFFFFFF)
+		slot_init.encode_u32(4 + i * 4, UINT32_MAX)
 	rd.buffer_update(slot_buffer, 0, slot_buffer_size, slot_init)
 
 

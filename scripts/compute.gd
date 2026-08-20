@@ -14,10 +14,6 @@ var mesh_rid: RID:
 	get: return mesh.get_rid()
 var in_uniform_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 
-var slot_buffer: RID
-var used_buffer: RID
-var dedupe_uniform_set: RID
-
 var out_uniform_set: RID
 var out_in_map_buffer: RID
 
@@ -85,28 +81,6 @@ func _init_debug() -> void:
 	], SurfaceShaders.verts.shader, 3)
 
 
-func _init_dedupe_uniforms() -> void:
-	# unique_count (4) + one slot per source vertex
-	var slot_buffer_size := 4 + params.in_vertex_count * 4
-	slot_buffer = rd.storage_buffer_create(slot_buffer_size)
-
-	var used_buffer_size := params.in_vertex_count * 4
-	used_buffer = rd.storage_buffer_create(used_buffer_size)
-
-	dedupe_uniform_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([slot_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-		ComputeUtil.create_uniform([used_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
-	], SurfaceShaders.dedupe.shader, 3)
-
-	# unique_count zeroed, slots[] filled with the unused sentinel
-	var slot_init := PackedByteArray()
-	slot_init.resize(slot_buffer_size)
-	slot_init.encode_u32(0, 0)
-	for i in params.in_vertex_count:
-		slot_init.encode_u32(4 + i * 4, 0xFFFFFFFF)
-	rd.buffer_update(slot_buffer, 0, slot_buffer_size, slot_init)
-
-
 func bake() -> void:
 	pass
 	#_compute_bevel()
@@ -163,16 +137,6 @@ func _init_verts_out_uniforms(vertex_count: int) -> void:
 		ComputeUtil.create_uniform([out_attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
 		ComputeUtil.create_uniform([out_in_map_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 3)
 	], SurfaceShaders.verts.shader, 2)
-
-
-func _compute_dedupe() -> void:
-	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.dedupe.pipeline)
-	rd.compute_list_set_push_constant(compute_list, params.pack_dedupe(), ComputeParams.SIZE_DEDUPE)
-	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, dedupe_uniform_set, 3)
-	rd.compute_list_dispatch(compute_list, ceili(params.in_vertex_count / 256.0), 1, 1)
-	rd.compute_list_end()
 
 
 ## Dispatch verts.glsl to fill the empty mesh surface GPU-side
