@@ -1,8 +1,8 @@
 extends ComputeWorker
-class_name SelectEdgesWorker
+class_name SelectEdges
 
 const SIZE_PARAMS = 8
-const EDGES_BUFFER_HEADER = 4 # edges_count
+const BUFFER_HEADER = 4 # edges_count
 
 ## Source vert indices of outer edges as uvec2, e.g. [(3, 1), (1, 2), (0, 2)]
 var buffer: RID
@@ -18,7 +18,7 @@ func _pre() -> void:
 
 
 func _init_uniforms() -> void:
-	var buffer_size := EDGES_BUFFER_HEADER + params.in_index_count * 12
+	var buffer_size := BUFFER_HEADER + params.in_index_count * 12
 
 	buffer = rd.storage_buffer_create(
 		buffer_size, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT

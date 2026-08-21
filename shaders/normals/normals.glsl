@@ -17,7 +17,7 @@ layout(set = 1, binding = 1, scalar) restrict readonly buffer OutIndexBuffer {
 };
 
 layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {
-	uint out_attributes[];
+	uint out_attributes[]; // Unused here, declared to match the set's layout
 };
 
 layout(set = 3, binding = 0, std430) restrict buffer NormalSumBuffer {

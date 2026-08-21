@@ -5,12 +5,48 @@ signal changed
 
 const SIZE_VERTS = 52
 const SIZE_SHAPE = 36
-const SIZE_SHRINK = 24
-const SIZE_JOIN = 16
 const DEFAULT_DEPTH = 0.1
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
 const MAX_VALENCE = 32
-const DEFAULT_SHRINK = 0.3
+const DEFAULT_BEVEL_SHRINK = 0.3
+const DEFAULT_BEVEL_SEGMENTS = 2
+const BEVEL_WEDGE_SEGMENTS = 2
+
+#region Source surface
+var in_vertex_count: int
+var in_vertex_stride: int
+var in_index_count: int
+var in_index_stride: int
+var in_normal_offset: int
+var in_normal_stride: int
+var in_color_offset: int
+var in_attribute_stride: int
+#endregion
+
+#region Select
+var select_vertex_count: int
+var select_vertex_stride: int
+var select_normal_offset: int
+var select_normal_stride: int
+var select_marker_offset: int
+var select_attribute_stride: int
+var select_index_stride: int
+#endregion
+
+#region Bevel
+var bevel := 0.0
+var bevel_shrink := DEFAULT_BEVEL_SHRINK
+var bevel_segments := DEFAULT_BEVEL_SEGMENTS
+var bevel_vertex_count: int
+var bevel_index_count: int
+var bevel_color_offset: int
+var bevel_attribute_stride: int
+var max_shared_edges: int:
+	get: return in_index_count / 2
+#endregion
+
+## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees
+var upright_dot := cos(deg_to_rad(DEFAULT_MAX_SLOPE_DEGREES))
 
 ## World up translated to model local space, normalized
 var local_up := Vector3.UP:
@@ -31,25 +67,26 @@ var max_slope_degrees := DEFAULT_MAX_SLOPE_DEGREES:
 		upright_dot = cos(deg_to_rad(value))
 		changed.emit()
 
-## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees
-var upright_dot := cos(deg_to_rad(DEFAULT_MAX_SLOPE_DEGREES))
 
-var in_vertex_count: int
-var in_vertex_stride: int
-var in_index_count: int
-var in_index_stride: int
-var in_normal_offset: int
-var in_normal_stride: int
-var in_color_offset: int
-var in_attribute_stride: int
+func _init(surface: ComputeSurface, global_transform: Transform3D) -> void:
+	var mesh := surface.mesh
+	var format := mesh.surface_get_format(surface.source_idx)
+	var primitive := mesh.surface_get_primitive_type(surface.source_idx)
+	var vertex_count := mesh.surface_get_array_len(surface.source_idx)
 
-var out_vertex_count: int
-var out_vertex_stride: int
-var out_normal_offset: int
-var out_normal_stride: int
-var out_marker_offset: int
-var out_attribute_stride: int
-var out_index_stride: int
+	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be triangles: %s is primitibe type %s" % [mesh, primitive])
+	assert(format & Mesh.ARRAY_FORMAT_NORMAL != 0, "Mesh must have normals: %s" % mesh)
+	assert(format & Mesh.ARRAY_FORMAT_COLOR != 0, "Mesh must have vertex colors: %s" % mesh)
+
+	in_vertex_count = vertex_count
+	in_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(format, vertex_count)
+	in_index_count = mesh.surface_get_array_index_len(surface.source_idx)
+	in_index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, vertex_count)
+	in_normal_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_NORMAL)
+	in_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
+	in_color_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_COLOR)
+	in_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
+	local_up = global_transform.basis.inverse() * Vector3.UP
 
 
 ## Pack push constant bytes for verts.glsl
@@ -63,12 +100,12 @@ func pack_verts() -> PackedByteArray:
 	bytes.encode_u32(16, in_vertex_stride)
 	bytes.encode_u32(20, in_normal_offset)
 	bytes.encode_u32(24, in_normal_stride)
-	bytes.encode_u32(28, out_vertex_stride)
-	bytes.encode_u32(32, out_normal_offset)
-	bytes.encode_u32(36, out_normal_stride)
-	bytes.encode_u32(40, out_marker_offset)
-	bytes.encode_u32(44, out_attribute_stride)
-	bytes.encode_u32(48, out_index_stride)
+	bytes.encode_u32(28, select_vertex_stride)
+	bytes.encode_u32(32, select_normal_offset)
+	bytes.encode_u32(36, select_normal_stride)
+	bytes.encode_u32(40, select_marker_offset)
+	bytes.encode_u32(44, select_attribute_stride)
+	bytes.encode_u32(48, select_index_stride)
 	return bytes
 
 
@@ -80,9 +117,9 @@ func pack_shape() -> PackedByteArray:
 	bytes.encode_float(4, local_up.y)
 	bytes.encode_float(8, local_up.z)
 	bytes.encode_float(12, depth)
-	bytes.encode_u32(16, out_vertex_count)
+	bytes.encode_u32(16, select_vertex_count)
 	bytes.encode_u32(20, in_vertex_stride)
-	bytes.encode_u32(24, out_vertex_stride)
-	bytes.encode_u32(28, out_marker_offset)
-	bytes.encode_u32(32, out_attribute_stride)
+	bytes.encode_u32(24, select_vertex_stride)
+	bytes.encode_u32(28, select_marker_offset)
+	bytes.encode_u32(32, select_attribute_stride)
 	return bytes

@@ -4,12 +4,12 @@ class_name ComputeUniforms
 var rd: RenderingDevice
 var surface: ComputeSurface
 var source_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
-var faces_set: RID
-var edges_set: RID
 var faces_dispatch_buffer: RID
-var faces_dispatch_set: RID
 var edges_dispatch_buffer: RID
-var edges_dispatch_set: RID
+
+var shrink_dispatch_buffer: RID
+var bevel_out_set: RID
+var shared_edge_set: RID
 
 
 func _init(p_surface: ComputeSurface) -> void:
@@ -32,17 +32,15 @@ func _init_source_set() -> void:
 
 
 ## Free scratch buffers after bake
-func cleanup_bake() -> void:
-	for rid in [faces_set, edges_set, faces_dispatch_set, edges_dispatch_set]:
-		if rid.is_valid():
-			rd.free_rid(rid)
+#func cleanup_bake() -> void:
+	#for rid in [faces_set, edges_set, faces_dispatch_set, edges_dispatch_set]:
+		#if rid.is_valid():
+			#rd.free_rid(rid)
 
 
 func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
-
-	cleanup_bake()
 
 	for rid in [source_set]: # Free uniform set -> free buffer
 		if rid.is_valid():

@@ -3,20 +3,26 @@
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
+	uint out_vertex_count;
 	uint out_normal_offset;
 	uint out_normal_stride;
 };
 
-layout(set = 1, binding = 0, scalar) restrict readonly buffer OutVertexBuffer {
-	vec3 out_positions[];
+layout(set = 1, binding = 0, std430) restrict buffer OutVertexBuffer {
+	uint out_words[]; // Positions, then packed normals
 };
 
-layout(set = 1, binding = 1, std430) restrict buffer OutVertexWords {
-	uint out_words[]; // Same buffer as out_positions, reached as raw words for the normal block
+layout(set = 1, binding = 1, scalar) restrict readonly buffer OutIndexBuffer {
+	u16vec3 out_faces[]; // Unused here
+};
+
+layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {
+	uint out_attributes[]; // Unused here
 };
 
 layout(set = 3, binding = 0, std430) restrict readonly buffer NormalSumBuffer {
@@ -32,12 +38,10 @@ uint oct_encode(vec3 n) {
 void main() {
 	uint vert = gl_GlobalInvocationID.x;
 
-	if (vert >= uint(out_positions.length())) return;
+	if (vert >= out_vertex_count) return;
 
 	uint base = vert * 3;
 	vec3 sum = vec3(normal_sums[base], normal_sums[base + 1], normal_sums[base + 2]);
-
-	// Orphaned verts have no faces, so nothing summed into them
 	vec3 normal = dot(sum, sum) > 0 ? normalize(sum) : vec3(0, 1, 0);
 
 	uint word = (out_normal_offset + vert * out_normal_stride) / 4;

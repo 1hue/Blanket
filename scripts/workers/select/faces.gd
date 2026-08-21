@@ -1,8 +1,8 @@
 extends ComputeWorker
-class_name SelectFacesWorker
+class_name SelectFaces
 
 const SIZE_PARAMS = 44
-const FACES_BUFFER_HEADER = 4 # faces_count
+const BUFFER_HEADER = 4 # faces_count
 
 ## Source vert indices of upright faces as uvec3, e.g. [(0, 1, 2), (0, 3, 1)]
 var buffer: RID
@@ -18,7 +18,7 @@ func _pre() -> void:
 
 
 func _init_uniforms() -> void:
-	var buffer_size := FACES_BUFFER_HEADER + params.in_index_count * 4
+	var buffer_size := BUFFER_HEADER + params.in_index_count * 4
 
 	buffer = rd.storage_buffer_create(
 		buffer_size, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT

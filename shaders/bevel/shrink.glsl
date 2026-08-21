@@ -6,12 +6,11 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
 const uint NONE = 0xFFFFFFFFu;
-const uint WEDGES_GROUP_SIZE = 256u;
 
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
-	float shrink; // 0 = unchanged, 1 = collapsed onto the opposite corner
+	float shrink; // 0 = unchanged, 1 = collapsed onto opposite corner
 	uint out_color_offset;
 	uint out_attribute_stride;
 };
@@ -42,7 +41,7 @@ layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 };
 
 layout(set = 3, binding = 0, std430) restrict buffer DispatchBuffer {
-	uvec3 dispatch; // Indirect args for wedge.glsl
+	uvec3 dispatch; // Indirect args for fill.glsl
 };
 
 uint next_corner(uint corner) {
@@ -115,13 +114,13 @@ vec3 inset_corner(mat3 face, uint c, bvec3 is_shared) {
 	if (!to_prev && !to_next) return face[c];
 
 	vec3 target = to_prev && to_next
-	? mix(face[next], face[prev], 0.5)
-	: (to_prev ? face[prev] : face[next]);
+		? mix(face[next], face[prev], 0.5)
+		: (to_prev ? face[prev] : face[next]);
 
 	return mix(face[c], target, shrink);
 }
 
-void write_out_color(uint out_index, vec4 color) {
+void write_color(uint out_index, vec4 color) {
 	uint word = (out_color_offset + out_index * out_attribute_stride) / 4u;
 	out_attributes[word] = packUnorm4x8(color);
 }
@@ -135,38 +134,36 @@ void main() {
 	uvec3 twins = find_twins(face, face_count);
 	bvec3 is_shared = notEqual(twins, uvec3(NONE));
 
-	// Corner index becomes this vertex's index in the output buffer
 	mat3 positions = face_pos(face);
-	uint base = face * 3u;
+	uint base = face * 3;
 
-	for (uint c = 0u; c < 3u; c++) {
+	for (uint c = 0; c < 3; c++) {
 		out_positions[base + c] = inset_corner(positions, c, is_shared);
 		out_faces[base + c] = uint16_t(base + c);
-
-		// Debug visualization: red where this corner touches a shared edge
-		write_out_color(base + c, is_shared[c] ? vec4(1, 0, 0, 1) : vec4(1));
+		write_color(base + c, is_shared[c] ? vec4(1, 0, 0, 1) : vec4(1));
 	}
 
-	// Both faces of an edge find each other, so only the lower corner registers it.
-	// Gather first, so the whole face costs one atomic rather than one per edge.
+	// Both faces of an edge find each other, so only the lower corner registers it
 	uvec4 pending[3];
-	uint pending_count = 0u;
+	uint pending_count = 0;
 
-	for (uint e = 0u; e < 3u; e++) {
+	for (uint e = 0; e < 3; e++) {
 		uint twin = twins[e];
 		if (twin == NONE || base + e > twin) continue;
 
-		pending[pending_count++] = uvec4(edge_verts(face, e), edge_verts(twin / 3u, twin % 3u));
+		uint twin_next = twin / 3 * 3 + next_corner(twin % 3);
+		pending[pending_count] = uvec4(base + e, base + next_corner(e), twin, twin_next);
+		pending_count++;
 	}
 
-	if (pending_count == 0u) return;
+	if (pending_count == 0) return;
 
 	uint slot = atomicAdd(shared_count, pending_count);
-	for (uint i = 0u; i < pending_count; i++) {
+	for (uint i = 0; i < pending_count; i++) {
 		shared_edges[slot + i] = pending[i];
 	}
 
-	atomicMax(dispatch.x, (slot + pending_count + WEDGES_GROUP_SIZE - 1u) / WEDGES_GROUP_SIZE);
-	dispatch.y = 1u;
-	dispatch.z = 1u;
+	atomicMax(dispatch.x, (slot + pending_count + 255) / 256);
+	dispatch.y = 1;
+	dispatch.z = 1;
 }

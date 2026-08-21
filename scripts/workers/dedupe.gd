@@ -1,5 +1,5 @@
 extends ComputeWorker
-class_name DedupeWorker
+class_name Dedupe
 
 const SIZE_PARAMS = 16
 
