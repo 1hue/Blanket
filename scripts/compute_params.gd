@@ -3,8 +3,6 @@ class_name ComputeParams
 
 signal changed
 
-const SIZE_VERTS = 52
-const SIZE_SHAPE = 36
 const DEFAULT_DEPTH = 0.1
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
 const MAX_VALENCE = 32
@@ -87,39 +85,3 @@ func _init(surface: ComputeSurface, global_transform: Transform3D) -> void:
 	in_color_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_COLOR)
 	in_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
 	local_up = global_transform.basis.inverse() * Vector3.UP
-
-
-## Pack push constant bytes for verts.glsl
-func pack_verts() -> PackedByteArray:
-	var bytes := PackedByteArray()
-	bytes.resize(SIZE_VERTS)
-	bytes.encode_float(0, local_up.x)
-	bytes.encode_float(4, local_up.y)
-	bytes.encode_float(8, local_up.z)
-	bytes.encode_u32(12, in_vertex_count)
-	bytes.encode_u32(16, in_vertex_stride)
-	bytes.encode_u32(20, in_normal_offset)
-	bytes.encode_u32(24, in_normal_stride)
-	bytes.encode_u32(28, select_vertex_stride)
-	bytes.encode_u32(32, select_normal_offset)
-	bytes.encode_u32(36, select_normal_stride)
-	bytes.encode_u32(40, select_marker_offset)
-	bytes.encode_u32(44, select_attribute_stride)
-	bytes.encode_u32(48, select_index_stride)
-	return bytes
-
-
-## Pack push constant bytes for shape.glsl
-func pack_shape() -> PackedByteArray:
-	var bytes := PackedByteArray()
-	bytes.resize(SIZE_SHAPE)
-	bytes.encode_float(0, local_up.x)
-	bytes.encode_float(4, local_up.y)
-	bytes.encode_float(8, local_up.z)
-	bytes.encode_float(12, depth)
-	bytes.encode_u32(16, select_vertex_count)
-	bytes.encode_u32(20, in_vertex_stride)
-	bytes.encode_u32(24, select_vertex_stride)
-	bytes.encode_u32(28, select_marker_offset)
-	bytes.encode_u32(32, select_attribute_stride)
-	return bytes

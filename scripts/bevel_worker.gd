@@ -39,32 +39,6 @@ func bake() -> void:
 	debug()
 
 
-func _allocate() -> void:
-	if idx >= 0:
-		mesh.surface_remove(idx)
-		idx = -1
-
-	var vertices := PackedVector3Array()
-	var colors := PackedColorArray()
-	var normals := PackedVector3Array()
-	var indices := PackedInt32Array()
-	vertices.resize(params.out_vertex_count)
-	colors.resize(params.out_vertex_count)
-	normals.resize(params.out_vertex_count)
-	indices.resize(params.out_index_count)
-
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_COLOR] = colors
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_INDEX] = indices
-
-	idx = mesh.get_surface_count()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER)
-	mesh.custom_aabb = _source_aabb()
-
-
 func _init_dedupe_uniforms() -> void:
 	# unique_count (4) + one slot per source vertex
 	var slot_buffer_size := 4 + params.in_vertex_count * 4

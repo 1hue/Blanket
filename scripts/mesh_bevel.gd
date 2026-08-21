@@ -8,27 +8,27 @@ class_name MeshBevel
 @onready var mesh_instance: MeshInstance3D = $".."
 
 var debug_normal_mesh: MeshInstance3D
-var workers: Array[ComputeWorker]
+var computes: Array[Compute]
 
 
 func _ready() -> void:
 	convert_to_storage_buffer_mesh()
 	validate()
-	var mesh := mesh_instance.mesh
 
-	for i in mesh.get_surface_count():
-		var worker := Compute.new(mesh, i)
-		worker.bake()
+	for i in mesh_instance.mesh.get_surface_count():
+		var compute := Compute.new(mesh_instance.mesh, i, mesh_instance.global_transform)
+
 		if material:
-			mesh_instance.set_surface_override_material(worker.idx, material)
-		workers.append(worker)
+			mesh_instance.set_surface_override_material(compute.surface.idx, material)
+
+		computes.append(compute)
 
 	if draw_debug_normals:
 		debug_normals()
 
 
 func _exit_tree() -> void:
-	workers.clear()
+	computes.clear()
 
 
 func debug_normals(surface_idx: int = 1, length: float = 0.2) -> void:
@@ -84,7 +84,7 @@ func _on_output(message: String) -> void:
 
 
 func update(_delta: int) -> void:
-	for worker in workers:
+	for compute in computes:
 		pass
 
 	if draw_debug_normals:

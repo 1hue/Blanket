@@ -12,7 +12,7 @@ var push_constant: PackedByteArray
 var uniforms: ComputeUniforms
 
 
-## Bootleg Dependency Injection
+## Bootleg dependency injection
 func _init(p_mesh: ArrayMesh, p_surface: ComputeSurface, p_params: ComputeParams, p_uniforms: ComputeUniforms) -> void:
 	rd = RenderingServer.get_rendering_device()
 	mesh = p_mesh

@@ -33,11 +33,23 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	uniforms = ComputeUniforms.new(surface)
 	params = ComputeParams.new(surface, global_transform)
 
+	bake_workers = [
+		BevelShrink.new(mesh, surface, params, uniforms)
+	]
+
+	bake()
+
+
+func bake() -> void:
+	for bake_worker in bake_workers:
+		bake_worker.compute()
+
 
 ## TODO Reposition the added mesh surface
 func update() -> void:
 	#_compute_shape()
 	pass
+
 
 #region Debug
 #func _init_debug() -> void:

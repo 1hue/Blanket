@@ -23,11 +23,15 @@ layout(set = 0, binding = 1, scalar) restrict readonly buffer InIndexBuffer {
 	u16vec3 in_faces[];
 };
 
+layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
+	uint in_attribute_words[]; // unused here
+};
+
 layout(set = 1, binding = 0, scalar) restrict writeonly buffer OutVertexBuffer {
 	vec3 out_positions[];
 };
 
-layout(set = 1, binding = 1, scalar) restrict writeonly buffer OutIndexBuffer {
+layout(set = 1, binding = 1, std430) restrict writeonly buffer OutIndexBuffer {
 	uint16_t out_faces[];
 };
 

@@ -1,17 +1,17 @@
 extends RefCounted
 class_name ComputeSurface
 
+const SURFACE_NAME = "AddedSurface"
 const SURFACE_FLAGS := (
 	Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER | (Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
 )
-const SURFACE_NAME = "AddedSurface"
 
 var mesh: ArrayMesh
 var mesh_rid: RID:
 	get: return mesh.get_rid()
-## Original surface derived from
+## Original surface derived from.
 var source_idx: int
-## Index of the new surface on the mesh
+## The newly created surface on the mesh.
 var idx := -1
 var format: int:
 	get: return mesh.surface_get_format(idx)
@@ -27,28 +27,39 @@ func _init(p_mesh: ArrayMesh, p_source_idx: int) -> void:
 
 
 ## Sizes empty arrays and installs the surface - verts.glsl fills the actual data GPU-side.
-## custom_aabb is required since positions are all zero at this point.
-func allocate(new_vertex_count: int, new_index_count: int) -> void:
+## Sets custom_aabb since positions are all zero at this point.
+func allocate(new_vertex_count: int, new_index_count: int, array_types: int = Mesh.ARRAY_NORMAL) -> void:
 	remove()
 
 	var vertices := PackedVector3Array()
-	var normals := PackedVector3Array()
-	var tangents := PackedFloat32Array()
-	var markers := PackedFloat32Array()
 	var indices := PackedInt32Array()
 	vertices.resize(new_vertex_count)
-	normals.resize(new_vertex_count)
-	tangents.resize(new_vertex_count * 4)
-	markers.resize(new_vertex_count)
 	indices.resize(new_index_count)
 
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_TANGENT] = tangents
-	arrays[Mesh.ARRAY_CUSTOM0] = markers
 	arrays[Mesh.ARRAY_INDEX] = indices
+
+	if array_types & Mesh.ARRAY_NORMAL:
+		var normals := PackedVector3Array()
+		normals.resize(new_vertex_count)
+		arrays[Mesh.ARRAY_NORMAL] = normals
+
+	if array_types & Mesh.ARRAY_TANGENT:
+		var tangents := PackedFloat32Array()
+		tangents.resize(new_vertex_count * 4)
+		arrays[Mesh.ARRAY_TANGENT] = tangents
+
+	if array_types & Mesh.ARRAY_CUSTOM0:
+		var custom_0 := PackedFloat32Array()
+		custom_0.resize(new_vertex_count)
+		arrays[Mesh.ARRAY_CUSTOM0] = custom_0
+
+	if array_types & Mesh.ARRAY_COLOR:
+		var colors := PackedColorArray()
+		colors.resize(new_vertex_count)
+		arrays[Mesh.ARRAY_COLOR] = colors
 
 	idx = mesh.get_surface_count()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, SURFACE_FLAGS)
@@ -57,9 +68,8 @@ func allocate(new_vertex_count: int, new_index_count: int) -> void:
 
 
 func remove() -> void:
-	if idx < 0:
-		return
-	mesh.surface_remove(idx)
+	if idx >= 0:
+		mesh.surface_remove(idx)
 	idx = -1
 
 

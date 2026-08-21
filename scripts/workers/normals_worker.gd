@@ -9,6 +9,8 @@ var normal_sum_uniform_set: RID
 
 
 func _pre() -> void:
+	push_constant.resize(SIZE_PARAMS)
+
 	normal_sum_size = params.out_vertex_count * 12
 	normal_sum_buffer = rd.storage_buffer_create(normal_sum_size)
 
@@ -38,15 +40,14 @@ func compute() -> void:
 
 
 func pack_params() -> PackedByteArray:
-	var bytes := PackedByteArray()
-	bytes.resize(SIZE_PARAMS)
-	bytes.encode_float(0, params.local_up.x)
-	bytes.encode_float(4, params.local_up.y)
-	bytes.encode_float(8, params.local_up.z)
-	bytes.encode_float(12, params.depth)
-	bytes.encode_u32(16, params.out_vertex_count)
-	bytes.encode_u32(20, params.in_vertex_stride)
-	bytes.encode_u32(24, params.out_vertex_stride)
-	bytes.encode_u32(28, params.out_marker_offset)
-	bytes.encode_u32(32, params.out_attribute_stride)
-	return bytes
+	push_constant.encode_float(0, params.local_up.x)
+	push_constant.encode_float(4, params.local_up.y)
+	push_constant.encode_float(8, params.local_up.z)
+	push_constant.encode_float(12, params.depth)
+	push_constant.encode_u32(16, params.out_vertex_count)
+	push_constant.encode_u32(20, params.in_vertex_stride)
+	push_constant.encode_u32(24, params.out_vertex_stride)
+	push_constant.encode_u32(28, params.out_marker_offset)
+	push_constant.encode_u32(32, params.out_attribute_stride)
+
+	return push_constant
