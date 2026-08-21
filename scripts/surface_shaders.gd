@@ -27,8 +27,8 @@ var rd: RenderingDevice
 var shaders: Array[RID]
 var pipelines: Array[RID]
 
-var selection_faces: ShaderPipeline
-var selection_edges: ShaderPipeline
+var select_faces: ShaderPipeline
+var select_edges: ShaderPipeline
 var dedupe: ShaderPipeline
 var verts: ShaderPipeline
 var shape: ShaderPipeline
@@ -43,8 +43,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _init() -> void:
-	selection_faces = ShaderPipeline.new("res://shaders/selection/faces.glsl")
-	selection_edges = ShaderPipeline.new("res://shaders/selection/edges.glsl")
+	select_faces = ShaderPipeline.new("res://shaders/select/faces.glsl")
+	select_edges = ShaderPipeline.new("res://shaders/select/edges.glsl")
 	dedupe = ShaderPipeline.new("res://shaders/dedupe.glsl")
 	verts = ShaderPipeline.new("res://shaders/verts.glsl")
 	shape = ShaderPipeline.new("res://shaders/shape.glsl")

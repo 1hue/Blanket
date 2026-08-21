@@ -53,6 +53,8 @@ func init_uniforms() -> void:
 		ComputeUtil.create_uniform([shared_edge_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.bevel_shrink.shader, 2)
 
+	uniforms.shared_edge_set = shared_edge_uniform_set
+
 	#debug_buffer = rd.storage_buffer_create(24*4)
 	#rd.buffer_clear(debug_buffer, 0, 24*4)
 	#debug_uniform_set = rd.uniform_set_create([

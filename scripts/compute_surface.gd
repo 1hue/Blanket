@@ -26,7 +26,7 @@ func _init(p_mesh: ArrayMesh, p_source_idx: int) -> void:
 	source_idx = p_source_idx
 
 
-## Sizes empty arrays and installs the surface - verts.glsl fills the actual data GPU-side.
+## Sizes empty mesh arrays and installs the surface for manipulation GPU-side.
 ## Sets custom_aabb since positions are all zero at this point.
 func allocate(new_vertex_count: int, new_index_count: int, array_types: int = Mesh.ARRAY_NORMAL) -> void:
 	remove()

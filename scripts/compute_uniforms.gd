@@ -28,7 +28,7 @@ func _init_source_set() -> void:
 		ComputeUtil.create_uniform([vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 		ComputeUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
 		ComputeUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
-	], SurfaceShaders.selection_faces.shader, 0)
+	], SurfaceShaders.select_faces.shader, 0)
 
 
 ## Free scratch buffers after bake

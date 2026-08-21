@@ -26,7 +26,7 @@ func _init_uniforms() -> void:
 
 	uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
-	], SurfaceShaders.selection_faces.shader, 1)
+	], SurfaceShaders.select_faces.shader, 1)
 
 	uniforms.faces_set = uniform_set
 
@@ -41,7 +41,7 @@ func _init_indirect_dispatch() -> void:
 
 	dispatch_uniform_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-	], SurfaceShaders.selection_faces.shader, 2)
+	], SurfaceShaders.select_faces.shader, 2)
 
 
 func pack_params() -> PackedByteArray:
@@ -63,7 +63,7 @@ func pack_params() -> PackedByteArray:
 ## Select upright faces
 func compute() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.selection_faces.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.select_faces.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, uniforms.source_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, uniform_set, 1)

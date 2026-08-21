@@ -26,12 +26,3 @@ func compute() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, uniforms.shared_edge_set, 2)
 	rd.compute_list_dispatch(compute_list, ceili(params.in_index_count / (128.0 * 3.0)), 1, 1)
 	rd.compute_list_end()
-
-
-func _notification(what) -> void:
-	if what != NOTIFICATION_PREDELETE:
-		return
-
-	for rid in [uniform_set, slot_buffer, used_buffer]:
-		if rid.is_valid():
-			rd.free_rid(rid)

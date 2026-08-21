@@ -34,7 +34,8 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	params = ComputeParams.new(surface, global_transform)
 
 	bake_workers = [
-		BevelShrink.new(mesh, surface, params, uniforms)
+		BevelShrink.new(mesh, surface, params, uniforms),
+		BevelFill.new(mesh, surface, params, uniforms),
 	]
 
 	bake()

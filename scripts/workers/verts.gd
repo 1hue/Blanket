@@ -74,7 +74,7 @@ func compute() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.verts.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
-	rd.compute_list_bind_uniform_set(compute_list, in_uniform_set, 0)
+	rd.compute_list_bind_uniform_set(compute_list, uniforms.source_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selection_uniform_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 2)
 	rd.compute_list_bind_uniform_set(compute_list, dedupe_uniform_set, 3)
