@@ -106,12 +106,12 @@ func debug() -> void:
 	#"[/color]")
 #
 	#var out_verts := rd.buffer_get_data(RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx))
-	#var out_idx := rd.buffer_get_data(RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx))
+	var out_idx := rd.buffer_get_data(RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx))
 	#print_rich(
 		#"[color=pale_green] out verts:\n", out_verts.slice(0, params.out_vertex_count * params.out_vertex_stride).to_vector3_array(), "[/color]")
-	#print_rich(
-		#"[color=pale_green] out indices:\n", ComputeUtil.to_int16_array(out_idx), "[/color]")
-#
+	print_rich(
+		"[color=pale_green] out indices:\n", ComputeUtil.to_int16_array(out_idx), "[/color]")
+
 	##var out_map_data := rd.buffer_get_data(out_in_map_buffer).to_int32_array()
 	##var out_positions := out_data.slice(0, params.out_vertex_count * params.out_vertex_stride).to_float32_array()
 #

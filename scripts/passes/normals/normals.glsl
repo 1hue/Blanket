@@ -13,8 +13,8 @@ layout(push_constant, std430) uniform PushParams {
 	uint out_normal_stride;
 };
 
-layout(set = 0, binding = 0, std430) restrict buffer NormalSumBuffer {
-	float normal_sums[];
+layout(set = 0, binding = 0, scalar) restrict buffer NormalSumBuffer {
+	vec3 normal_sums[];
 };
 
 layout(set = 1, binding = 0, std430) restrict buffer OutVertexBuffer {
@@ -40,8 +40,7 @@ void main() {
 
 	if (vert >= out_vertex_count) return;
 
-	uint base = vert * 3;
-	vec3 sum = vec3(normal_sums[base], normal_sums[base + 1], normal_sums[base + 2]);
+	vec3 sum = normal_sums[vert];
 	vec3 normal = dot(sum, sum) > 0 ? normalize(sum) : vec3(0, 1, 0);
 
 	uint word = (out_normal_offset + vert * out_normal_stride) / 4;

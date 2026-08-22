@@ -37,12 +37,12 @@ void main() {
 
 	if (face >= out_faces.length()) return;
 
-	uvec3 corners = uvec3(out_faces[face]);
+	u16vec3 corners = out_faces[face];
 	vec3 a = out_positions[corners.x];
 	vec3 b = out_positions[corners.y];
 	vec3 c = out_positions[corners.z];
 
-	vec3 normal = cross(b - a, c - a);
+	vec3 normal = cross(c - a, b - a);
 
 	accumulate(corners.x, normal);
 	accumulate(corners.y, normal);
