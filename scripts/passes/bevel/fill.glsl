@@ -24,7 +24,7 @@ layout(set = 0, binding = 1, scalar) restrict readonly buffer InIndexBuffer {
 };
 
 layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
-	uint in_attribute_words[]; // unused here
+	uint in_attribute_words[]; // unused
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer OutVertexBuffer {

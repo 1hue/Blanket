@@ -8,15 +8,15 @@ class_name MeshBevel
 @export var debug_normals := false:
 	set(value):
 		debug_normals = value
-		draw_normals()
+		#draw_normals()
 @export_range(0, 2, 0.01, "or_greater", "prefer_slider") var debug_normals_length := 0.2:
 	set(value):
 		debug_normals_length = value
-		draw_normals()
+		#draw_normals()
 @export var debug_normals_color := Color.AQUA:
 	set(value):
 		debug_normals_color = value
-		draw_normals()
+		#draw_normals()
 @onready var mesh_instance: MeshInstance3D = $".."
 
 var debug_normals_mesh: MeshInstance3D: set = _set_debug_normals_mesh
