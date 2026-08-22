@@ -37,6 +37,8 @@ var bevel_shrink := DEFAULT_BEVEL_SHRINK
 var bevel_segments := DEFAULT_BEVEL_SEGMENTS
 var bevel_vertex_count: int
 var bevel_index_count: int
+var bevel_normal_offset: int
+var bevel_normal_stride: int
 var bevel_color_offset: int
 var bevel_attribute_stride: int
 var max_shared_edges: int:

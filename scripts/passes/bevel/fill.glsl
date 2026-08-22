@@ -5,7 +5,7 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
-const uint RINGS = 4; // Tip triangle, then RINGS-1 quad bands out to the arc
+const uint RINGS = 2; // Tip triangle, then RINGS-1 quad bands out to the arc
 
 layout(local_size_x = 256) in;
 

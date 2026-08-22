@@ -1,5 +1,5 @@
 extends ComputePass
-class_name Verts
+class_name VertsPass
 
 const SIZE_PARAMS = 52
 

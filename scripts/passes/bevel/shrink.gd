@@ -1,5 +1,5 @@
 extends ComputePass
-class_name BevelShrink
+class_name BevelShrinkPass
 
 const SIZE_PARAMS = 12
 
@@ -44,6 +44,8 @@ func init_uniforms() -> void:
 	var format := mesh.surface_get_format(surface.idx)
 	params.bevel_color_offset = RenderingServer.mesh_surface_get_format_offset(format, params.bevel_vertex_count, Mesh.ARRAY_COLOR)
 	params.bevel_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, params.bevel_vertex_count)
+	params.bevel_normal_offset = RenderingServer.mesh_surface_get_format_offset(format, params.bevel_vertex_count, Mesh.ARRAY_NORMAL)
+	params.bevel_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, params.bevel_vertex_count)
 
 	# 3 edges per face
 	var shared_edge_size := 4 + params.max_shared_edges * 16
@@ -99,7 +101,6 @@ func compute() -> void:
 func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
-
 	for rid in [
 		out_uniform_set, shared_edge_uniform_set, shared_edge_buffer,
 		dispatch_uniform_set, dispatch_buffer

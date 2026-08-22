@@ -1,5 +1,5 @@
 extends ComputePass
-class_name BevelFill
+class_name BevelFillPass
 
 const SIZE_PARAMS = 16
 

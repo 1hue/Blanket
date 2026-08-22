@@ -34,11 +34,14 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	params = ComputeParams.new(surface, global_transform)
 
 	bake_workers = [
-		BevelShrink.new(mesh, surface, params, uniforms),
-		BevelFill.new(mesh, surface, params, uniforms),
+		BevelShrinkPass.new(mesh, surface, params, uniforms),
+		BevelFillPass.new(mesh, surface, params, uniforms),
+		NormalsSumPass.new(mesh, surface, params, uniforms),
+		NormalsPass.new(mesh, surface, params, uniforms),
 	]
 
 	bake()
+	debug()
 
 
 func bake() -> void:
@@ -60,18 +63,21 @@ func update() -> void:
 	#], SurfaceShaders.verts.shader, 3)
 
 
-#func debug() -> void:
+func debug() -> void:
+	var normals_sum := rd.buffer_get_data(uniforms.normals_sum)
+	print_rich("[color=pale_green]", normals_sum.to_vector3_array(), "[/color]")
+
 	##var data := RenderingServer.mesh_get_surface(mesh_rid, surface.source_idx)
 	##print_rich("[color=rosy_brown]", data, "[/color]")
 	##var vertex_data: PackedByteArray = data.vertex_data
 	##print_rich("[color=pale_green]", data.vertex_count, " source verts:\n", vertex_data.to_vector3_array(), "[/color]\n")
-#
+
 	#var faces := rd.buffer_get_data(faces_buffer, FACES_HEADER, faces_buffer_size - FACES_HEADER)
 	#print_rich("[color=pale_green] faces:", ComputeUtil.to_vector3i_array(faces.to_int32_array()), "[/color]")
-#
+
 	#var edges := rd.buffer_get_data(edges_buffer, EDGES_HEADER, edges_buffer_size - EDGES_HEADER)
 	#print_rich("[color=pale_green] edges:", ComputeUtil.to_vector2i_array(edges), "[/color]")
-#
+
 	#print_rich(
 		#"[color=peach_puff]",
 		#" faces_dispatch=", rd.buffer_get_data(faces_dispatch_buffer, 0, 12).to_int32_array(),
@@ -81,7 +87,7 @@ func update() -> void:
 		#"\n unique_count=", rd.buffer_get_data(slot_buffer, 0, 4).decode_u32(0),
 		#"[/color]"
 	#)
-#
+
 	#print_rich("[color=khaki] out_vertex_count=", params.out_vertex_count,
 	#" out_vertex_stride=", params.out_vertex_stride,
 	#" out_normal_offset=", params.out_normal_offset,

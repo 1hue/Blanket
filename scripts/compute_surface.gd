@@ -1,7 +1,7 @@
 extends RefCounted
 class_name ComputeSurface
 
-const SURFACE_NAME = "AddedComputeSurface"
+const SURFACE_NAME = "ComputedSurface"
 const SURFACE_FLAGS := (
 	Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER | (Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
 )
@@ -14,11 +14,11 @@ var source_idx: int
 ## The newly created surface on the mesh.
 var idx := -1
 var format: int:
-	get: return mesh.surface_get_format(idx)
+	get: return mesh.surface_get_format(idx) if idx >= 0 else 0
 var vertex_count: int:
-	get: return mesh.surface_get_array_len(idx)
+	get: return mesh.surface_get_array_len(idx) if idx >= 0 else 0
 var vertex_stride: int:
-	get: return RenderingServer.mesh_surface_get_format_vertex_stride(format, vertex_count)
+	get: return RenderingServer.mesh_surface_get_format_vertex_stride(format, vertex_count) if idx >= 0 else 0
 
 
 func _init(p_mesh: ArrayMesh, p_source_idx: int) -> void:

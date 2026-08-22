@@ -1,5 +1,5 @@
 extends ComputePass
-class_name Dedupe
+class_name DedupePass
 
 const SIZE_PARAMS = 16
 
@@ -60,7 +60,6 @@ func compute() -> void:
 func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
-
 	for rid in [uniform_set, slot_buffer, used_buffer]:
 		if rid.is_valid():
 			rd.free_rid(rid)

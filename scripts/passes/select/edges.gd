@@ -1,5 +1,5 @@
 extends ComputePass
-class_name SelectEdges
+class_name SelectEdgesPass
 
 const SIZE_PARAMS = 8
 const BUFFER_HEADER = 4 # edges_count
@@ -65,7 +65,6 @@ func compute() -> void:
 func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
-
 	for rid in [uniform_set, buffer, dispatch_uniform_set, dispatch_buffer]:
 		if rid.is_valid():
 			rd.free_rid(rid)

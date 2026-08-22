@@ -34,7 +34,7 @@ var verts: ShaderPipeline
 var shape: ShaderPipeline
 var bevel_shrink: ShaderPipeline
 var bevel_fill: ShaderPipeline
-var normals_pre: ShaderPipeline
+var normals_sum: ShaderPipeline
 var normals: ShaderPipeline
 
 
@@ -52,5 +52,5 @@ func _init() -> void:
 	shape = ShaderPipeline.new("res://scripts/passes/shape.glsl")
 	bevel_shrink = ShaderPipeline.new("res://scripts/passes/bevel/shrink.glsl")
 	bevel_fill = ShaderPipeline.new("res://scripts/passes/bevel/fill.glsl")
-	normals_pre = ShaderPipeline.new("res://scripts/passes/normals/normals_pre.glsl")
+	normals_sum = ShaderPipeline.new("res://scripts/passes/normals/sum.glsl")
 	normals = ShaderPipeline.new("res://scripts/passes/normals/normals.glsl")

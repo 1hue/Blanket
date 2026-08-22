@@ -4,16 +4,19 @@ class_name MeshBevel
 @export var material: Material = preload("res://assets/wireframe_material.tres")
 
 @export_group("Debug", "debug")
-@export var debug_draw_normals := false: set = _set_debug_draw_normals
+@export_subgroup("Normals", "debug_normals")
+@export var debug_normals := false:
+	set(value):
+		debug_normals = value
+		draw_normals()
 @export_range(0, 2, 0.01, "or_greater", "prefer_slider") var debug_normals_length := 0.2:
 	set(value):
 		debug_normals_length = value
-		debug_normals()
+		draw_normals()
 @export var debug_normals_color := Color.AQUA:
 	set(value):
 		debug_normals_color = value
-		debug_normals()
-
+		draw_normals()
 @onready var mesh_instance: MeshInstance3D = $".."
 
 var debug_normals_mesh: MeshInstance3D: set = _set_debug_normals_mesh
@@ -34,18 +37,16 @@ func _ready() -> void:
 
 		computes.append(compute)
 
+	draw_normals()
+
 
 func _on_mesh_changed() -> void:
-	debug_normals()
+	#draw_normals()
+	pass
 
 
 func _exit_tree() -> void:
 	computes.clear()
-
-
-func _set_debug_draw_normals(value: bool) -> void:
-	debug_draw_normals = value
-	debug_normals()
 
 
 func _set_debug_normals_mesh(value: MeshInstance3D) -> void:
@@ -59,19 +60,14 @@ func _set_debug_normals_mesh(value: MeshInstance3D) -> void:
 		add_child(debug_normals_mesh)
 
 
-func _set_debug_normals_length(value: float) -> void:
-	debug_normals_length = value
-	debug_normals()
-
-
-func debug_normals(surface_idx: int = 1) -> void:
+func draw_normals(surface_idx: int = 1) -> void:
 	# Bootleg compute sync
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
 
 	debug_normals_mesh = null
 
-	if not debug_draw_normals or not mesh_instance or not is_node_ready():
+	if not debug_normals or not mesh_instance or not is_node_ready():
 		return
 
 	var arrays := mesh_instance.mesh.surface_get_arrays(surface_idx)

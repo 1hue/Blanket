@@ -1,5 +1,5 @@
 extends ComputePass
-class_name Shape
+class_name ShapePass
 
 const SIZE_PARAMS = 36
 

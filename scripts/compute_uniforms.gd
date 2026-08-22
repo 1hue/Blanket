@@ -11,6 +11,9 @@ var shrink_dispatch_buffer: RID
 var bevel_out_set: RID
 var shared_edge_set: RID
 
+var normals_sum: RID
+var normals_sum_set: RID
+
 
 func _init(p_surface: ComputeSurface) -> void:
 	rd = RenderingServer.get_rendering_device()
