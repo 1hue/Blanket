@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://dhhj0epj45t8s"
+path="res://.godot/imported/normals_write.glsl-0c17c1fe9e4cfbc44066e936f227318c.res"
+
+[deps]
+
+source_file="res://scripts/passes/normals/normals_write.glsl"
+dest_files=["res://.godot/imported/normals_write.glsl-0c17c1fe9e4cfbc44066e936f227318c.res"]
+
+[params]
+

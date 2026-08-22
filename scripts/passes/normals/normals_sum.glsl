@@ -1,4 +1,4 @@
-// Sum each face's normal into its three corners. Run before normals_post.glsl.
+// Sum each face's normal into its three corners. Run before normals.glsl.
 #[compute]
 #version 450
 
@@ -32,12 +32,19 @@ void accumulate(uint vert, vec3 normal) {
 	atomicAdd(normal_sums[base + 2], normal.z);
 }
 
+bool is_degen(uvec3 tri) {
+	return tri.x == tri.y || tri.x == tri.z || tri.y == tri.z;
+}
+
 void main() {
 	uint face = gl_GlobalInvocationID.x;
 
 	if (face >= out_faces.length()) return;
 
 	u16vec3 corners = out_faces[face];
+
+	if (is_degen(corners)) return;
+
 	vec3 a = out_positions[corners.x];
 	vec3 b = out_positions[corners.y];
 	vec3 c = out_positions[corners.z];

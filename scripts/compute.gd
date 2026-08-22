@@ -36,8 +36,10 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	bake_workers = [
 		BevelShrinkPass.new(mesh, surface, params, uniforms),
 		BevelFillPass.new(mesh, surface, params, uniforms),
+		SmoothSumPass.new(mesh, surface, params, uniforms),
+		SmoothWritePass.new(mesh, surface, params, uniforms),
 		NormalsSumPass.new(mesh, surface, params, uniforms),
-		NormalsPass.new(mesh, surface, params, uniforms),
+		NormalsWritePass.new(mesh, surface, params, uniforms),
 	]
 
 	bake()
@@ -64,8 +66,8 @@ func update() -> void:
 
 
 func debug() -> void:
-	var normals_sum := rd.buffer_get_data(uniforms.normals_sum)
-	print_rich("[color=pale_green]", normals_sum.to_vector3_array(), "[/color]")
+	var smooth_sum := rd.buffer_get_data(uniforms.smooth_sum)
+	print_rich("[color=aqua] smooth_sum:\n", smooth_sum.to_vector4_array(), "[/color]")
 
 	##var data := RenderingServer.mesh_get_surface(mesh_rid, surface.source_idx)
 	##print_rich("[color=rosy_brown]", data, "[/color]")
@@ -105,12 +107,12 @@ func debug() -> void:
 	#" in_index_stride=", params.in_index_stride,
 	#"[/color]")
 #
-	#var out_verts := rd.buffer_get_data(RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx))
+	var out_verts := rd.buffer_get_data(RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx))
 	var out_idx := rd.buffer_get_data(RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx))
-	#print_rich(
-		#"[color=pale_green] out verts:\n", out_verts.slice(0, params.out_vertex_count * params.out_vertex_stride).to_vector3_array(), "[/color]")
 	print_rich(
-		"[color=pale_green] out indices:\n", ComputeUtil.to_int16_array(out_idx), "[/color]")
+		"[color=pale_green] indices:\n", ComputeUtil.to_int16_array(out_idx), "[/color]")
+	print_rich(
+		"[color=pale_green] verts:\n", out_verts.slice(0, params.bevel_vertex_count * params.bevel_vertex_stride).to_vector3_array(), "[/color]")
 
 	##var out_map_data := rd.buffer_get_data(out_in_map_buffer).to_int32_array()
 	##var out_positions := out_data.slice(0, params.out_vertex_count * params.out_vertex_stride).to_float32_array()

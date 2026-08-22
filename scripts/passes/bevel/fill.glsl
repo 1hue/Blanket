@@ -5,13 +5,12 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 
-const uint RINGS = 2; // Tip triangle, then RINGS-1 quad bands out to the arc
-
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
 	float shrink;
 	uint segments; // Per side of the crease
+	uint arcs; // Wedge segments or rings around each corner vert
 	uint out_color_offset;
 	uint out_attribute_stride;
 };
@@ -92,7 +91,7 @@ mat3 arc_anchors(uint end) {
 // resolve back into its output rather than being duplicated here.
 uint fan_vert(uint end, uint ring, uint step) {
 	if (ring == 0) return apex_base + end;
-	if (ring < RINGS) return ring_base + (end * (RINGS - 1) + ring - 1) * arc_count + step;
+	if (ring < arcs) return ring_base + (end * (arcs - 1) + ring - 1) * arc_count + step;
 	if (step == 0) return end == 0 ? corners.x : corners.y;
 	if (step == arc_steps) return end == 0 ? corners.w : corners.z;
 
@@ -106,8 +105,8 @@ void build_fan(uint end, uint tri_base) {
 
 	write_vertex(fan_vert(end, 0, 0), apex, vec4(0, 0, 1, 1));
 
-	for (uint ring = 1; ring <= RINGS; ring++) {
-		float t = float(ring) / float(RINGS);
+	for (uint ring = 1; ring <= arcs; ring++) {
+		float t = float(ring) / float(arcs);
 
 		for (uint step = 0; step <= arc_steps; step++) {
 			write_vertex(fan_vert(end, ring, step), mix(apex, arc_point(anchors, step), t), vec4(0, 1, 0, 1));
@@ -119,7 +118,7 @@ void build_fan(uint end, uint tri_base) {
 		write_triangle(tri_base + step, tip, reverse);
 	}
 
-	for (uint ring = 1; ring < RINGS; ring++) {
+	for (uint ring = 1; ring < arcs; ring++) {
 		uint band = tri_base + arc_steps + (ring - 1) * arc_steps * 2;
 
 		for (uint step = 0; step < arc_steps; step++) {
@@ -138,13 +137,16 @@ void build_fan(uint end, uint tri_base) {
 
 void build_strip(uint tri_base) {
 	for (uint step = 0; step < arc_steps; step++) {
-		uint a = fan_vert(0, RINGS, step);
-		uint b = fan_vert(0, RINGS, step + 1);
-		uint c = fan_vert(1, RINGS, step + 1);
-		uint d = fan_vert(1, RINGS, step);
+		uint a = fan_vert(0, arcs, step);
+		uint b = fan_vert(0, arcs, step + 1);
+		uint c = fan_vert(1, arcs, step + 1);
+		uint d = fan_vert(1, arcs, step);
 
-		write_triangle(tri_base + step * 2, uvec3(a, b, c), false);
-		write_triangle(tri_base + step * 2 + 1, uvec3(a, c, d), false);
+		// Alternate the diagonal so neither side collects every quad's extra edge
+		bool flip = step % 2 == 1;
+
+		write_triangle(tri_base + step * 2, flip ? uvec3(a, b, d) : uvec3(a, b, c), false);
+		write_triangle(tri_base + step * 2 + 1, flip ? uvec3(b, c, d) : uvec3(a, c, d), false);
 	}
 }
 
@@ -157,13 +159,13 @@ void main() {
 	arc_steps = segments * 2;
 	arc_count = arc_steps + 1;
 
-	uint fan_verts = 1 + (RINGS - 1) * arc_count + arc_count - 2;
-	uint fan_tris = arc_steps + (RINGS - 1) * arc_steps * 2;
+	uint fan_verts = 1 + (arcs - 1) * arc_count + arc_count - 2;
+	uint fan_tris = arc_steps + (arcs - 1) * arc_steps * 2;
 	uint corner_count = uint(in_faces.length()) * 3;
 
 	apex_base = corner_count + edge * fan_verts * 2;
 	ring_base = apex_base + 2;
-	arc_base = ring_base + (RINGS - 1) * arc_count * 2;
+	arc_base = ring_base + (arcs - 1) * arc_count * 2;
 
 	uint tri_base = corner_count + edge * (fan_tris * 2 + arc_steps * 2);
 

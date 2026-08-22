@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://beh51i55a24nh"
+path="res://.godot/imported/smooth_write.glsl-cbd7ca07a52fa2d20e11690ab5ffb0b4.res"
+
+[deps]
+
+source_file="res://scripts/passes/smooth/smooth_write.glsl"
+dest_files=["res://.godot/imported/smooth_write.glsl-cbd7ca07a52fa2d20e11690ab5ffb0b4.res"]
+
+[params]
+

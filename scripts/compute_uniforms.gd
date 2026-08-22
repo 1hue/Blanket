@@ -14,6 +14,9 @@ var shared_edge_set: RID
 var normals_sum: RID
 var normals_sum_set: RID
 
+var smooth_sum: RID
+var smooth_sum_set: RID
+
 
 func _init(p_surface: ComputeSurface) -> void:
 	rd = RenderingServer.get_rendering_device()

@@ -35,7 +35,9 @@ var shape: ShaderPipeline
 var bevel_shrink: ShaderPipeline
 var bevel_fill: ShaderPipeline
 var normals_sum: ShaderPipeline
-var normals: ShaderPipeline
+var normals_write: ShaderPipeline
+var smooth_sum: ShaderPipeline
+var smooth_write: ShaderPipeline
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -52,5 +54,7 @@ func _init() -> void:
 	shape = ShaderPipeline.new("res://scripts/passes/shape.glsl")
 	bevel_shrink = ShaderPipeline.new("res://scripts/passes/bevel/shrink.glsl")
 	bevel_fill = ShaderPipeline.new("res://scripts/passes/bevel/fill.glsl")
-	normals_sum = ShaderPipeline.new("res://scripts/passes/normals/sum.glsl")
-	normals = ShaderPipeline.new("res://scripts/passes/normals/normals.glsl")
+	normals_sum = ShaderPipeline.new("res://scripts/passes/normals/normals_sum.glsl")
+	normals_write = ShaderPipeline.new("res://scripts/passes/normals/normals_write.glsl")
+	smooth_sum = ShaderPipeline.new("res://scripts/passes/smooth/smooth_sum.glsl")
+	smooth_write = ShaderPipeline.new("res://scripts/passes/smooth/smooth_write.glsl")

@@ -23,7 +23,7 @@ func compute() -> void:
 
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_normals.pipeline)
-	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
+	#rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, normal_sum_uniform_set, 3)
 	rd.compute_list_dispatch(compute_list, ceili(params.out_index_count / 3.0 / 256.0), 1, 1)
 	rd.compute_list_end()
@@ -31,7 +31,7 @@ func compute() -> void:
 	compute_list = rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_normals_finish.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
-	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
+	#rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, normal_sum_uniform_set, 3)
 	rd.compute_list_dispatch(compute_list, ceili(params.out_vertex_count / 256.0), 1, 1)
 	rd.compute_list_end()

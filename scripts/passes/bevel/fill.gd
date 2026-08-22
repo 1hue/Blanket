@@ -1,7 +1,7 @@
 extends ComputePass
 class_name BevelFillPass
 
-const SIZE_PARAMS = 16
+const SIZE_PARAMS = 20
 
 
 func _pre() -> void:
@@ -11,8 +11,9 @@ func _pre() -> void:
 func pack_params() -> PackedByteArray:
 	push_constant.encode_float(0, params.bevel_shrink)
 	push_constant.encode_u32(4, params.bevel_segments)
-	push_constant.encode_u32(8, params.bevel_color_offset)
-	push_constant.encode_u32(12, params.bevel_attribute_stride)
+	push_constant.encode_u32(8, params.bevel_arcs)
+	push_constant.encode_u32(12, params.bevel_color_offset)
+	push_constant.encode_u32(16, params.bevel_attribute_stride)
 
 	return push_constant
 

@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://otuwo5ystelv"
+path="res://.godot/imported/smooth_sum.glsl-c92dbdb65d0f7cf116a3db3044175631.res"
+
+[deps]
+
+source_file="res://scripts/passes/smooth/smooth_sum.glsl"
+dest_files=["res://.godot/imported/smooth_sum.glsl-c92dbdb65d0f7cf116a3db3044175631.res"]
+
+[params]
+

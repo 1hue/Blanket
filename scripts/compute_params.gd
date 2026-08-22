@@ -7,8 +7,9 @@ const DEFAULT_DEPTH = 0.1
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
 const MAX_VALENCE = 32
 const DEFAULT_BEVEL_SHRINK = 0.3
-const DEFAULT_BEVEL_SEGMENTS = 2
-const BEVEL_WEDGE_SEGMENTS = 2
+const DEFAULT_BEVEL_SEGMENTS = 1
+const DEFAULT_BEVEL_ARCS = 1
+const DEFAULT_SMOOTH_STRENGTH = 0.5
 
 #region Source surface
 var in_vertex_count: int
@@ -34,15 +35,21 @@ var select_index_stride: int
 #region Bevel
 var bevel := 0.0
 var bevel_shrink := DEFAULT_BEVEL_SHRINK
+## Strips on each side of a crease.
 var bevel_segments := DEFAULT_BEVEL_SEGMENTS
+## Wedge segments or rings around each corner vert.
+var bevel_arcs := DEFAULT_BEVEL_ARCS
 var bevel_vertex_count: int
+var bevel_vertex_stride: int
 var bevel_index_count: int
 var bevel_normal_offset: int
 var bevel_normal_stride: int
 var bevel_color_offset: int
+var bevel_marker_offset: int
 var bevel_attribute_stride: int
 var max_shared_edges: int:
 	get: return in_index_count / 2
+var smooth_strength := DEFAULT_SMOOTH_STRENGTH
 #endregion
 
 ## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees
