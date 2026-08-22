@@ -34,6 +34,8 @@ var verts: ShaderPipeline
 var shape: ShaderPipeline
 var bevel_shrink: ShaderPipeline
 var bevel_fill: ShaderPipeline
+var normals_pre: ShaderPipeline
+var normals: ShaderPipeline
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -43,10 +45,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _init() -> void:
-	select_faces = ShaderPipeline.new("res://shaders/select/faces.glsl")
-	select_edges = ShaderPipeline.new("res://shaders/select/edges.glsl")
-	dedupe = ShaderPipeline.new("res://shaders/dedupe.glsl")
-	verts = ShaderPipeline.new("res://shaders/verts.glsl")
-	shape = ShaderPipeline.new("res://shaders/shape.glsl")
-	bevel_shrink = ShaderPipeline.new("res://shaders/bevel/shrink.glsl")
-	bevel_fill = ShaderPipeline.new("res://shaders/bevel/fill.glsl")
+	select_faces = ShaderPipeline.new("res://scripts/passes/select/faces.glsl")
+	select_edges = ShaderPipeline.new("res://scripts/passes/select/edges.glsl")
+	dedupe = ShaderPipeline.new("res://scripts/passes/dedupe.glsl")
+	verts = ShaderPipeline.new("res://scripts/passes/verts.glsl")
+	shape = ShaderPipeline.new("res://scripts/passes/shape.glsl")
+	bevel_shrink = ShaderPipeline.new("res://scripts/passes/bevel/shrink.glsl")
+	bevel_fill = ShaderPipeline.new("res://scripts/passes/bevel/fill.glsl")
+	normals_pre = ShaderPipeline.new("res://scripts/passes/normals/normals_pre.glsl")
+	normals = ShaderPipeline.new("res://scripts/passes/normals/normals.glsl")

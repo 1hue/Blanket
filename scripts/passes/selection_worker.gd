@@ -1,5 +1,5 @@
-extends ComputeWorker
-class_name NormalsWorker
+extends ComputePass
+class_name SelectionWorker
 
 const SIZE_PARAMS = 24
 

@@ -10,7 +10,7 @@ class_name MeshCover3D
 var mesh: ArrayMesh:
 	get: return mesh_instance.mesh
 var debug_normal_mesh: MeshInstance3D
-var workers: Array[ComputeWorker]
+var workers: Array[ComputePass]
 
 
 func _ready() -> void:

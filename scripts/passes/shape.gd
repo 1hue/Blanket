@@ -1,4 +1,4 @@
-extends ComputeWorker
+extends ComputePass
 class_name Shape
 
 const SIZE_PARAMS = 36

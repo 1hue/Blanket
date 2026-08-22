@@ -1,6 +1,6 @@
 @abstract
 extends RefCounted
-class_name ComputeWorker
+class_name ComputePass
 
 var rd: RenderingDevice
 var mesh: ArrayMesh

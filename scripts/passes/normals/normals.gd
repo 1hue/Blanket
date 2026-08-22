@@ -1,4 +1,4 @@
-extends ComputeWorker
+extends ComputePass
 class_name NormalsWorker
 
 const SIZE_PARAMS = 24

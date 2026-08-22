@@ -31,8 +31,8 @@ layout(set = 1, binding = 0, scalar) restrict writeonly buffer OutVertexBuffer {
 	vec3 out_positions[];
 };
 
-layout(set = 1, binding = 1, std430) restrict writeonly buffer OutIndexBuffer {
-	uint16_t out_faces[];
+layout(set = 1, binding = 1, scalar) restrict writeonly buffer OutIndexBuffer {
+	u16vec3 out_faces[];
 };
 
 layout(set = 1, binding = 2, std430) restrict writeonly buffer OutAttributeBuffer {
@@ -143,9 +143,10 @@ void main() {
 
 	for (uint c = 0; c < 3; c++) {
 		out_positions[base + c] = inset_corner(positions, c, is_shared);
-		out_faces[base + c] = uint16_t(base + c);
 		write_color(base + c, is_shared[c] ? vec4(1, 0, 0, 1) : vec4(1));
 	}
+
+	out_faces[face] = u16vec3(base, base + 1, base + 2);
 
 	// Both faces of an edge find each other, so only the lower corner registers it
 	uvec4 pending[3];

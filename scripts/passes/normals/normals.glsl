@@ -13,6 +13,10 @@ layout(push_constant, std430) uniform PushParams {
 	uint out_normal_stride;
 };
 
+layout(set = 0, binding = 0, std430) restrict readonly buffer NormalSumBuffer {
+	float normal_sums[];
+};
+
 layout(set = 1, binding = 0, std430) restrict buffer OutVertexBuffer {
 	uint out_words[]; // Positions, then packed normals
 };
@@ -23,10 +27,6 @@ layout(set = 1, binding = 1, scalar) restrict readonly buffer OutIndexBuffer {
 
 layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[]; // Unused here
-};
-
-layout(set = 3, binding = 0, std430) restrict readonly buffer NormalSumBuffer {
-	float normal_sums[];
 };
 
 uint oct_encode(vec3 n) {

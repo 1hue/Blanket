@@ -8,6 +8,10 @@
 
 layout(local_size_x = 256) in;
 
+layout(set = 0, binding = 0, std430) restrict buffer NormalSumBuffer {
+	float normal_sums[]; // 3 floats per vertex, cleared before each run
+};
+
 layout(set = 1, binding = 0, scalar) restrict readonly buffer OutVertexBuffer {
 	vec3 out_positions[];
 };
@@ -18,10 +22,6 @@ layout(set = 1, binding = 1, scalar) restrict readonly buffer OutIndexBuffer {
 
 layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[]; // Unused here, declared to match the set's layout
-};
-
-layout(set = 3, binding = 0, std430) restrict buffer NormalSumBuffer {
-	float normal_sums[]; // 3 floats per vertex, cleared before each run
 };
 
 // Cross product magnitude is twice the triangle's area, so bigger faces weigh more

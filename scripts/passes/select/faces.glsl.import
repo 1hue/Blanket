@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://fw4yi84th8j"
+path="res://.godot/imported/faces.glsl-e9e46beccd234bd8a8d77300160a56de.res"
+
+[deps]
+
+source_file="res://scripts/passes/select/faces.glsl"
+dest_files=["res://.godot/imported/faces.glsl-e9e46beccd234bd8a8d77300160a56de.res"]
+
+[params]
+

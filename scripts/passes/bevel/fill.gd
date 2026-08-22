@@ -1,4 +1,4 @@
-extends ComputeWorker
+extends ComputePass
 class_name BevelFill
 
 const SIZE_PARAMS = 16

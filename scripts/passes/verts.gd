@@ -1,4 +1,4 @@
-extends ComputeWorker
+extends ComputePass
 class_name Verts
 
 const SIZE_PARAMS = 52

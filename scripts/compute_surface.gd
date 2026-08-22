@@ -1,7 +1,7 @@
 extends RefCounted
 class_name ComputeSurface
 
-const SURFACE_NAME = "AddedSurface"
+const SURFACE_NAME = "AddedComputeSurface"
 const SURFACE_FLAGS := (
 	Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER | (Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
 )

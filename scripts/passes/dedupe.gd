@@ -1,4 +1,4 @@
-extends ComputeWorker
+extends ComputePass
 class_name Dedupe
 
 const SIZE_PARAMS = 16

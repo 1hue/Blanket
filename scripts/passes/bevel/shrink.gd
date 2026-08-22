@@ -1,4 +1,4 @@
-extends ComputeWorker
+extends ComputePass
 class_name BevelShrink
 
 const SIZE_PARAMS = 12

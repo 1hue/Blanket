@@ -17,7 +17,7 @@ var in_uniform_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 #var debug_buffer: RID
 #var debug_uniform_set: RID
 
-var bake_workers: Array[ComputeWorker]
+var bake_workers: Array[ComputePass]
 
 
 func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -> void:
