@@ -2,18 +2,29 @@ extends Node
 class_name MeshBevel
 
 @export var material: Material = preload("res://assets/wireframe_material.tres")
-@export var debug: Label3D
-@export var draw_debug_normals := false
+
+@export_group("Debug", "debug")
+@export var debug_draw_normals := false: set = _set_debug_draw_normals
+@export_range(0, 2, 0.01, "or_greater", "prefer_slider") var debug_normals_length := 0.2:
+	set(value):
+		debug_normals_length = value
+		debug_normals()
+@export var debug_normals_color := Color.AQUA:
+	set(value):
+		debug_normals_color = value
+		debug_normals()
 
 @onready var mesh_instance: MeshInstance3D = $".."
 
-var debug_normal_mesh: MeshInstance3D
+var debug_normals_mesh: MeshInstance3D: set = _set_debug_normals_mesh
 var computes: Array[Compute]
 
 
 func _ready() -> void:
 	convert_to_storage_buffer_mesh()
 	validate()
+
+	mesh_instance.mesh.changed.connect(_on_mesh_changed)
 
 	for i in mesh_instance.mesh.get_surface_count():
 		var compute := Compute.new(mesh_instance.mesh, i, mesh_instance.global_transform)
@@ -23,23 +34,51 @@ func _ready() -> void:
 
 		computes.append(compute)
 
-	if draw_debug_normals:
-		debug_normals()
+
+func _on_mesh_changed() -> void:
+	debug_normals()
 
 
 func _exit_tree() -> void:
 	computes.clear()
 
 
-func debug_normals(surface_idx: int = 1, length: float = 0.2) -> void:
+func _set_debug_draw_normals(value: bool) -> void:
+	debug_draw_normals = value
+	debug_normals()
+
+
+func _set_debug_normals_mesh(value: MeshInstance3D) -> void:
+	if debug_normals_mesh: # Clear previous mesh
+		debug_normals_mesh.queue_free()
+		remove_child(debug_normals_mesh)
+
+	debug_normals_mesh = value
+
+	if debug_normals_mesh:
+		add_child(debug_normals_mesh)
+
+
+func _set_debug_normals_length(value: float) -> void:
+	debug_normals_length = value
+	debug_normals()
+
+
+func debug_normals(surface_idx: int = 1) -> void:
+	# Bootleg compute sync
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+
+	debug_normals_mesh = null
+
+	if not debug_draw_normals or not mesh_instance or not is_node_ready():
+		return
+
 	var arrays := mesh_instance.mesh.surface_get_arrays(surface_idx)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 
-	if debug_normal_mesh:
-		debug_normal_mesh.queue_free()
-
-	debug_normal_mesh = draw_normal_debug(vertices, normals, mesh_instance.global_transform, length)
+	debug_normals_mesh = draw_normal_debug(vertices, normals, mesh_instance.global_transform, debug_normals_length)
 
 
 func draw_normal_debug(
@@ -49,24 +88,23 @@ func draw_normal_debug(
 	length: float = 0.2
 ) -> MeshInstance3D:
 	var im := ImmediateMesh.new()
-	var mat := ORMMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.no_depth_test = true
+	var normals_material := ORMMaterial3D.new()
+	normals_material.vertex_color_use_as_albedo = true
+	normals_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	normals_material.no_depth_test = true
 
-	im.surface_begin(Mesh.PRIMITIVE_LINES, mat)
+	im.surface_begin(Mesh.PRIMITIVE_LINES, normals_material)
 	for i in vertices.size():
 		var world_pos := transform * vertices[i]
 		var world_normal := (transform.basis * normals[i]).normalized()
 
-		im.surface_set_color(Color.RED)
+		im.surface_set_color(debug_normals_color)
 		im.surface_add_vertex(world_pos)
 		im.surface_add_vertex(world_pos + world_normal * length)
 	im.surface_end()
 
 	var mi := MeshInstance3D.new()
 	mi.mesh = im
-	add_child(mi)
 	return mi
 
 
@@ -80,17 +118,12 @@ func validate() -> void:
 
 
 func _on_output(message: String) -> void:
-	debug.text = message
+	prints("Debug:", message)
 
 
 func update(_delta: int) -> void:
 	for compute in computes:
 		pass
-
-	if draw_debug_normals:
-		await RenderingServer.frame_post_draw
-		await RenderingServer.frame_post_draw
-		debug_normals()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

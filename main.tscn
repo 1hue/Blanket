@@ -73,6 +73,7 @@ surface_material_override/0 = ExtResource("6_5vw27")
 
 [node name="MeshBevel" type="Node" parent="basic/Plane" index="0" unique_id=1511487239]
 script = ExtResource("5_lquwl")
+debug_draw_normals = true
 metadata/_custom_type_script = "uid://bdbnd4rwx5btq"
 
 [node name="Plane_001" parent="basic" index="1" unique_id=603323808]

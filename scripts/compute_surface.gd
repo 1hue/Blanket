@@ -65,11 +65,13 @@ func allocate(new_vertex_count: int, new_index_count: int, array_types: int = Me
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, SURFACE_FLAGS)
 	mesh.surface_set_name(idx, SURFACE_NAME)
 	mesh.custom_aabb = source_aabb()
+	mesh.emit_changed()
 
 
 func remove() -> void:
 	if idx >= 0:
 		mesh.surface_remove(idx)
+		mesh.emit_changed()
 	idx = -1
 
 
