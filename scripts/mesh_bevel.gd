@@ -32,17 +32,17 @@ func _ready() -> void:
 	for i in mesh_instance.mesh.get_surface_count():
 		var compute := Compute.new(mesh_instance.mesh, i, mesh_instance.global_transform)
 
-		if material:
-			mesh_instance.set_surface_override_material(compute.surface.idx, material)
-
 		computes.append(compute)
 
-	draw_normals()
+	#draw_normals()
 
 
 func _on_mesh_changed() -> void:
+	if material:
+		for compute in computes:
+			if compute.surface.idx > -1:
+				mesh_instance.set_surface_override_material(compute.surface.idx, material)
 	#draw_normals()
-	pass
 
 
 func _exit_tree() -> void:

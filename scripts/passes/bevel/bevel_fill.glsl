@@ -87,10 +87,10 @@ mat3 arc_anchors(uint end) {
 	return mat3(out_positions[near], crease, out_positions[far]);
 }
 
-// Fan as a polar grid. The arc's two ends are shrink's retracted corners, so they
-// resolve back into its output rather than being duplicated here.
+// Fan as a polar grid. Apexes are keyed on the source vertex, so edges meeting at a
+// corner share one. The arc's two ends are shrink's retracted corners.
 uint fan_vert(uint end, uint ring, uint step) {
-	if (ring == 0) return apex_base + end;
+	if (ring == 0) return apex_base + corner_vertex(end == 0 ? corners.x : corners.y);
 	if (ring < arcs) return ring_base + (end * (arcs - 1) + ring - 1) * arc_count + step;
 	if (step == 0) return end == 0 ? corners.x : corners.y;
 	if (step == arc_steps) return end == 0 ? corners.w : corners.z;
@@ -159,12 +159,13 @@ void main() {
 	arc_steps = segments * 2;
 	arc_count = arc_steps + 1;
 
-	uint fan_verts = 1 + (arcs - 1) * arc_count + arc_count - 2;
+	uint fan_verts = (arcs - 1) * arc_count + arc_count - 2;
 	uint fan_tris = arc_steps + (arcs - 1) * arc_steps * 2;
 	uint corner_count = uint(in_faces.length()) * 3;
 
-	apex_base = corner_count + edge * fan_verts * 2;
-	ring_base = apex_base + 2;
+	// Apexes sit in their own block, one slot per source vertex, shared across edges
+	apex_base = corner_count;
+	ring_base = apex_base + in_positions.length() + edge * fan_verts * 2;
 	arc_base = ring_base + (arcs - 1) * arc_count * 2;
 
 	uint tri_base = corner_count + edge * (fan_tris * 2 + arc_steps * 2);

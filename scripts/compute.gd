@@ -17,7 +17,7 @@ var in_uniform_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 #var debug_buffer: RID
 #var debug_uniform_set: RID
 
-var bake_workers: Array[ComputePass]
+var bake_passes: Array[ComputePass]
 
 
 func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -> void:
@@ -33,14 +33,16 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	uniforms = ComputeUniforms.new(surface)
 	params = ComputeParams.new(surface, global_transform)
 
-	bake_workers = [
-		DedupePass.new(mesh, surface, params, uniforms),
-		BevelShrinkPass.new(mesh, surface, params, uniforms),
-		BevelFillPass.new(mesh, surface, params, uniforms),
-		SmoothSumPass.new(mesh, surface, params, uniforms),
-		SmoothWritePass.new(mesh, surface, params, uniforms),
-		NormalsSumPass.new(mesh, surface, params, uniforms),
-		NormalsWritePass.new(mesh, surface, params, uniforms),
+	bake_passes = [
+		FacesSelectPass.new(mesh, surface, params, uniforms),
+		FacesDedupePass.new(mesh, surface, params, uniforms),
+		FacesWritePass.new(mesh, surface, params, uniforms),
+		#BevelShrinkPass.new(mesh, surface, params, uniforms),
+		#BevelFillPass.new(mesh, surface, params, uniforms),
+		#SmoothSumPass.new(mesh, surface, params, uniforms),
+		#SmoothWritePass.new(mesh, surface, params, uniforms),
+		#NormalsSumPass.new(mesh, surface, params, uniforms),
+		#NormalsWritePass.new(mesh, surface, params, uniforms),
 		#ShapePass.new(mesh, surface, params, uniforms),
 	]
 
@@ -49,8 +51,8 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 
 
 func bake() -> void:
-	for bake_worker in bake_workers:
-		bake_worker.compute()
+	for bake_pass in bake_passes:
+		bake_pass.compute()
 
 
 ## TODO Reposition the added mesh surface
@@ -60,24 +62,18 @@ func update() -> void:
 
 
 #region Debug
-#func _init_debug() -> void:
-	#debug_buffer = rd.storage_buffer_create(4)
-	#debug_uniform_set = rd.uniform_set_create([
-		#ComputeUtil.create_uniform([debug_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
-	#], SurfaceShaders.verts.shader, 3)
-
-
 func debug() -> void:
-	var data := rd.buffer_get_data(uniforms.dedupe)
-	print_rich("[color=aqua]", data.decode_u32(0), " ", data.slice(4).to_int32_array(), "[/color]")
+	#var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
+	#var indices := rd.buffer_get_data(index_buffer)
+	#print_rich("[color=aqua]index_buffer[", indices.size(), "]: ", indices, "[/color]")
 
-	##var data := RenderingServer.mesh_get_surface(mesh_rid, surface.source_idx)
-	##print_rich("[color=rosy_brown]", data, "[/color]")
+	#var shared := rd.buffer_get_data(uniforms.shared_edge)
+	#print_rich("[color=aqua] shared_edge_buffer: ", shared.to_int32_array(), "[/color]")
 	##var vertex_data: PackedByteArray = data.vertex_data
 	##print_rich("[color=pale_green]", data.vertex_count, " source verts:\n", vertex_data.to_vector3_array(), "[/color]\n")
 
-	#var faces := rd.buffer_get_data(faces_buffer, FACES_HEADER, faces_buffer_size - FACES_HEADER)
-	#print_rich("[color=pale_green] faces:", ComputeUtil.to_vector3i_array(faces.to_int32_array()), "[/color]")
+	var faces := rd.buffer_get_data(uniforms.faces_buffer)
+	print_rich("[color=pale_green]faces_buffer[", faces.decode_u32(0), "]: ", faces, "[/color]")
 
 	#var edges := rd.buffer_get_data(edges_buffer, EDGES_HEADER, edges_buffer_size - EDGES_HEADER)
 	#print_rich("[color=pale_green] edges:", ComputeUtil.to_vector2i_array(edges), "[/color]")
@@ -92,21 +88,22 @@ func debug() -> void:
 		#"[/color]"
 	#)
 
-	#print_rich("[color=khaki] out_vertex_count=", params.out_vertex_count,
-	#" out_vertex_stride=", params.out_vertex_stride,
-	#" out_normal_offset=", params.out_normal_offset,
-	#" out_normal_stride=", params.out_normal_stride,
-	#" out_marker_offset=", params.out_marker_offset,
-	#" out_attribute_stride=", params.out_attribute_stride,
-	#" out_index_stride=", params.out_index_stride,
-	#"[/color]")
-#
 	#print_rich("[color=khaki] in_vertex_count=", params.in_vertex_count,
-	#" in_vertex_stride=", params.in_vertex_stride,
+	#" in_index_count=", params.in_index_count,
 	#" in_normal_offset=", params.in_normal_offset,
 	#" in_normal_stride=", params.in_normal_stride,
 	#" in_attribute_stride=", params.in_attribute_stride,
+	#" in_vertex_stride=", params.in_vertex_stride,
 	#" in_index_stride=", params.in_index_stride,
+	#"[/color]")
+
+	#print_rich("[color=khaki] out_vertex_count=", params.bevel_vertex_count,
+	#" out_vertex_stride=", params.bevel_vertex_stride,
+	#" out_normal_offset=", params.bevel_normal_offset,
+	#" out_normal_stride=", params.bevel_normal_stride,
+	#" out_marker_offset=", params.bevel_marker_offset,
+	#" out_attribute_stride=", params.bevel_attribute_stride,
+	#" out_index_stride=", params.bevel_index_stride,
 	#"[/color]")
 #
 	#var out_verts := rd.buffer_get_data(RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx))
@@ -122,4 +119,5 @@ func debug() -> void:
 	##for i in params.out_vertex_count:
 		##var p := Vector3(out_positions[i*3], out_positions[i*3+1], out_positions[i*3+2])
 		##print("out[%d] in=%d pos=%s" % [i, out_map_data[i], p])
+	pass
 #endregion

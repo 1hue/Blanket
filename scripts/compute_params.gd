@@ -20,6 +20,28 @@ var in_normal_offset: int
 var in_normal_stride: int
 var in_color_offset: int
 var in_attribute_stride: int
+var in_face_count: int:
+	get: return in_index_count / 3
+var in_face_stride: int:
+	get: return in_index_stride * 3
+#endregion
+
+var faces_table_size: int
+
+#region Final out surface
+var out_vertex_count: int
+var out_vertex_stride: int
+var out_index_count: int
+var out_index_stride: int
+var out_normal_offset: int
+var out_normal_stride: int
+var out_color_offset: int
+var out_marker_offset: int
+var out_attribute_stride: int
+var out_face_count: int:
+	get: return out_index_count / 3
+var out_face_stride: int:
+	get: return out_index_stride * 3
 #endregion
 
 #region Select
@@ -42,6 +64,7 @@ var bevel_arcs := DEFAULT_BEVEL_ARCS
 var bevel_vertex_count: int
 var bevel_vertex_stride: int
 var bevel_index_count: int
+var bevel_index_stride: int
 var bevel_normal_offset: int
 var bevel_normal_stride: int
 var bevel_color_offset: int
@@ -79,18 +102,17 @@ func _init(surface: ComputeSurface, global_transform: Transform3D) -> void:
 	var mesh := surface.mesh
 	var format := mesh.surface_get_format(surface.source_idx)
 	var primitive := mesh.surface_get_primitive_type(surface.source_idx)
-	var vertex_count := mesh.surface_get_array_len(surface.source_idx)
 
 	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be triangles: %s is primitibe type %s" % [mesh, primitive])
 	assert(format & Mesh.ARRAY_FORMAT_NORMAL != 0, "Mesh must have normals: %s" % mesh)
 	assert(format & Mesh.ARRAY_FORMAT_COLOR != 0, "Mesh must have vertex colors: %s" % mesh)
 
-	in_vertex_count = vertex_count
-	in_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(format, vertex_count)
+	in_vertex_count = mesh.surface_get_array_len(surface.source_idx)
+	in_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(format, in_vertex_count)
 	in_index_count = mesh.surface_get_array_index_len(surface.source_idx)
-	in_index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, vertex_count)
-	in_normal_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_NORMAL)
-	in_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, vertex_count)
-	in_color_offset = RenderingServer.mesh_surface_get_format_offset(format, vertex_count, Mesh.ARRAY_COLOR)
-	in_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, vertex_count)
+	in_index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, in_vertex_count)
+	in_normal_offset = RenderingServer.mesh_surface_get_format_offset(format, in_vertex_count, Mesh.ARRAY_NORMAL)
+	in_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, in_vertex_count)
+	in_color_offset = RenderingServer.mesh_surface_get_format_offset(format, in_vertex_count, Mesh.ARRAY_COLOR)
+	in_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, in_vertex_count)
 	local_up = global_transform.basis.inverse() * Vector3.UP

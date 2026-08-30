@@ -10,6 +10,7 @@ default_value_enabled = true
 default_value = 1.0
 
 [resource]
+modes/cull = 2
 flags/unshaded = true
 flags/wireframe = true
 flags/shadows_disabled = true

@@ -27,9 +27,10 @@ var rd: RenderingDevice
 var shaders: Array[RID]
 var pipelines: Array[RID]
 
-var select_faces: ShaderPipeline
-var select_edges: ShaderPipeline
-var dedupe: ShaderPipeline
+var faces_select: ShaderPipeline
+var faces_dedupe: ShaderPipeline
+var faces_write: ShaderPipeline
+var edges_find: ShaderPipeline
 var verts: ShaderPipeline
 var shape: ShaderPipeline
 var bevel_shrink: ShaderPipeline
@@ -47,14 +48,15 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _init() -> void:
-	select_faces = ShaderPipeline.new("res://scripts/passes/select/faces.glsl")
-	select_edges = ShaderPipeline.new("res://scripts/passes/select/edges.glsl")
-	dedupe = ShaderPipeline.new("res://scripts/passes/dedupe.glsl")
-	verts = ShaderPipeline.new("res://scripts/passes/verts.glsl")
-	shape = ShaderPipeline.new("res://scripts/passes/shape.glsl")
-	bevel_shrink = ShaderPipeline.new("res://scripts/passes/bevel/shrink.glsl")
-	bevel_fill = ShaderPipeline.new("res://scripts/passes/bevel/fill.glsl")
-	normals_sum = ShaderPipeline.new("res://scripts/passes/normals/normals_sum.glsl")
-	normals_write = ShaderPipeline.new("res://scripts/passes/normals/normals_write.glsl")
-	smooth_sum = ShaderPipeline.new("res://scripts/passes/smooth/smooth_sum.glsl")
-	smooth_write = ShaderPipeline.new("res://scripts/passes/smooth/smooth_write.glsl")
+	faces_select = ShaderPipeline.new("res://scripts/passes/faces/faces_select.glsl")
+	faces_dedupe = ShaderPipeline.new("res://scripts/passes/faces/faces_dedupe.glsl")
+	faces_write = ShaderPipeline.new("res://scripts/passes/faces/faces_write.glsl")
+	#edges_find = ShaderPipeline.new("res://scripts/passes/edges_find.glsl")
+	#verts = ShaderPipeline.new("res://scripts/passes/verts.glsl")
+	#shape = ShaderPipeline.new("res://scripts/passes/shape.glsl")
+	#bevel_shrink = ShaderPipeline.new("res://scripts/passes/bevel/shrink.glsl")
+	#bevel_fill = ShaderPipeline.new("res://scripts/passes/bevel/fill.glsl")
+	#normals_sum = ShaderPipeline.new("res://scripts/passes/normals/normals_sum.glsl")
+	#normals_write = ShaderPipeline.new("res://scripts/passes/normals/normals_write.glsl")
+	#smooth_sum = ShaderPipeline.new("res://scripts/passes/smooth/smooth_sum.glsl")
+	#smooth_write = ShaderPipeline.new("res://scripts/passes/smooth/smooth_write.glsl")

@@ -21,10 +21,10 @@ func _pre() -> void:
 func size() -> void:
 	var arc_steps := params.bevel_segments * 2
 	var arc_count := arc_steps + 1
-	var fan_verts := 1 + params.bevel_arcs * arc_count
 	var fan_tris := arc_steps + (params.bevel_arcs - 1) * arc_steps * 2
+	var fan_verts := (params.bevel_arcs - 1) * arc_count + arc_count - 2
 
-	params.bevel_vertex_count = params.in_index_count + params.max_shared_edges * fan_verts * 2
+	params.bevel_vertex_count = params.in_index_count + params.in_vertex_count + params.max_shared_edges * fan_verts * 2
 	params.bevel_index_count = (params.in_index_count + params.max_shared_edges * (fan_tris * 2 + arc_steps * 2)) * 3
 
 
@@ -42,12 +42,14 @@ func init_uniforms() -> void:
 	uniforms.bevel_out_set = out_uniform_set
 
 	var format := mesh.surface_get_format(surface.idx)
-	params.bevel_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(format, params.bevel_vertex_count)
-	params.bevel_color_offset = RenderingServer.mesh_surface_get_format_offset(format, params.bevel_vertex_count, Mesh.ARRAY_COLOR)
-	params.bevel_marker_offset = RenderingServer.mesh_surface_get_format_offset(format, params.bevel_vertex_count, Mesh.ARRAY_CUSTOM0)
-	params.bevel_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, params.bevel_vertex_count)
-	params.bevel_normal_offset = RenderingServer.mesh_surface_get_format_offset(format, params.bevel_vertex_count, Mesh.ARRAY_NORMAL)
-	params.bevel_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, params.bevel_vertex_count)
+	var count := params.bevel_vertex_count
+	params.bevel_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(format, count)
+	params.bevel_index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, count)
+	params.bevel_color_offset = RenderingServer.mesh_surface_get_format_offset(format, count, Mesh.ARRAY_COLOR)
+	params.bevel_marker_offset = RenderingServer.mesh_surface_get_format_offset(format, count, Mesh.ARRAY_CUSTOM0)
+	params.bevel_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, count)
+	params.bevel_normal_offset = RenderingServer.mesh_surface_get_format_offset(format, count, Mesh.ARRAY_NORMAL)
+	params.bevel_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, count)
 
 	# 3 edges per face
 	var shared_edge_size := 4 + params.max_shared_edges * 16
@@ -58,6 +60,7 @@ func init_uniforms() -> void:
 	], SurfaceShaders.bevel_shrink.shader, 2)
 
 	uniforms.shared_edge_set = shared_edge_uniform_set
+	uniforms.shared_edge = shared_edge_buffer
 
 	#debug_buffer = rd.storage_buffer_create(24*4)
 	#rd.buffer_clear(debug_buffer, 0, 24*4)

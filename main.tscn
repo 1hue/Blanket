@@ -65,9 +65,9 @@ visible = false
 transform = Transform3D(0.84392923, -0.53645444, -1.4332123e-08, 0.49513632, 0.77892905, 0.38484973, -0.2064544, -0.32478598, 0.92297906, 0, 0, 0)
 
 [node name="basic" parent="." unique_id=721285078 instance=ExtResource("5_7mycd")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.008618832, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9979534, 0, 0)
 
-[node name="MeshBevel" type="Node" parent="basic/Crease" parent_id_path=PackedInt32Array(721285078, 1089476687) index="0" unique_id=1511487239]
+[node name="MeshBevel" type="Node" parent="basic/Three" parent_id_path=PackedInt32Array(721285078, 1493936056) index="0" unique_id=1511487239]
 script = ExtResource("5_lquwl")
 debug_normals = true
 metadata/_custom_type_script = "uid://bdbnd4rwx5btq"

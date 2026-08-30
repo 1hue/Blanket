@@ -22,5 +22,10 @@ func _init(p_mesh: ArrayMesh, p_surface: ComputeSurface, p_params: ComputeParams
 
 	_pre()
 
+
+func align_buffer(size: int) -> int:
+	return snappedi(size + 1, 4)
+
+
 @abstract func _pre() -> void
 @abstract func compute() -> void

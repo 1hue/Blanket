@@ -1,15 +1,29 @@
 extends RefCounted
 class_name ComputeUniforms
 
+# TODO Clean up vars
 var rd: RenderingDevice
 var surface: ComputeSurface
+
+#region Faces
+var faces_set: RID
+var faces_buffer: RID
+var faces_dedupe_dispatch_buffer: RID
+var faces_table_buffer: RID
+var faces_table_set: RID
+var faces_slot_buffer: RID
+var faces_slot_set: RID
+var faces_write_dispatch_buffer: RID
+var faces_out_set: RID
+#endregion
+
 var source_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
-var faces_dispatch_buffer: RID
 var edges_dispatch_buffer: RID
 
 var shrink_dispatch_buffer: RID
 var bevel_out_set: RID
 var shared_edge_set: RID
+var shared_edge: RID
 
 var normals_sum: RID
 var normals_sum_set: RID
@@ -17,7 +31,7 @@ var normals_sum_set: RID
 var smooth_sum: RID
 var smooth_sum_set: RID
 
-var dedupe: RID
+var debug: RID
 
 
 func _init(p_surface: ComputeSurface) -> void:
@@ -30,13 +44,15 @@ func _init(p_surface: ComputeSurface) -> void:
 func _init_source_set() -> void:
 	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
+	var data := rd.buffer_get_data(index_buffer)
+	prints("buffer ", data.size(), data)
 	var attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
 
 	source_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 		ComputeUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
 		ComputeUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
-	], SurfaceShaders.select_faces.shader, 0)
+	], SurfaceShaders.faces_select.shader, 0)
 
 
 ## Free scratch buffers after bake

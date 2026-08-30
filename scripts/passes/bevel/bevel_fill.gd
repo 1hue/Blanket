@@ -7,6 +7,14 @@ const SIZE_PARAMS = 20
 func _pre() -> void:
 	push_constant.resize(SIZE_PARAMS)
 
+#var debug_buffer: RID
+#var debug_uniform_set: RID
+#func _init_debug() -> void:
+	#debug_buffer = rd.storage_buffer_create(ceili(params.in_index_count / (128.0 * 3.0)) * 8)
+	#uniforms.debug = debug_buffer
+	#debug_uniform_set = rd.uniform_set_create([
+		#ComputeUtil.create_uniform([debug_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
+	#], SurfaceShaders.bevel_fill.shader, 3)
 
 func pack_params() -> PackedByteArray:
 	push_constant.encode_float(0, params.bevel_shrink)
