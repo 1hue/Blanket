@@ -35,7 +35,7 @@ layout(set = 2, binding = 0, std430) restrict buffer FacesTableBuffer {
 	uint table[]; // Per table slot: the vertex holding that position, cleared to EMPTY
 };
 
-layout(set = 3, binding = 0, std430) restrict buffer FacesSlotBuffer {
+layout(set = 3, binding = 0, scalar) restrict buffer FacesSlotBuffer {
 	uint16_t slots[]; // Per source vertex: its dense slot, valid only for survivors
 };
 

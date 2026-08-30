@@ -11,6 +11,8 @@ layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
 	uint table_size; // Power of two
+	uint out_color_offset;
+	uint out_attribute_stride;
 };
 
 layout(set = 0, binding = 0, scalar) restrict readonly buffer InVertexBuffer {
@@ -35,7 +37,7 @@ layout(set = 2, binding = 0, std430) restrict buffer FacesTableBuffer {
 	uint table[];
 };
 
-layout(set = 3, binding = 0, std430) restrict buffer FacesSlotBuffer {
+layout(set = 3, binding = 0, scalar) restrict buffer FacesSlotBuffer {
 	uint16_t slots[];
 };
 
@@ -79,6 +81,10 @@ uint survivor_of(uint vert) {
 	return vert;
 }
 
+void write_color(uint vert, vec4 color) {
+	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = packUnorm4x8(color);
+}
+
 void main() {
 	uint face = gl_GlobalInvocationID.x;
 
@@ -87,7 +93,12 @@ void main() {
 	u16vec3 corners = faces[face];
 	uvec3 merged = uvec3(survivor_of(corners.x), survivor_of(corners.y), survivor_of(corners.z));
 	u16vec3 dense = u16vec3(slots[merged.x], slots[merged.y], slots[merged.z]);
+
 	out_faces[face] = dense;
+
+	write_color(dense.x, vec4(1, 0, 0, 1));
+	write_color(dense.y, vec4(0, 1, 0, 1));
+	write_color(dense.z, vec4(0, 0, 1, 1));
 
 	// Merged corners share a slot, so these writes land on top of each other harmlessly
 	out_positions[dense.x] = in_positions[merged.x];

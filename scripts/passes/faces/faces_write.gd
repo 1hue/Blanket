@@ -1,7 +1,7 @@
 extends ComputePass
 class_name FacesWritePass
 
-const SIZE_PARAMS = 4
+const SIZE_PARAMS = 12
 
 var out_uniform_set: RID
 
@@ -37,6 +37,7 @@ func allocate() -> void:
 	uniforms.faces_out_set = out_uniform_set
 
 	var format := mesh.surface_get_format(surface.idx)
+	prints("Created surface #", surface.idx)
 	var count := params.out_vertex_count
 	params.out_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(format, count)
 	params.out_index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, count)
@@ -49,6 +50,8 @@ func allocate() -> void:
 
 func pack_params() -> PackedByteArray:
 	push_constant.encode_u32(0, params.faces_table_size)
+	push_constant.encode_u32(4, params.out_color_offset)
+	push_constant.encode_u32(8, params.out_attribute_stride)
 
 	return push_constant
 
@@ -66,6 +69,49 @@ func compute() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 4)
 	rd.compute_list_dispatch_indirect(compute_list, uniforms.faces_write_dispatch_buffer, 0)
 	rd.compute_list_end()
+
+	test()
+
+
+## Verifies dedupe produced a valid, fully merged surface. Debug builds only.
+func test() -> void:
+	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
+
+	var positions := rd.buffer_get_data(
+		vertex_buffer, 0, params.out_vertex_count * params.out_vertex_stride
+	).to_float32_array()
+	var indices := ComputeUtil.to_int16_array(rd.buffer_get_data(index_buffer))
+
+	assert(params.out_vertex_count > 0, "No verts survived dedupe")
+	assert(indices.size() == params.out_index_count, "Index count %d does not match surface %d" % [
+		indices.size(), params.out_index_count
+	])
+
+	# Every position must be distinct, or dedupe missed a merge
+	var seen := {}
+	for i in params.out_vertex_count:
+		var position := Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2])
+		assert(not seen.has(position), "Vert %d duplicates vert %s at %s" % [i, seen.get(position), position])
+		seen[position] = i
+
+	# Every slot must be reachable, or the surface has gaps
+	var referenced := {}
+	for index in indices:
+		assert(index < params.out_vertex_count, "Index %d exceeds vert count %d" % [index, params.out_vertex_count])
+		referenced[index] = true
+
+	assert(referenced.size() == params.out_vertex_count, "Only %d of %d verts are referenced" % [
+		referenced.size(), params.out_vertex_count
+	])
+
+	# A triangle naming one vert twice is degenerate
+	for face in indices.size() / 3:
+		var a := indices[face * 3]
+		var b := indices[face * 3 + 1]
+		var c := indices[face * 3 + 2]
+
+		assert(a != b and b != c and c != a, "Face %d is degenerate: (%d, %d, %d)" % [face, a, b, c])
 
 
 func _notification(what) -> void:

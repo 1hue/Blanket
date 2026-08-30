@@ -34,6 +34,8 @@ func _ready() -> void:
 
 		computes.append(compute)
 
+	for compute in computes:
+		compute.bake()
 	#draw_normals()
 
 

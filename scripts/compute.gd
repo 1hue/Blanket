@@ -46,13 +46,11 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		#ShapePass.new(mesh, surface, params, uniforms),
 	]
 
-	bake()
-	debug()
-
 
 func bake() -> void:
 	for bake_pass in bake_passes:
 		bake_pass.compute()
+	debug()
 
 
 ## TODO Reposition the added mesh surface
@@ -63,20 +61,33 @@ func update() -> void:
 
 #region Debug
 func debug() -> void:
-	#var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
-	#var indices := rd.buffer_get_data(index_buffer)
-	#print_rich("[color=aqua]index_buffer[", indices.size(), "]: ", indices, "[/color]")
+	var faces_buffer := rd.buffer_get_data(uniforms.faces_buffer)
+	prints(
+		"params.faces_table_size", params.faces_table_size,
+		"face_count", faces_buffer.decode_u32(0),
+		"params.out_index_stride", params.out_index_stride,
+		"params.out_vertex_count", params.out_vertex_count,
+		"params.out_vertex_stride", params.out_vertex_stride,
+		"params.out_color_offset", params.out_color_offset,
+		"params.out_normal_offset", params.out_normal_offset,
+		"dispatch:",
+		rd.buffer_get_data(uniforms.faces_dedupe_dispatch_buffer).to_int32_array(),
+		rd.buffer_get_data(uniforms.faces_write_dispatch_buffer).to_int32_array()
+	)
+	#var table := rd.buffer_get_data(uniforms.faces_table_buffer)
+	#print_rich("[color=aqua]table[", table.size() / 4, "]: ", ComputeUtil.to_uint32_array(table), "[/color]")
+	#var slots := rd.buffer_get_data(uniforms.faces_slot_buffer)
+	#print_rich("[color=aqua]slots[", slots.size() / 2, "] uint16: ", ComputeUtil.to_int16_array(slots), "[/color]")
 
-	#var shared := rd.buffer_get_data(uniforms.shared_edge)
-	#print_rich("[color=aqua] shared_edge_buffer: ", shared.to_int32_array(), "[/color]")
-	##var vertex_data: PackedByteArray = data.vertex_data
-	##print_rich("[color=pale_green]", data.vertex_count, " source verts:\n", vertex_data.to_vector3_array(), "[/color]\n")
-
-	var faces := rd.buffer_get_data(uniforms.faces_buffer)
-	print_rich("[color=pale_green]faces_buffer[", faces.decode_u32(0), "]: ", faces, "[/color]")
-
-	#var edges := rd.buffer_get_data(edges_buffer, EDGES_HEADER, edges_buffer_size - EDGES_HEADER)
-	#print_rich("[color=pale_green] edges:", ComputeUtil.to_vector2i_array(edges), "[/color]")
+	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
+	var indices := rd.buffer_get_data(index_buffer)
+	var positions := rd.buffer_get_data(vertex_buffer).slice(0, params.out_vertex_count * params.out_vertex_stride)
+	print_rich(
+		"[color=aqua]index_buffer[", indices.size() / 6, "]: ",
+		ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(indices)) , "[/color]",
+		"\n[color=aqua]verts[", positions.size(), "]: ", positions.to_vector3_array(), "[/color]"
+	)
 
 	#print_rich(
 		#"[color=peach_puff]",
@@ -87,15 +98,6 @@ func debug() -> void:
 		#"\n unique_count=", rd.buffer_get_data(slot_buffer, 0, 4).decode_u32(0),
 		#"[/color]"
 	#)
-
-	#print_rich("[color=khaki] in_vertex_count=", params.in_vertex_count,
-	#" in_index_count=", params.in_index_count,
-	#" in_normal_offset=", params.in_normal_offset,
-	#" in_normal_stride=", params.in_normal_stride,
-	#" in_attribute_stride=", params.in_attribute_stride,
-	#" in_vertex_stride=", params.in_vertex_stride,
-	#" in_index_stride=", params.in_index_stride,
-	#"[/color]")
 
 	#print_rich("[color=khaki] out_vertex_count=", params.bevel_vertex_count,
 	#" out_vertex_stride=", params.bevel_vertex_stride,
@@ -113,11 +115,11 @@ func debug() -> void:
 	#print_rich(
 		#"[color=pale_green] verts:\n", out_verts.slice(0, params.bevel_vertex_count * params.bevel_vertex_stride).to_vector3_array(), "[/color]")
 
-	##var out_map_data := rd.buffer_get_data(out_in_map_buffer).to_int32_array()
-	##var out_positions := out_data.slice(0, params.out_vertex_count * params.out_vertex_stride).to_float32_array()
-#
-	##for i in params.out_vertex_count:
-		##var p := Vector3(out_positions[i*3], out_positions[i*3+1], out_positions[i*3+2])
-		##print("out[%d] in=%d pos=%s" % [i, out_map_data[i], p])
+	#var out_map_data := rd.buffer_get_data(out_in_map_buffer).to_int32_array()
+	#var out_positions := out_data.slice(0, params.out_vertex_count * params.out_vertex_stride).to_float32_array()
+
+	#for i in params.out_vertex_count:
+		#var p := Vector3(out_positions[i*3], out_positions[i*3+1], out_positions[i*3+2])
+		#print("out[%d] in=%d pos=%s" % [i, out_map_data[i], p])
 	pass
 #endregion

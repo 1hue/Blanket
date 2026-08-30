@@ -44,8 +44,6 @@ func _init(p_surface: ComputeSurface) -> void:
 func _init_source_set() -> void:
 	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
-	var data := rd.buffer_get_data(index_buffer)
-	prints("buffer ", data.size(), data)
 	var attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
 
 	source_set = rd.uniform_set_create([
