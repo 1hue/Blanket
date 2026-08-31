@@ -63,21 +63,25 @@ func update() -> void:
 #region Debug
 func debug() -> void:
 	var faces_buffer := rd.buffer_get_data(uniforms.faces_buffer)
-	prints(
-		"params.faces_table_size", params.faces_table_size,
-		"face_count", faces_buffer.decode_u32(0),
-		"params.faces_out_index_stride", params.faces_out_index_stride,
-		"params.faces_out_vertex_count", params.faces_out_vertex_count,
-		"params.faces_out_vertex_stride", params.faces_out_vertex_stride,
-		"params.faces_out_color_offset", params.faces_out_color_offset,
-		"dispatch:",
+	print_rich(
+		"[color=gold]",
+		"faces_buffer.face_count ", faces_buffer.decode_u32(0),
+		" | faces_buffer.vertex_count ", faces_buffer.decode_u32(4),
+		"\n[/color][color=cadet_blue]params.faces_table_size ", params.faces_table_size,
+		" | params.faces_out_index_stride ", params.faces_out_index_stride,
+		" | params.faces_out_vertex_count ", params.faces_out_vertex_count,
+		" | params.faces_out_vertex_stride ", params.faces_out_vertex_stride,
+		" | params.faces_out_color_offset ", params.faces_out_color_offset,
+		"\nfaces_dedupe_dispatch_buffer: ",
 		rd.buffer_get_data(uniforms.faces_dedupe_dispatch_buffer).to_int32_array(),
-		rd.buffer_get_data(uniforms.faces_write_dispatch_buffer).to_int32_array()
+		" | faces_write_dispatch_buffer: ", rd.buffer_get_data(uniforms.faces_write_dispatch_buffer).to_int32_array(),
+		"[/color]"
 	)
-	#var table := rd.buffer_get_data(uniforms.faces_table_buffer)
-	#print_rich("[color=aqua]table[", table.size() / 4, "]: ", ComputeUtil.to_uint32_array(table), "[/color]")
-	#var slots := rd.buffer_get_data(uniforms.faces_slot_buffer)
-	#print_rich("[color=aqua]slots[", slots.size() / 2, "] uint16: ", ComputeUtil.to_int16_array(slots), "[/color]")
+	print_rich("[color=goldenrod]faces_buffer.faces[] int16: ", ComputeUtil.to_int16_array(faces_buffer.slice(8)), "[/color]")
+	var table := rd.buffer_get_data(uniforms.faces_table_buffer)
+	print_rich("[color=cadet_blue]table_buffer[", table.size() / 4, "] uint32: ", ComputeUtil.to_uint32_array(table), "[/color]")
+	var slots := rd.buffer_get_data(uniforms.faces_slot_buffer)
+	print_rich("[color=cadet_blue]slots_buffer[", slots.size() / 2, "] uint16: ", ComputeUtil.to_int16_array(slots), "[/color]")
 
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
 	var indices := rd.buffer_get_data(index_buffer, 0, params.faces_out_index_count * params.faces_out_index_stride)
@@ -90,11 +94,11 @@ func debug() -> void:
 		"\n[color=aqua]vertex_buffer[", params.faces_out_vertex_count, "]: ", positions.to_vector3_array(), "[/color]"
 	)
 
-	var vertex_in_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, 0)
-	var positions_in := rd.buffer_get_data(vertex_in_buffer, 0, params.in_vertex_count * params.in_vertex_stride)
-	print_rich(
-		"\n[color=green]vertex_in_buffer[", params.in_vertex_count, "]: ", positions_in.to_vector3_array(), "[/color]"
-	)
+	#var vertex_in_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, 0)
+	#var positions_in := rd.buffer_get_data(vertex_in_buffer, 0, params.in_vertex_count * params.in_vertex_stride)
+	#print_rich(
+		#"\n[color=green]vertex_in_buffer[", params.in_vertex_count, "]: ", positions_in.to_vector3_array(), "[/color]"
+	#)
 
 	#print_rich(
 		#"[color=peach_puff]",

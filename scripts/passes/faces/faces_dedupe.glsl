@@ -54,23 +54,6 @@ uint hash(vec3 position) {
 	return h;
 }
 
-// First vertex to claim a position keeps it - everyone else adopts its index
-uint survivor_of(uint vert) {
-	vec3 position = in_positions[vert];
-	uint slot = hash(position) & (table_size - 1);
-
-	for (uint probe = 0; probe < table_size; probe++) {
-		uint holder = atomicCompSwap(table[slot], EMPTY, vert);
-
-		if (holder == EMPTY) return vert;
-		if (in_positions[holder] == position) return holder;
-
-		slot = (slot + 1) & (table_size - 1); // Different position, collision - try the next slot
-	}
-
-	return vert; // Table full, which sizing should prevent
-}
-
 void main() {
 	uint face = gl_GlobalInvocationID.x;
 
@@ -81,9 +64,20 @@ void main() {
 	// A corner claiming its own position is the first to reach it, so it gets a slot
 	for (uint c = 0; c < 3; c++) {
 		uint vert = corners[c];
+		vec3 position = in_positions[vert];
+		uint slot = hash(position) & (table_size - 1);
 
-		if (survivor_of(vert) == vert) {
-			slots[vert] = uint16_t(atomicAdd(vertex_count, 1));
+		for (uint probe = 0; probe < table_size; probe++) {
+			uint holder = atomicCompSwap(table[slot], EMPTY, vert);
+
+			if (holder == EMPTY) {
+				slots[vert] = uint16_t(atomicAdd(vertex_count, 1)); // Claimed it, so it's new
+				break;
+			}
+
+			if (in_positions[holder] == position) break; // Already has a slot
+
+			slot = (slot + 1) & (table_size - 1);
 		}
 	}
 

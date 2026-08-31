@@ -67,8 +67,8 @@ func compute() -> void:
 	rd.compute_list_dispatch_indirect(compute_list, uniforms.faces_write_dispatch_buffer, 0)
 	rd.compute_list_end()
 
-	dump()
-	#test()
+	#dump()
+	test()
 
 
 func dump() -> void:
@@ -95,11 +95,7 @@ func test() -> void:
 	var positions := rd.buffer_get_data(
 		vertex_buffer, 0, params.faces_out_vertex_count * params.faces_out_vertex_stride
 	).to_float32_array()
-	var pos := rd.buffer_get_data(
-		vertex_buffer, 0, params.faces_out_vertex_count * params.faces_out_vertex_stride
-	).to_vector3_array()
 	var indices := ComputeUtil.to_int16_array(rd.buffer_get_data(index_buffer))
-	prints("\nverts[%s]:" % pos.size(), pos)
 
 	assert(params.faces_out_vertex_count > 0, "No verts survived dedupe")
 	assert(indices.size() == params.faces_out_index_count, "Index count %d does not match surface %d" % [
