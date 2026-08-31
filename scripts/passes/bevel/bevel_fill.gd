@@ -20,8 +20,8 @@ func pack_params() -> PackedByteArray:
 	push_constant.encode_float(0, params.bevel_shrink)
 	push_constant.encode_u32(4, params.bevel_segments)
 	push_constant.encode_u32(8, params.bevel_arcs)
-	push_constant.encode_u32(12, params.out_color_offset)
-	push_constant.encode_u32(16, params.out_attribute_stride)
+	push_constant.encode_u32(12, params.selected_vertex_count)
+	push_constant.encode_u32(16, params.selected_face_count)
 
 	return push_constant
 
@@ -32,5 +32,5 @@ func compute() -> void:
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, uniforms.out_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, uniforms.shared_edge_set, 1)
-	rd.compute_list_dispatch_indirect(compute_list, uniforms.shrink_dispatch_buffer, 0)
+	rd.compute_list_dispatch_indirect(compute_list, uniforms.fill_dispatch_buffer, 0)
 	rd.compute_list_end()

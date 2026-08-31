@@ -1,7 +1,7 @@
 extends ComputePass
 class_name FacesWritePass
 
-const SIZE_PARAMS = 12
+const SIZE_PARAMS = 4
 
 var out_uniform_set: RID
 
@@ -19,8 +19,9 @@ func allocate() -> void:
 	var selected := params.selected_vertex_count
 	var shrunk := params.selected_face_count * 3
 	var fans := params.max_shared_edges * params.fan_vertex_count * 2
+	var apexes := params.selected_face_count * 3
 
-	params.out_vertex_count = selected + shrunk + selected + fans
+	params.out_vertex_count = selected + shrunk + fans + apexes
 	params.out_index_count = 3 * (
 		params.selected_face_count + params.max_shared_edges * (params.fan_face_count * 2 + params.arc_steps * 2)
 	)
@@ -52,14 +53,12 @@ func allocate() -> void:
 	params.out_normal_offset = RenderingServer.mesh_surface_get_format_offset(format, count, Mesh.ARRAY_NORMAL)
 	params.out_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, count)
 	params.out_color_offset = RenderingServer.mesh_surface_get_format_offset(format, count, Mesh.ARRAY_COLOR)
-	params.out_marker_offset = RenderingServer.mesh_surface_get_format_offset(format, count, Mesh.ARRAY_CUSTOM0)
+	params.out_custom_offset = RenderingServer.mesh_surface_get_format_offset(format, count, Mesh.ARRAY_CUSTOM0)
 	params.out_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, count)
 
 
 func pack_params() -> PackedByteArray:
 	push_constant.encode_u32(0, params.faces_table_size)
-	push_constant.encode_u32(4, params.out_color_offset)
-	push_constant.encode_u32(8, params.out_attribute_stride)
 
 	return push_constant
 

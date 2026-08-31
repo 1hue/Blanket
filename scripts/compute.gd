@@ -38,8 +38,8 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		FacesDedupePass.new(mesh, surface, params, uniforms),
 		FacesWritePass.new(mesh, surface, params, uniforms),
 		FacesPinPass.new(mesh, surface, params, uniforms),
-		#BevelShrinkPass.new(mesh, surface, params, uniforms),
-		#BevelFillPass.new(mesh, surface, params, uniforms),
+		BevelShrinkPass.new(mesh, surface, params, uniforms),
+		BevelFillPass.new(mesh, surface, params, uniforms),
 		#SmoothSumPass.new(mesh, surface, params, uniforms),
 		#SmoothWritePass.new(mesh, surface, params, uniforms),
 		#NormalsSumPass.new(mesh, surface, params, uniforms),
@@ -72,6 +72,7 @@ func debug() -> void:
 		" | params.out_vertex_count ", params.out_vertex_count,
 		" | params.out_vertex_stride ", params.out_vertex_stride,
 		" | params.out_color_offset ", params.out_color_offset,
+		" | params.out_custom_offset ", params.out_custom_offset,
 		"\nfaces_dedupe_dispatch_buffer: ",
 		rd.buffer_get_data(uniforms.faces_dedupe_dispatch_buffer).to_int32_array(),
 		" | faces_write_dispatch_buffer: ", rd.buffer_get_data(uniforms.faces_write_dispatch_buffer).to_int32_array(),
@@ -83,31 +84,19 @@ func debug() -> void:
 	var slots := rd.buffer_get_data(uniforms.faces_slot_buffer)
 	print_rich("[color=cadet_blue]slots_buffer[", slots.size() / 2, "] uint16: ", ComputeUtil.to_int16_array(slots), "[/color]")
 
-	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
-	var indices := rd.buffer_get_data(index_buffer, 0, params.out_index_count * params.out_index_stride)
+	#var attr_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, surface.idx)
+	#var position_origins := rd.buffer_get_data(attr_buffer, 0, params.out_vertex_count * params.out_vertex_stride)
+	#print_rich(
+		#"[color=aqua]attr_buffer: ", position_origins.to_vector4_array(), "[/color]"
+	#)
 
+	#var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
+	#var indices := rd.buffer_get_data(index_buffer, 0, params.out_index_count * params.out_index_stride)
+#
 	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
 	var positions := rd.buffer_get_data(vertex_buffer, 0, params.out_vertex_count * params.out_vertex_stride)
 	print_rich(
-		"[color=aqua]index_buffer[", indices.size() / 6, "]: ",
-		ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(indices)) , "[/color]",
-		"\n[color=aqua]vertex_buffer[", params.out_vertex_count, "]: ", positions.to_vector3_array(), "[/color]"
+		"[color=aqua]vertex_buffer[", params.out_vertex_count, "]: ", positions.to_vector3_array(), "[/color]"
 	)
-
-	#var vertex_in_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, 0)
-	#var positions_in := rd.buffer_get_data(vertex_in_buffer, 0, params.in_vertex_count * params.in_vertex_stride)
-	#print_rich(
-		#"\n[color=green]vertex_in_buffer[", params.in_vertex_count, "]: ", positions_in.to_vector3_array(), "[/color]"
-	#)
-
-	#print_rich(
-		#"[color=peach_puff]",
-		#" faces_dispatch=", rd.buffer_get_data(faces_dispatch_buffer, 0, 12).to_int32_array(),
-		#" -> faces_count=", rd.buffer_get_data(faces_buffer, 0, 4).decode_u32(0),
-		#"\n edges_dispatch=", rd.buffer_get_data(edges_dispatch_buffer, 0, 12).to_int32_array(),
-		#" -> edges_count=", rd.buffer_get_data(edges_buffer, 0, 4).decode_u32(0),
-		#"\n unique_count=", rd.buffer_get_data(slot_buffer, 0, 4).decode_u32(0),
-		#"[/color]"
-	#)
 	pass
 #endregion

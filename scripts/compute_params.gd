@@ -6,8 +6,8 @@ signal changed
 const DEFAULT_DEPTH = 0.1
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
 const DEFAULT_BEVEL_SHRINK = 0.3
-const DEFAULT_BEVEL_SEGMENTS = 1
-const DEFAULT_BEVEL_ARCS = 1
+const DEFAULT_BEVEL_SEGMENTS = 3
+const DEFAULT_BEVEL_ARCS = 3
 const DEFAULT_SMOOTH_STRENGTH = 0.5
 
 #region Source surface
@@ -33,7 +33,7 @@ var out_index_stride: int
 var out_normal_offset: int
 var out_normal_stride: int
 var out_color_offset: int
-var out_marker_offset: int
+var out_custom_offset: int
 var out_attribute_stride: int
 var out_face_count: int:
 	get: return out_index_count / 3

@@ -1,149 +1,112 @@
-// Shrink each face away from its shared edges. Corner index becomes the new vertex index.
+// Retract each selected face from its shared edges, and record those edges for fill.
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
 
 const uint NONE = 0xFFFFFFFFu;
 
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
-	float shrink; // 0 = unchanged, 1 = collapsed onto opposite corner
-	uint out_color_offset;
-	uint out_attribute_stride;
+	float shrink; // 0 = unchanged, 1 = collapsed onto the opposite corner
+	uint selected_vertex_count; // Where the retracted corners begin
+	uint selected_face_count;
 };
 
-layout(set = 0, binding = 0, scalar) restrict readonly buffer InVertexBuffer {
-	vec3 in_positions[];
-};
-
-layout(set = 0, binding = 1, scalar) restrict readonly buffer InIndexBuffer {
-	u16vec3 in_faces[];
-};
-
-layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
-	uint in_attribute_words[]; // unused here
-};
-
-layout(set = 1, binding = 0, scalar) restrict writeonly buffer OutVertexBuffer {
+layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
 	vec3 out_positions[];
 };
 
-layout(set = 1, binding = 1, scalar) restrict writeonly buffer OutIndexBuffer {
+layout(set = 0, binding = 1, scalar) restrict buffer OutIndexBuffer {
 	u16vec3 out_faces[];
 };
 
-layout(set = 1, binding = 2, std430) restrict writeonly buffer OutAttributeBuffer {
-	uint out_attributes[];
+layout(set = 0, binding = 2, std430) restrict buffer OutCustom0Buffer {
+	vec4 out_origins[]; // xyz = position before any shift, w = 1 when the vert may move
 };
 
-layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
+layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
-	uvec4 shared_edges[]; // Vertex indices: this face's edge, then the twin's
+	uvec4 shared_edges[]; // Corner indices into the retracted block: this face's edge, then the twin's
 };
 
-layout(set = 3, binding = 0, std430) restrict buffer DispatchBuffer {
-	uvec3 dispatch; // Indirect args for fill.glsl
+layout(set = 2, binding = 0, std430) restrict buffer DispatchBuffer {
+	uvec3 dispatch; // Indirect args for bevel_fill.glsl
 };
 
 uint next_corner(uint corner) {
-	return (corner + 1u) % 3u;
+	return (corner + 1) % 3;
 }
 
-// Edge e runs from corner e to the next corner round
-uvec2 edge_verts(uint face, uint e) {
-	return uvec2(in_faces[face][e], in_faces[face][next_corner(e)]);
-}
-
-mat2x3 edge_pos(uint face, uint e) {
-	uvec2 verts = edge_verts(face, e);
-	return mat2x3(in_positions[verts[0]], in_positions[verts[1]]);
-}
-
-mat3 face_pos(uint face) {
-	uvec3 verts = uvec3(in_faces[face]);
-	return mat3(in_positions[verts.x], in_positions[verts.y], in_positions[verts.z]);
-}
-
-bool is_degen(mat2x3 edge) {
-	return edge[0] == edge[1];
-}
-
-// Correctly wound neighbours run their shared edge in opposite directions.
-// A degenerate edge can never satisfy this, so it needs no separate check.
-bool is_twin(mat2x3 edge, mat2x3 other) {
-	return (
-		(edge[0] == other[1] && edge[1] == other[0]) ||
-		(edge[1] == other[0] && edge[0] == other[1])
-	);
-}
-
-// Twin corner index per edge, or NONE where the edge is a boundary
-uvec3 find_twins(uint face, uint face_count) {
+// Twin corner per edge, or NONE at a boundary.
+// Dedupe merged the verts, so a shared edge is the same index pair in both faces.
+uvec3 find_twins(uint face) {
 	uvec3 twins = uvec3(NONE);
-	mat2x3 edges[3] = mat2x3[](edge_pos(face, 0u), edge_pos(face, 1u), edge_pos(face, 2u));
+	uvec3 corners = uvec3(out_faces[face]);
 
-	for (uint f = 0u; f < face_count; f++) {
-		if (f == face) continue; // Don't compare with self
+	for (uint f = 0; f < selected_face_count; f++) {
+		if (f == face) continue;
 
-		// Fetch each candidate edge once, test all three of ours against it
-		for (uint o = 0u; o < 3u; o++) {
-			mat2x3 other = edge_pos(f, o);
-			if (is_degen(other)) continue;
+		uvec3 other = uvec3(out_faces[f]);
 
-			for (uint e = 0u; e < 3u; e++) {
-				if (twins[e] == NONE && is_twin(edges[e], other)) {
-					twins[e] = f * 3u + o;
-				}
+		for (uint e = 0; e < 3; e++) {
+			if (twins[e] != NONE) continue;
+
+			uvec2 edge = uvec2(corners[e], corners[next_corner(e)]);
+
+			for (uint o = 0; o < 3; o++) {
+				// Correctly wound neighbours run their shared edge in opposite directions
+				if (edge == uvec2(other[next_corner(o)], other[o])) twins[e] = f * 3 + o;
 			}
 		}
 
-		if (all(notEqual(twins, uvec3(NONE)))) break; // Nothing left to look for
+		if (all(notEqual(twins, uvec3(NONE)))) break;
 	}
 
 	return twins;
 }
 
 // Edge e sits opposite corner e+2, so a corner retreats toward the corner opposite
-// whichever of its two edges is shared - or between both, when both are.
-vec3 inset_corner(mat3 face, uint c, bvec3 is_shared) {
+// whichever of its two edges is shared - or between both, when both are
+vec3 inset_corner(mat3 positions, uint c, bvec3 is_shared) {
 	uint next = next_corner(c);
-	uint prev = (c + 2u) % 3u;
+	uint prev = (c + 2) % 3;
 
-	bool to_prev = is_shared[c]; // Edge c is shared, so retreat away from it
-	bool to_next = is_shared[prev]; // Edge prev is shared
+	bool to_prev = is_shared[c];
+	bool to_next = is_shared[prev];
 
-	if (!to_prev && !to_next) return face[c];
+	if (!to_prev && !to_next) return positions[c];
 
 	vec3 target = to_prev && to_next
-		? mix(face[next], face[prev], 0.5)
-		: (to_prev ? face[prev] : face[next]);
+	? mix(positions[next], positions[prev], 0.5)
+	: (to_prev ? positions[prev] : positions[next]);
 
-	return mix(face[c], target, shrink);
-}
-
-void write_color(uint out_index, vec4 color) {
-	uint word = (out_color_offset + out_index * out_attribute_stride) / 4u;
-	out_attributes[word] = packUnorm4x8(color);
+	return mix(positions[c], target, shrink);
 }
 
 void main() {
-	uint face = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
-	uint face_count = uint(in_faces.length());
+	uint face = gl_GlobalInvocationID.x;
 
-	if (face >= face_count) return;
+	if (face >= selected_face_count) return;
 
-	uvec3 twins = find_twins(face, face_count);
+	uvec3 corners = uvec3(out_faces[face]);
+	mat3 positions = mat3(
+		out_positions[corners.x], out_positions[corners.y], out_positions[corners.z]
+	);
+
+	uvec3 twins = find_twins(face);
 	bvec3 is_shared = notEqual(twins, uvec3(NONE));
 
-	mat3 positions = face_pos(face);
-	uint base = face * 3;
+	// Retracted corners sit after the selection, one per face corner
+	uint base = selected_vertex_count + face * 3;
 
 	for (uint c = 0; c < 3; c++) {
 		out_positions[base + c] = inset_corner(positions, c, is_shared);
-		write_color(base + c, is_shared[c] ? vec4(1, 0, 0, 1) : vec4(1));
+
+		// Carries where the corner sat before retracting, so fill can rebuild the apex
+		out_origins[base + c] = vec4(positions[c], out_origins[corners[c]].w);
 	}
 
 	out_faces[face] = u16vec3(base, base + 1, base + 2);
@@ -154,16 +117,17 @@ void main() {
 
 	for (uint e = 0; e < 3; e++) {
 		uint twin = twins[e];
-		if (twin == NONE || base + e > twin) continue;
+		if (twin == NONE || face * 3 + e > twin) continue;
 
 		uint twin_next = twin / 3 * 3 + next_corner(twin % 3);
-		pending[pending_count] = uvec4(base + e, base + next_corner(e), twin, twin_next);
+		pending[pending_count] = uvec4(face * 3 + e, face * 3 + next_corner(e), twin, twin_next);
 		pending_count++;
 	}
 
 	if (pending_count == 0) return;
 
 	uint slot = atomicAdd(shared_count, pending_count);
+
 	for (uint i = 0; i < pending_count; i++) {
 		shared_edges[slot + i] = pending[i];
 	}

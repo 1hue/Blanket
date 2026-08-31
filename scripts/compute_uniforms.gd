@@ -14,16 +14,16 @@ var faces_table_set: RID
 var faces_slot_buffer: RID
 var faces_slot_set: RID
 var faces_write_dispatch_buffer: RID
-var out_set: RID
 #endregion
 
 var source_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
-var edges_dispatch_buffer: RID
+var out_set: RID
 
-var shrink_dispatch_buffer: RID
+var bevel_shrink_dispatch_buffer: RID
 var bevel_out_set: RID
 var shared_edge_set: RID
 var shared_edge: RID
+var fill_dispatch_buffer: RID
 
 var normals_sum: RID
 var normals_sum_set: RID

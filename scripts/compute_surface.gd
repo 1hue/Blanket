@@ -2,8 +2,9 @@ extends RefCounted
 class_name ComputeSurface
 
 const SURFACE_NAME = "ComputedSurface"
+## CUSTOM0 stores original position + sticky flag in alpha
 const SURFACE_FLAGS := (
-	Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER | (Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
+	Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
 )
 
 var mesh: ArrayMesh
@@ -53,7 +54,7 @@ func allocate(new_vertex_count: int, new_index_count: int, array_types: int = Me
 
 	if array_types & Mesh.ARRAY_CUSTOM0:
 		var custom_0 := PackedFloat32Array()
-		custom_0.resize(new_vertex_count)
+		custom_0.resize(new_vertex_count * 4)
 		arrays[Mesh.ARRAY_CUSTOM0] = custom_0
 
 	if array_types & Mesh.ARRAY_COLOR:
