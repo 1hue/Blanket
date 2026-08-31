@@ -30,7 +30,7 @@ var pipelines: Array[RID]
 var faces_select: ShaderPipeline
 var faces_dedupe: ShaderPipeline
 var faces_write: ShaderPipeline
-var edges_find: ShaderPipeline
+var faces_pin: ShaderPipeline
 var verts: ShaderPipeline
 var shape: ShaderPipeline
 var bevel_shrink: ShaderPipeline
@@ -51,7 +51,7 @@ func _init() -> void:
 	faces_select = ShaderPipeline.new("res://scripts/passes/faces/faces_select.glsl")
 	faces_dedupe = ShaderPipeline.new("res://scripts/passes/faces/faces_dedupe.glsl")
 	faces_write = ShaderPipeline.new("res://scripts/passes/faces/faces_write.glsl")
-	#edges_find = ShaderPipeline.new("res://scripts/passes/edges_find.glsl")
+	faces_pin = ShaderPipeline.new("res://scripts/passes/faces/faces_pin.glsl")
 	#verts = ShaderPipeline.new("res://scripts/passes/verts.glsl")
 	#shape = ShaderPipeline.new("res://scripts/passes/shape.glsl")
 	#bevel_shrink = ShaderPipeline.new("res://scripts/passes/bevel/shrink.glsl")

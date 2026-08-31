@@ -26,8 +26,6 @@ var in_face_stride: int:
 	get: return in_index_stride * 3
 #endregion
 
-var faces_table_size: int
-
 #region Final out surface
 var out_vertex_count: int
 var out_vertex_stride: int
@@ -45,13 +43,14 @@ var out_face_stride: int:
 #endregion
 
 #region Select
-var select_vertex_count: int
-var select_vertex_stride: int
-var select_normal_offset: int
-var select_normal_stride: int
-var select_marker_offset: int
-var select_attribute_stride: int
-var select_index_stride: int
+var faces_table_size: int
+var faces_out_vertex_count: int
+var faces_out_vertex_stride: int
+var faces_out_index_count: int
+var faces_out_index_stride: int
+var faces_out_color_offset: int
+var faces_out_marker_offset: int
+var faces_out_attribute_stride: int
 #endregion
 
 #region Bevel

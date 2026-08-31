@@ -41,15 +41,15 @@ layout(set = 3, binding = 0, scalar) restrict buffer FacesSlotBuffer {
 	uint16_t slots[];
 };
 
-layout(set = 4, binding = 0, scalar) restrict writeonly buffer OutVertexBuffer {
+layout(set = 4, binding = 0, scalar) restrict writeonly buffer FacesOutVertexBuffer {
 	vec3 out_positions[];
 };
 
-layout(set = 4, binding = 1, scalar) restrict writeonly buffer OutIndexBuffer {
+layout(set = 4, binding = 1, scalar) restrict writeonly buffer FacesOutIndexBuffer {
 	u16vec3 out_faces[];
 };
 
-layout(set = 4, binding = 2, std430) restrict buffer OutAttributeBuffer {
+layout(set = 4, binding = 2, std430) restrict writeonly buffer FacesOutAttributeBuffer {
 	uint out_attributes[]; // Unused
 };
 
@@ -96,9 +96,9 @@ void main() {
 
 	out_faces[face] = dense;
 
-	write_color(dense.x, vec4(1, 0, 0, 1));
-	write_color(dense.y, vec4(0, 1, 0, 1));
-	write_color(dense.z, vec4(0, 0, 1, 1));
+// 	write_color(dense.x, vec4(1, 0, 0, 1));
+// 	write_color(dense.y, vec4(0, 1, 0, 1));
+// 	write_color(dense.z, vec4(0, 0, 1, 1));
 
 	// Merged corners share a slot, so these writes land on top of each other harmlessly
 	out_positions[dense.x] = in_positions[merged.x];

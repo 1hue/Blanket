@@ -40,8 +40,7 @@ layout(set = 3, binding = 0, scalar) restrict buffer FacesSlotBuffer {
 };
 
 layout(set = 4, binding = 0, std430) restrict buffer FacesDedupeDispatchBuffer {
-	uvec3 dispatch; // Indirect args for faces_write.glsl - its own buffer, since the one
-	// dispatching this pass cannot also be bound to it
+	uvec3 dispatch; // faces_write.glsl
 };
 
 uint hash(vec3 position) {
