@@ -5,7 +5,6 @@ signal changed
 
 const DEFAULT_DEPTH = 0.1
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
-const MAX_VALENCE = 32
 const DEFAULT_BEVEL_SHRINK = 0.3
 const DEFAULT_BEVEL_SEGMENTS = 1
 const DEFAULT_BEVEL_ARCS = 1
@@ -26,7 +25,7 @@ var in_face_stride: int:
 	get: return in_index_stride * 3
 #endregion
 
-#region Final out surface
+#region Generated surface - holds the selection, then everything bevel adds
 var out_vertex_count: int
 var out_vertex_stride: int
 var out_index_count: int
@@ -42,36 +41,29 @@ var out_face_stride: int:
 	get: return out_index_stride * 3
 #endregion
 
-#region Select
+#region Faces select
+var selected_vertex_count: int
+var selected_face_count: int
 var faces_table_size: int
-var faces_out_vertex_count: int
-var faces_out_vertex_stride: int
-var faces_out_index_count: int
-var faces_out_index_stride: int
-var faces_out_color_offset: int
-var faces_out_marker_offset: int
-var faces_out_attribute_stride: int
 #endregion
 
 #region Bevel
-var bevel := 0.0
 var bevel_shrink := DEFAULT_BEVEL_SHRINK
 ## Strips on each side of a crease.
 var bevel_segments := DEFAULT_BEVEL_SEGMENTS
 ## Wedge segments or rings around each corner vert.
 var bevel_arcs := DEFAULT_BEVEL_ARCS
-var bevel_vertex_count: int
-var bevel_vertex_stride: int
-var bevel_index_count: int
-var bevel_index_stride: int
-var bevel_normal_offset: int
-var bevel_normal_stride: int
-var bevel_color_offset: int
-var bevel_marker_offset: int
-var bevel_attribute_stride: int
-var max_shared_edges: int:
-	get: return in_index_count / 2
 var smooth_strength := DEFAULT_SMOOTH_STRENGTH
+var max_shared_edges: int:
+	get: return selected_face_count * 3 / 2
+var arc_steps: int:
+	get: return bevel_segments * 2
+var arc_count: int:
+	get: return arc_steps + 1
+var fan_vertex_count: int:
+	get: return (bevel_arcs - 1) * arc_count + arc_count - 2
+var fan_face_count: int:
+	get: return arc_steps + (bevel_arcs - 1) * arc_steps * 2
 #endregion
 
 ## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees
@@ -102,7 +94,7 @@ func _init(surface: ComputeSurface, global_transform: Transform3D) -> void:
 	var format := mesh.surface_get_format(surface.source_idx)
 	var primitive := mesh.surface_get_primitive_type(surface.source_idx)
 
-	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be triangles: %s is primitibe type %s" % [mesh, primitive])
+	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be triangles: %s is primitive type %s" % [mesh, primitive])
 	assert(format & Mesh.ARRAY_FORMAT_NORMAL != 0, "Mesh must have normals: %s" % mesh)
 	assert(format & Mesh.ARRAY_FORMAT_COLOR != 0, "Mesh must have vertex colors: %s" % mesh)
 

@@ -15,7 +15,7 @@ layout(push_constant, std430) uniform PushParams {
 	uint out_attribute_stride;
 };
 
-layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
+layout(set = 0, binding = 0, scalar) restrict writeonly buffer OutVertexBuffer {
 	vec3 out_positions[]; // Unused
 };
 

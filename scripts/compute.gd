@@ -68,10 +68,10 @@ func debug() -> void:
 		"faces_buffer.face_count ", faces_buffer.decode_u32(0),
 		" | faces_buffer.vertex_count ", faces_buffer.decode_u32(4),
 		"\n[/color][color=cadet_blue]params.faces_table_size ", params.faces_table_size,
-		" | params.faces_out_index_stride ", params.faces_out_index_stride,
-		" | params.faces_out_vertex_count ", params.faces_out_vertex_count,
-		" | params.faces_out_vertex_stride ", params.faces_out_vertex_stride,
-		" | params.faces_out_color_offset ", params.faces_out_color_offset,
+		" | params.out_index_stride ", params.out_index_stride,
+		" | params.out_vertex_count ", params.out_vertex_count,
+		" | params.out_vertex_stride ", params.out_vertex_stride,
+		" | params.out_color_offset ", params.out_color_offset,
 		"\nfaces_dedupe_dispatch_buffer: ",
 		rd.buffer_get_data(uniforms.faces_dedupe_dispatch_buffer).to_int32_array(),
 		" | faces_write_dispatch_buffer: ", rd.buffer_get_data(uniforms.faces_write_dispatch_buffer).to_int32_array(),
@@ -84,14 +84,14 @@ func debug() -> void:
 	print_rich("[color=cadet_blue]slots_buffer[", slots.size() / 2, "] uint16: ", ComputeUtil.to_int16_array(slots), "[/color]")
 
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
-	var indices := rd.buffer_get_data(index_buffer, 0, params.faces_out_index_count * params.faces_out_index_stride)
+	var indices := rd.buffer_get_data(index_buffer, 0, params.out_index_count * params.out_index_stride)
 
 	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
-	var positions := rd.buffer_get_data(vertex_buffer, 0, params.faces_out_vertex_count * params.faces_out_vertex_stride)
+	var positions := rd.buffer_get_data(vertex_buffer, 0, params.out_vertex_count * params.out_vertex_stride)
 	print_rich(
 		"[color=aqua]index_buffer[", indices.size() / 6, "]: ",
 		ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(indices)) , "[/color]",
-		"\n[color=aqua]vertex_buffer[", params.faces_out_vertex_count, "]: ", positions.to_vector3_array(), "[/color]"
+		"\n[color=aqua]vertex_buffer[", params.out_vertex_count, "]: ", positions.to_vector3_array(), "[/color]"
 	)
 
 	#var vertex_in_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, 0)

@@ -14,7 +14,7 @@ var faces_table_set: RID
 var faces_slot_buffer: RID
 var faces_slot_set: RID
 var faces_write_dispatch_buffer: RID
-var faces_out_set: RID
+var out_set: RID
 #endregion
 
 var source_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes

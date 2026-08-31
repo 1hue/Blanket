@@ -13,7 +13,7 @@ var dispatch_uniform_set: RID
 func _pre() -> void:
 	push_constant.resize(SIZE_PARAMS)
 	size()
-	surface.allocate(params.bevel_vertex_count, params.bevel_index_count, Mesh.ARRAY_NORMAL | Mesh.ARRAY_COLOR)
+	#surface.allocate(params.bevel_vertex_count, params.bevel_index_count, Mesh.ARRAY_NORMAL | Mesh.ARRAY_COLOR)
 	init_uniforms()
 	init_indirect_dispatch()
 
@@ -94,7 +94,7 @@ func compute() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_shrink.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
-	# TODO: Replace with output from the Select multipass
+	# TODO: Replace with output from the Faces* multipass
 	rd.compute_list_bind_uniform_set(compute_list, uniforms.source_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, out_uniform_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, shared_edge_uniform_set, 2)
