@@ -36,7 +36,7 @@ layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
 	u16vec3 faces[]; // Source vertex indices of every upright face
 };
 
-layout(set = 2, binding = 0, std430) restrict buffer FacesSelectDispatchBuffer {
+layout(set = 2, binding = 0, std430) restrict writeonly buffer FacesSelectDispatchBuffer {
 	uvec3 dispatch; // Indirect args for faces_dedupe.glsl
 };
 

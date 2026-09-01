@@ -11,11 +11,10 @@ default_value = 1.0
 
 [resource]
 modes/cull = 2
-flags/unshaded = true
 flags/wireframe = true
-flags/shadows_disabled = true
 flags/ambient_light_disabled = true
 flags/fog_disabled = true
+flags/specular_occlusion_disabled = true
 nodes/fragment/2/node = SubResource("VisualShaderNodeInput_6dr6d")
 nodes/fragment/2/position = Vector2(-100, 280)
 nodes/fragment/3/node = SubResource("VisualShaderNodeFloatParameter_6dr6d")

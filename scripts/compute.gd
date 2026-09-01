@@ -37,7 +37,7 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		FacesSelectPass.new(mesh, surface, params, uniforms),
 		FacesDedupePass.new(mesh, surface, params, uniforms),
 		FacesWritePass.new(mesh, surface, params, uniforms),
-		FacesPinPass.new(mesh, surface, params, uniforms),
+		SharedEdgesPass.new(mesh, surface, params, uniforms),
 		BevelShrinkPass.new(mesh, surface, params, uniforms),
 		BevelFillPass.new(mesh, surface, params, uniforms),
 		#SmoothSumPass.new(mesh, surface, params, uniforms),
@@ -68,11 +68,13 @@ func debug() -> void:
 		"faces_buffer.face_count ", faces_buffer.decode_u32(0),
 		" | faces_buffer.vertex_count ", faces_buffer.decode_u32(4),
 		"\n[/color][color=cadet_blue]params.faces_table_size ", params.faces_table_size,
+		" | params.selected_vertex_count ", params.selected_vertex_count,
 		" | params.out_index_stride ", params.out_index_stride,
 		" | params.out_vertex_count ", params.out_vertex_count,
 		" | params.out_vertex_stride ", params.out_vertex_stride,
-		" | params.out_color_offset ", params.out_color_offset,
+		"\nparams.out_color_offset ", params.out_color_offset,
 		" | params.out_custom_offset ", params.out_custom_offset,
+		" | params.out_attribute_stride ", params.out_attribute_stride,
 		"\nfaces_dedupe_dispatch_buffer: ",
 		rd.buffer_get_data(uniforms.faces_dedupe_dispatch_buffer).to_int32_array(),
 		" | faces_write_dispatch_buffer: ", rd.buffer_get_data(uniforms.faces_write_dispatch_buffer).to_int32_array(),
@@ -85,9 +87,9 @@ func debug() -> void:
 	print_rich("[color=cadet_blue]slots_buffer[", slots.size() / 2, "] uint16: ", ComputeUtil.to_int16_array(slots), "[/color]")
 
 	#var attr_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, surface.idx)
-	#var position_origins := rd.buffer_get_data(attr_buffer, 0, params.out_vertex_count * params.out_vertex_stride)
+	#var attrs := rd.buffer_get_data(attr_buffer)
 	#print_rich(
-		#"[color=aqua]attr_buffer: ", position_origins.to_vector4_array(), "[/color]"
+		#"[color=aqua]attr_buffer[%s]: " % attrs.size(), attrs, "[/color]"
 	#)
 
 	#var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)

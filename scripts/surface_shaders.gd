@@ -30,11 +30,11 @@ var pipelines: Array[RID]
 var faces_select: ShaderPipeline
 var faces_dedupe: ShaderPipeline
 var faces_write: ShaderPipeline
-var faces_pin: ShaderPipeline
-var verts: ShaderPipeline
-var shape: ShaderPipeline
+var shared_edges: ShaderPipeline
 var bevel_shrink: ShaderPipeline
 var bevel_fill: ShaderPipeline
+var verts: ShaderPipeline
+var shape: ShaderPipeline
 var normals_sum: ShaderPipeline
 var normals_write: ShaderPipeline
 var smooth_sum: ShaderPipeline
@@ -51,7 +51,7 @@ func _init() -> void:
 	faces_select = ShaderPipeline.new("res://scripts/passes/faces/faces_select.glsl")
 	faces_dedupe = ShaderPipeline.new("res://scripts/passes/faces/faces_dedupe.glsl")
 	faces_write = ShaderPipeline.new("res://scripts/passes/faces/faces_write.glsl")
-	faces_pin = ShaderPipeline.new("res://scripts/passes/faces/faces_pin.glsl")
+	shared_edges = ShaderPipeline.new("res://scripts/passes/shared_edges.glsl")
 	bevel_shrink = ShaderPipeline.new("res://scripts/passes/bevel/bevel_shrink.glsl")
 	bevel_fill = ShaderPipeline.new("res://scripts/passes/bevel/bevel_fill.glsl")
 	#shape = ShaderPipeline.new("res://scripts/passes/shape.glsl")

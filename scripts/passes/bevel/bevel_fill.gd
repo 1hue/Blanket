@@ -1,20 +1,12 @@
 extends ComputePass
 class_name BevelFillPass
 
-const SIZE_PARAMS = 20
+const SIZE_PARAMS = 28
 
 
 func _pre() -> void:
 	push_constant.resize(SIZE_PARAMS)
 
-#var debug_buffer: RID
-#var debug_uniform_set: RID
-#func _init_debug() -> void:
-	#debug_buffer = rd.storage_buffer_create(ceili(params.in_index_count / (128.0 * 3.0)) * 8)
-	#uniforms.debug = debug_buffer
-	#debug_uniform_set = rd.uniform_set_create([
-		#ComputeUtil.create_uniform([debug_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0)
-	#], SurfaceShaders.bevel_fill.shader, 3)
 
 func pack_params() -> PackedByteArray:
 	push_constant.encode_float(0, params.bevel_shrink)
@@ -22,6 +14,8 @@ func pack_params() -> PackedByteArray:
 	push_constant.encode_u32(8, params.bevel_arcs)
 	push_constant.encode_u32(12, params.selected_vertex_count)
 	push_constant.encode_u32(16, params.selected_face_count)
+	push_constant.encode_u32(20, params.out_custom_offset)
+	push_constant.encode_u32(24, params.out_attribute_stride)
 
 	return push_constant
 
@@ -32,5 +26,5 @@ func compute() -> void:
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, uniforms.out_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, uniforms.shared_edge_set, 1)
-	rd.compute_list_dispatch_indirect(compute_list, uniforms.fill_dispatch_buffer, 0)
+	rd.compute_list_dispatch_indirect(compute_list, uniforms.bevel_fill_dispatch_buffer, 0)
 	rd.compute_list_end()

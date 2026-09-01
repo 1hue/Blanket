@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://bdn3a1arxi2nw"
+path="res://.godot/imported/shared_edges.glsl-ed76361c0888bfeb2fb9a93821e9f3e2.res"
+
+[deps]
+
+source_file="res://scripts/passes/shared_edges.glsl"
+dest_files=["res://.godot/imported/shared_edges.glsl-ed76361c0888bfeb2fb9a93821e9f3e2.res"]
+
+[params]
+

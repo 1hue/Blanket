@@ -39,7 +39,7 @@ layout(set = 3, binding = 0, scalar) restrict buffer FacesSlotBuffer {
 	uint16_t slots[]; // Per source vertex: its dense slot, valid only for survivors
 };
 
-layout(set = 4, binding = 0, std430) restrict buffer FacesDedupeDispatchBuffer {
+layout(set = 4, binding = 0, std430) restrict writeonly buffer FacesDedupeDispatchBuffer {
 	uvec3 dispatch; // faces_write.glsl
 };
 

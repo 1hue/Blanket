@@ -1,18 +1,19 @@
-// Retract each selected face from its shared edges, and record those edges for fill.
+// Retract each selected face from its shared edges.
+// X = face, Y = corner.
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
-const uint NONE = 0xFFFFFFFFu;
-
-layout(local_size_x = 256) in;
+layout(local_size_x = 64, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
-	float shrink; // 0 = unchanged, 1 = collapsed onto the opposite corner
-	uint selected_vertex_count; // Where the retracted corners begin
+	float shrink; // 0 = unchanged, 1 = moved onto opposite corner
+	uint selected_vertex_count;
 	uint selected_face_count;
+	uint out_custom_offset;
+	uint out_attribute_stride;
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
@@ -23,116 +24,84 @@ layout(set = 0, binding = 1, scalar) restrict buffer OutIndexBuffer {
 	u16vec3 out_faces[];
 };
 
-layout(set = 0, binding = 2, std430) restrict buffer OutCustom0Buffer {
-	vec4 out_origins[]; // xyz = position before any shift, w = 1 when the vert may move
+layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
+	uint out_attributes[];
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
-	uvec4 shared_edges[]; // Corner indices into the retracted block: this face's edge, then the twin's
-};
-
-layout(set = 2, binding = 0, std430) restrict buffer DispatchBuffer {
-	uvec3 dispatch; // Indirect args for bevel_fill.glsl
+	uvec4 shared_edges[];
 };
 
 uint next_corner(uint corner) {
 	return (corner + 1) % 3;
 }
 
-// Twin corner per edge, or NONE at a boundary.
-// Dedupe merged the verts, so a shared edge is the same index pair in both faces.
-uvec3 find_twins(uint face) {
-	uvec3 twins = uvec3(NONE);
-	uvec3 corners = uvec3(out_faces[face]);
-
-	for (uint f = 0; f < selected_face_count; f++) {
-		if (f == face) continue;
-
-		uvec3 other = uvec3(out_faces[f]);
-
-		for (uint e = 0; e < 3; e++) {
-			if (twins[e] != NONE) continue;
-
-			uvec2 edge = uvec2(corners[e], corners[next_corner(e)]);
-
-			for (uint o = 0; o < 3; o++) {
-				// Correctly wound neighbours run their shared edge in opposite directions
-				if (edge == uvec2(other[next_corner(o)], other[o])) twins[e] = f * 3 + o;
-			}
-		}
-
-		if (all(notEqual(twins, uvec3(NONE)))) break;
-	}
-
-	return twins;
+uint prev_corner(uint corner) {
+	return (corner + 2) % 3;
 }
 
-// Edge e sits opposite corner e+2, so a corner retreats toward the corner opposite
-// whichever of its two edges is shared - or between both, when both are
-vec3 inset_corner(mat3 positions, uint c, bvec3 is_shared) {
-	uint next = next_corner(c);
-	uint prev = (c + 2) % 3;
+// The list holds retracted corner indices, so an edge is present under either face's name
+bool is_shared(uint retracted_corner) {
+	for (uint i = 0; i < shared_count; i++) {
+		uvec4 edge = shared_edges[i];
 
-	bool to_prev = is_shared[c];
-	bool to_next = is_shared[prev];
+		if (edge.x == retracted_corner) return true;
+		if (edge.z == retracted_corner) return true;
+	}
 
-	if (!to_prev && !to_next) return positions[c];
+	return false;
+}
 
-	vec3 target = to_prev && to_next
-	? mix(positions[next], positions[prev], 0.5)
-	: (to_prev ? positions[prev] : positions[next]);
+// Retreats toward the corner opposite whichever edge is shared, or between both.
+// Weights are 0 or 1, so an unshared edge contributes nothing without a branch.
+vec3 inset(vec3 self, vec3 toward_next, vec3 toward_prev, float next_weight, float prev_weight) {
+	float total = next_weight + prev_weight;
 
-	return mix(positions[c], target, shrink);
+	if (total == 0) return self;
+
+	vec3 target = (toward_next * next_weight + toward_prev * prev_weight) / total;
+
+	return mix(self, target, shrink);
+}
+
+// The retracted corner inherits where it came from and whether it may move
+void copy_custom(uint from, uint to) {
+	uint source = (out_custom_offset + from * out_attribute_stride) / 4;
+	uint target = (out_custom_offset + to * out_attribute_stride) / 4;
+
+	out_attributes[target] = out_attributes[source];
+	out_attributes[target + 1] = out_attributes[source + 1];
+	out_attributes[target + 2] = out_attributes[source + 2];
+	out_attributes[target + 3] = out_attributes[source + 3];
 }
 
 void main() {
 	uint face = gl_GlobalInvocationID.x;
+	uint corner = gl_GlobalInvocationID.y;
 
 	if (face >= selected_face_count) return;
 
-	uvec3 corners = uvec3(out_faces[face]);
-	mat3 positions = mat3(
-		out_positions[corners.x], out_positions[corners.y], out_positions[corners.z]
-	);
-
-	uvec3 twins = find_twins(face);
-	bvec3 is_shared = notEqual(twins, uvec3(NONE));
-
-	// Retracted corners sit after the selection, one per face corner
+	u16vec3 corners = out_faces[face];
 	uint base = selected_vertex_count + face * 3;
+	uint prev = prev_corner(corner);
 
-	for (uint c = 0; c < 3; c++) {
-		out_positions[base + c] = inset_corner(positions, c, is_shared);
+	// This corner sits on its own edge and on the one arriving from the previous corner
+	bool own_shared = is_shared(base + corner);
+	bool prev_shared = is_shared(base + prev);
 
-		// Carries where the corner sat before retracting, so fill can rebuild the apex
-		out_origins[base + c] = vec4(positions[c], out_origins[corners[c]].w);
-	}
+	vec3 self = out_positions[corners[corner]];
+	vec3 next = out_positions[corners[next_corner(corner)]];
+	vec3 behind = out_positions[corners[prev]];
 
-	out_faces[face] = u16vec3(base, base + 1, base + 2);
+	uint retracted = base + corner;
 
-	// Both faces of an edge find each other, so only the lower corner registers it
-	uvec4 pending[3];
-	uint pending_count = 0;
-
-	for (uint e = 0; e < 3; e++) {
-		uint twin = twins[e];
-		if (twin == NONE || face * 3 + e > twin) continue;
-
-		uint twin_next = twin / 3 * 3 + next_corner(twin % 3);
-		pending[pending_count] = uvec4(face * 3 + e, face * 3 + next_corner(e), twin, twin_next);
-		pending_count++;
-	}
-
-	if (pending_count == 0) return;
-
-	uint slot = atomicAdd(shared_count, pending_count);
-
-	for (uint i = 0; i < pending_count; i++) {
-		shared_edges[slot + i] = pending[i];
-	}
-
-	atomicMax(dispatch.x, (slot + pending_count + 255) / 256);
-	dispatch.y = 1;
-	dispatch.z = 1;
+	out_positions[retracted] = inset(
+		self,
+		behind,
+		next,
+		own_shared ? 1 : 0,
+		prev_shared ? 1 : 0
+	);
+	copy_custom(corners[corner], retracted);
 }

@@ -39,16 +39,16 @@ layout(set = 3, binding = 0, scalar) restrict buffer FacesSlotBuffer {
 	uint16_t slots[];
 };
 
-layout(set = 4, binding = 0, scalar) restrict writeonly buffer FacesOutVertexBuffer {
+layout(set = 4, binding = 0, scalar) restrict writeonly buffer OutVertexBuffer {
 	vec3 out_positions[];
 };
 
-layout(set = 4, binding = 1, scalar) restrict writeonly buffer FacesOutIndexBuffer {
+layout(set = 4, binding = 1, scalar) restrict writeonly buffer OutIndexBuffer {
 	u16vec3 out_faces[];
 };
 
-layout(set = 4, binding = 2, std430) restrict writeonly buffer FacesOutCustom0Buffer {
-	vec4 out_origins[];
+layout(set = 4, binding = 2, std430) restrict writeonly buffer OutAttributeBuffer {
+	uint out_attributes[];
 };
 
 uint hash(vec3 position) {

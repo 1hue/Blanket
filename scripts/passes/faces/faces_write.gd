@@ -22,6 +22,17 @@ func allocate() -> void:
 	var apexes := params.selected_face_count * 3
 
 	params.out_vertex_count = selected + shrunk + fans + apexes
+	prints(
+		"params.in_face_count:", params.in_face_count,
+		"params.selected_vertex_count:", params.selected_vertex_count,
+		"params.bevel_arcs:", params.bevel_arcs,
+		"params.bevel_segments:", params.bevel_segments,
+		"selected:", selected,
+		"shrunk:", shrunk,
+		"fans:", fans,
+		"apexes:", apexes,
+		"params.out_vertex_count:", params.out_vertex_count,
+	)
 	params.out_index_count = 3 * (
 		params.selected_face_count + params.max_shared_edges * (params.fan_face_count * 2 + params.arc_steps * 2)
 	)

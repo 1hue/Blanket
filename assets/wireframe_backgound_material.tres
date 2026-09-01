@@ -5,4 +5,4 @@
 [resource]
 render_priority = 0
 shader = ExtResource("1_frm4f")
-shader_parameter/Transparency = 0.03200000152
+shader_parameter/Transparency = 0.49200002337
