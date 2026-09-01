@@ -1,7 +1,7 @@
 extends ComputePass
 class_name SharedEdgesPass
 
-const SIZE_PARAMS = 16
+const SIZE_PARAMS = 12
 
 var shared_edge_buffer: RID
 var shared_edge_buffer_size: int
@@ -18,7 +18,8 @@ func _pre() -> void:
 ## Sizes depend on the selection, so this runs after faces_write
 func init_uniforms() -> void:
 	# shared_count, then at most one entry per pair of selected face edges
-	shared_edge_buffer_size = snappedi(4 + params.max_shared_edges * 16 + 1, 4)
+	shared_edge_buffer_size = snappedi(4 + params.max_shared_edges * 24 + 1, 4)
+	prints("shared_edge_buffer_size", shared_edge_buffer_size)
 	shared_edge_buffer = rd.storage_buffer_create(shared_edge_buffer_size)
 
 	shared_edge_uniform_set = rd.uniform_set_create([
@@ -39,10 +40,9 @@ func init_uniforms() -> void:
 
 
 func pack_params() -> PackedByteArray:
-	push_constant.encode_u32(0, params.selected_vertex_count)
-	push_constant.encode_u32(4, params.selected_face_count)
-	push_constant.encode_u32(8, params.out_custom_offset)
-	push_constant.encode_u32(12, params.out_attribute_stride)
+	push_constant.encode_u32(0, params.selected_face_count)
+	push_constant.encode_u32(4, params.out_custom_offset)
+	push_constant.encode_u32(8, params.out_attribute_stride)
 
 	return push_constant
 

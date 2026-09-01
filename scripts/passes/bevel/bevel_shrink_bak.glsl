@@ -1,4 +1,4 @@
-// Retract each selected face from its shared edges, and repoint the face at the result.
+// Retract each selected face from its shared edges.
 // X = face, Y = corner.
 #[compute]
 #version 450
@@ -9,16 +9,11 @@
 layout(local_size_x = 64, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
-	float shrink; // 0 = unchanged, 1 = moved onto the opposite corner
+	float shrink; // 0 = unchanged, 1 = moved onto opposite corner
 	uint selected_vertex_count;
 	uint selected_face_count;
 	uint out_custom_offset;
 	uint out_attribute_stride;
-};
-
-struct SharedEdge {
-	uvec2 apexes;
-	uvec2 retracted[2];
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
@@ -35,7 +30,7 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 
 layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
-	SharedEdge shared_edges[];
+	uvec4 shared_edges[];
 };
 
 uint next_corner(uint corner) {
@@ -46,13 +41,13 @@ uint prev_corner(uint corner) {
 	return (corner + 2) % 3;
 }
 
-// The list names retracted verts, so a corner's edge is shared if it appears there
-bool is_shared(uint retracted) {
+// The list holds retracted corner indices, so an edge is present under either face's name
+bool is_shared(uint retracted_corner) {
 	for (uint i = 0; i < shared_count; i++) {
-		SharedEdge edge = shared_edges[i];
+		uvec4 edge = shared_edges[i];
 
-		if (any(equal(edge.retracted[0], uvec2(retracted)))) return true;
-		if (any(equal(edge.retracted[1], uvec2(retracted)))) return true;
+		if (edge.x == retracted_corner) return true;
+		if (edge.z == retracted_corner) return true;
 	}
 
 	return false;
@@ -65,10 +60,12 @@ vec3 inset(vec3 self, vec3 toward_next, vec3 toward_prev, float next_weight, flo
 
 	if (total == 0) return self;
 
-	return mix(self, (toward_next * next_weight + toward_prev * prev_weight) / total, shrink);
+	vec3 target = (toward_next * next_weight + toward_prev * prev_weight) / total;
+
+	return mix(self, target, shrink);
 }
 
-// The retracted vert inherits where it came from and whether it may move
+// The retracted corner inherits where it came from and whether it may move
 void copy_custom(uint from, uint to) {
 	uint source = (out_custom_offset + from * out_attribute_stride) / 4;
 	uint target = (out_custom_offset + to * out_attribute_stride) / 4;
@@ -81,24 +78,30 @@ void copy_custom(uint from, uint to) {
 
 void main() {
 	uint face = gl_GlobalInvocationID.x;
-	uint corner = gl_LocalInvocationID.y;
+	uint corner = gl_GlobalInvocationID.y;
 
 	if (face >= selected_face_count) return;
 
 	u16vec3 corners = out_faces[face];
+	uint base = selected_vertex_count + face * 3;
 	uint prev = prev_corner(corner);
-	uint retracted = selected_vertex_count + face * 3 + corner;
 
 	// This corner sits on its own edge and on the one arriving from the previous corner
-	bool own_shared = is_shared(retracted);
-	bool prev_shared = is_shared(selected_vertex_count + face * 3 + prev);
+	bool own_shared = is_shared(base + corner);
+	bool prev_shared = is_shared(base + prev);
 
 	vec3 self = out_positions[corners[corner]];
 	vec3 next = out_positions[corners[next_corner(corner)]];
 	vec3 behind = out_positions[corners[prev]];
 
+	uint retracted = base + corner;
+
 	out_positions[retracted] = inset(
-		self, behind, next, own_shared ? 1 : 0, prev_shared ? 1 : 0
+		self,
+		behind,
+		next,
+		own_shared ? 1 : 0,
+		prev_shared ? 1 : 0
 	);
 	copy_custom(corners[corner], retracted);
 }

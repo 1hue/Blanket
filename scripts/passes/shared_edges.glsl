@@ -1,4 +1,5 @@
-// List every edge shared by two selected faces, and mark the verts on the boundary.
+// List every edge shared by two selected faces, store the apex verts.
+// Anchor the verts on the boundary.
 // X = face, Y = edge.
 #[compute]
 #version 450
@@ -11,14 +12,21 @@ const uint FILL_GROUP_SIZE = 256;
 
 layout(local_size_x = 64, local_size_y = 3) in;
 
+// One corner per invocation per tile
+const uint TILE_SIZE = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+
 layout(push_constant, std430) uniform PushParams {
-	uint selected_vertex_count; // Where the retracted corners will begin
 	uint selected_face_count;
 	uint out_custom_offset;
 	uint out_attribute_stride;
 };
 
-layout(set = 0, binding = 0, scalar) restrict writeonly buffer OutVertexBuffer {
+struct SharedEdge {
+	uvec2 apexes; // Original ends of edge A_B, sorted
+	uvec2 retracted[2]; // [A1_B1, A2_B2], written by shrink
+};
+
+layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
 	vec3 out_positions[]; // Unused
 };
 
@@ -26,98 +34,111 @@ layout(set = 0, binding = 1, scalar) restrict buffer OutIndexBuffer {
 	u16vec3 out_faces[];
 };
 
-layout(set = 0, binding = 2, std430) restrict writeonly buffer OutAttributeBuffer {
+layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
-	uvec4 shared_edges[]; // Retracted corner indices: this face's edge, then the twin's
+	SharedEdge shared_edges[]; // Initial values are 0 (a valid vert index), but (0,0) is a degenerate edge
 };
 
-layout(set = 2, binding = 0, std430) restrict writeonly buffer DispatchBuffer {
-	uvec3 dispatch; // Indirect args for bevel_fill.glsl
+layout(set = 2, binding = 0, std430) restrict buffer DispatchBuffer {
+	uvec3 dispatch; // Indirect bevel_fill.glsl
 };
 
-uint next_corner(uint corner) {
-	return (corner + 1) % 3;
+// Two pages: the group scans one while the next is fetched into the other
+shared uvec2 tile_edges[2][TILE_SIZE];
+
+// AB = BA, so store sorted and two corners share an edge iff their pairs match
+uvec2 sorted_edge(uvec2 edge) {
+	return uvec2(min(edge.x, edge.y), max(edge.x, edge.y));
 }
 
 // Edge `corner` runs from that corner to the next one round
-u16vec2 edge_at(u16vec3 corners, uint corner) {
+uvec2 edge_at(uvec3 corners, uint corner) {
 	if (corner == 0) return corners.xy;
 	if (corner == 1) return corners.yz;
 
 	return corners.zx;
 }
 
-// Correctly wound neighbours run their shared edge in opposite directions
-uint matching_corner(u16vec3 corners, u16vec2 edge) {
-	if (edge == corners.yx) return 0;
-	if (edge == corners.zy) return 1;
-	if (edge == corners.xz) return 2;
+// Out of range corners are never compared, so any value will do
+uvec2 edge_at_corner(uint global_corner) {
+	uint face = global_corner / 3;
 
-	return NONE;
+	if (face >= selected_face_count) return uvec2(0);
+
+	return sorted_edge(edge_at(out_faces[face], global_corner % 3));
 }
 
-uint find_twin(u16vec2 edge, uint face) {
-	for (uint other = 0; other < selected_face_count; other++) {
-		if (other == face) continue;
-
-		uint corner = matching_corner(out_faces[other], edge);
-
-		if (corner != NONE) return other * 3 + corner;
-	}
-
-	return NONE;
-}
-
-// Shrink will write the retracted corners at these slots, so fill can name them now
-void append_edge(uint face, uint corner, uint twin) {
-	uint base = selected_vertex_count + face * 3;
-	uint twin_base = selected_vertex_count + twin / 3 * 3;
-	uint twin_corner = twin % 3;
-
-	uint slot = atomicAdd(shared_count, 1);
-	shared_edges[slot] = uvec4(
-		base + corner,
-		base + next_corner(corner),
-		twin_base + twin_corner,
-		twin_base + next_corner(twin_corner)
-	);
-
-	atomicMax(dispatch.x, (slot + FILL_GROUP_SIZE) / FILL_GROUP_SIZE);
-}
-
-// w = 0 anchors the vert, so nothing downstream moves it
+// w = 1 anchors the vert, so nothing downstream moves it
 void anchor(uint vert) {
-	uint word = (out_custom_offset + vert * out_attribute_stride) / 4;
-	out_attributes[word + 3] = floatBitsToUint(0);
+	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = floatBitsToUint(1);
 }
 
 void main() {
-	uint face = gl_GlobalInvocationID.x;
-	uint corner = gl_LocalInvocationID.y;
+	uint local = gl_LocalInvocationIndex;
+	uint self = gl_WorkGroupID.x * TILE_SIZE + local;
+	uint corner_count = selected_face_count * 3;
 
-	// Fill repoints every selected face too, so its dispatch must cover them all
-	atomicMax(dispatch.x, (selected_face_count + FILL_GROUP_SIZE - 1) / FILL_GROUP_SIZE);
-	dispatch.y = 1;
-	dispatch.z = 1;
+	// Fill repoints every selected face too, so its dispatch must cover them all.
+	// Uniform across the dispatch, so one invocation seeds it for everyone
+	if (gl_WorkGroupID.x == 0 && local == 0) {
+		atomicMax(dispatch.x, (selected_face_count + FILL_GROUP_SIZE - 1) / FILL_GROUP_SIZE);
+		dispatch.y = 1;
+		dispatch.z = 1;
+	}
 
-	if (face >= selected_face_count) return;
+	// Out of range invocations stay resident: the tile loop barriers are group wide
+	bool in_range = self < corner_count;
 
-	u16vec2 edge = edge_at(out_faces[face], corner);
-	uint twin = find_twin(edge, face);
+	uvec2 edge = edge_at_corner(self);
+	uint twin = NONE;
 
-	if (twin == NONE) {
-		// Nothing on the far side, so both ends anchor the selection
+	tile_edges[0][local] = edge_at_corner(local);
+
+	uint tile_count = (corner_count + TILE_SIZE - 1) / TILE_SIZE;
+
+	for (uint tile = 0; tile < tile_count; tile++) {
+		uint base = tile * TILE_SIZE;
+		uint current_page = tile % 2;
+		uint next_page = (tile + 1) % 2;
+
+		barrier();
+
+		// Nobody reads the next page this pass, so the fetch races nothing
+		tile_edges[next_page][local] = edge_at_corner(base + TILE_SIZE + local);
+
+		if (in_range && twin == NONE) {
+			uint span = min(TILE_SIZE, corner_count - base);
+
+			for (uint i = 0; i < span; i++) {
+				uint other = base + i;
+
+				if (other == self) continue;
+
+				if (tile_edges[current_page][i] == edge) {
+					twin = other;
+					break;
+				}
+			}
+		}
+	}
+
+	// Nothing on the far side, so both ends anchor the selection
+	if (in_range && twin == NONE) {
 		anchor(edge.x);
 		anchor(edge.y);
 		return;
 	}
 
-	// Both faces find each other, so only the lower corner lists the edge
-	if (face * 3 + corner > twin) return;
+	// Both corners find each other, so only the lower one lists the edge
+	if (!in_range || self > twin) return;
 
-	append_edge(face, corner, twin);
+	uint slot = atomicAdd(shared_count, 1);
+
+	shared_edges[slot].apexes = edge;
+
+	atomicMax(dispatch.x, (slot + FILL_GROUP_SIZE) / FILL_GROUP_SIZE);
 }

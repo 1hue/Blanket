@@ -1,5 +1,5 @@
-// Bridge each shared edge with a fan at both apexes and a strip between their arcs,
-// and repoint the selected faces at their retracted verts.
+// Bridge each shared edge with a fan at both ends and a strip between their arcs,
+// and repoint the selected faces at their retracted corners.
 #[compute]
 #version 450
 
@@ -18,11 +18,6 @@ layout(push_constant, std430) uniform PushParams {
 	uint out_attribute_stride;
 };
 
-struct SharedEdge {
-	uvec2 apexes;
-	uvec2 retracted[2];
-};
-
 layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
 	vec3 out_positions[];
 };
@@ -35,37 +30,47 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict readonly buffer SharedEdgeBuffer {
+layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
-	SharedEdge shared_edges[];
+	uvec4 shared_edges[];
 };
 
-SharedEdge edge;
+uvec4 corners;
 uint arc_steps;
 uint arc_count;
+uint apex_base;
 uint ring_base;
 uint arc_base;
 
-void copy_custom(uint from, uint to) {
-	uint source = (out_custom_offset + from * out_attribute_stride) / 4;
-	uint target = (out_custom_offset + to * out_attribute_stride) / 4;
+vec4 read_custom(uint vert) {
+	uint word = (out_custom_offset + vert * out_attribute_stride) / 4;
 
-	out_attributes[target] = out_attributes[source];
-	out_attributes[target + 1] = out_attributes[source + 1];
-	out_attributes[target + 2] = out_attributes[source + 2];
-	out_attributes[target + 3] = out_attributes[source + 3];
+	return uintBitsToFloat(
+		uvec4(
+			out_attributes[word],
+			out_attributes[word + 1],
+			out_attributes[word + 2],
+			out_attributes[word + 3]
+		)
+	);
 }
 
-void write_vertex(uint vert, vec3 position, uint inherit_from) {
+void write_vertex(uint vert, vec3 position, vec4 custom) {
 	out_positions[vert] = position;
-	copy_custom(inherit_from, vert);
+
+	uint word = (out_custom_offset + vert * out_attribute_stride) / 4;
+	uvec4 u_custom = floatBitsToUint(custom);
+	out_attributes[word] = u_custom.x;
+	out_attributes[word + 1] = u_custom.y;
+	out_attributes[word + 2] = u_custom.z;
+	out_attributes[word + 3] = u_custom.w;
 }
 
 void write_triangle(uint face, uvec3 verts, bool reverse) {
 	out_faces[face] = u16vec3(reverse ? verts.xzy : verts);
 }
 
-// Anchors: retracted on one face, crease, retracted on the other
+// Anchors: retracted near corner, crease, retracted far corner
 vec3 arc_point(mat3 anchors, uint step) {
 	if (step > segments) {
 		return mix(anchors[1], anchors[2], float(step - segments) / float(segments));
@@ -75,23 +80,25 @@ vec3 arc_point(mat3 anchors, uint step) {
 }
 
 mat3 arc_anchors(uint end) {
-	uvec2 pair = edge.retracted[end];
+	uint near = end == 0 ? corners.x : corners.y;
+	uint far = end == 0 ? corners.w : corners.z;
+	uint along = end == 0 ? corners.y : corners.x;
 
 	// The crease sits on the original edge, so it lies in both faces' planes
-	vec3 apex = out_positions[edge.apexes[end]];
-	vec3 along = out_positions[edge.apexes[1 - end]];
+	vec3 crease = mix(read_custom(near).xyz, read_custom(along).xyz, shrink);
 
-	return mat3(out_positions[pair.x], mix(apex, along, shrink), out_positions[pair.y]);
+	return mat3(out_positions[near], crease, out_positions[far]);
 }
 
-// Ring 0 is the apex, ring `arcs` is the arc, whose ends are the retracted verts
+// Ring 0 is the apex, ring `arcs` is the arc, whose ends are the retracted corners
 uint fan_vert(uint end, uint ring, uint step) {
-	uvec2 pair = edge.retracted[end];
+	uint near = end == 0 ? corners.x : corners.y;
+	uint far = end == 0 ? corners.w : corners.z;
 
-	if (ring == 0) return edge.apexes[end];
+	if (ring == 0) return apex_base + near - selected_vertex_count;
 	if (ring < arcs) return ring_base + (end * (arcs - 1) + ring - 1) * arc_count + step;
-	if (step == 0) return pair.x;
-	if (step == arc_steps) return pair.y;
+	if (step == 0) return near;
+	if (step == arc_steps) return far;
 
 	return arc_base + end * (arc_count - 2) + step - 1;
 }
@@ -108,21 +115,19 @@ void build_quad(uint face, uint inner_a, uint inner_b, uint outer_b, uint outer_
 }
 
 void build_fan(uint end, uint face_base) {
-	uint apex_vert = edge.apexes[end];
-	vec3 apex = out_positions[apex_vert];
+	uint near = end == 0 ? corners.x : corners.y;
+	vec4 origin = read_custom(near);
+	vec3 apex = origin.xyz; // Where the corner sat before shrink pulled it in
 	mat3 anchors = arc_anchors(end);
-	bool reverse = end == 1; // The two apexes sit at opposite ends of the edge
+	bool reverse = end == 1; // Ends sit at opposite ends of the edge
+
+	write_vertex(fan_vert(end, 0, 0), apex, origin);
 
 	for (uint ring = 1; ring <= arcs; ring++) {
 		float t = float(ring) / float(arcs);
 
 		for (uint step = 0; step <= arc_steps; step++) {
-			uint vert = fan_vert(end, ring, step);
-
-			// The arc's ends are shrink's verts, already written
-			if (ring == arcs && (step == 0 || step == arc_steps)) continue;
-
-			write_vertex(vert, mix(apex, arc_point(anchors, step), t), apex_vert);
+			write_vertex(fan_vert(end, ring, step), mix(apex, arc_point(anchors, step), t), origin);
 		}
 	}
 
@@ -137,12 +142,12 @@ void build_fan(uint end, uint face_base) {
 		for (uint step = 0; step < arc_steps; step++) {
 			build_quad(
 				band + step * 2,
-			  fan_vert(end, ring, step),
-					   fan_vert(end, ring, step + 1),
-					   fan_vert(end, ring + 1, step + 1),
-					   fan_vert(end, ring + 1, step),
-					   (ring + step) % 2 == 1, // Alternate the diagonal
-					   reverse
+				fan_vert(end, ring, step),
+				fan_vert(end, ring, step + 1),
+				fan_vert(end, ring + 1, step + 1),
+				fan_vert(end, ring + 1, step),
+				(ring + step) % 2 == 1, // Alternate the diagonal
+				reverse
 			);
 		}
 	}
@@ -152,12 +157,12 @@ void build_strip(uint face_base) {
 	for (uint step = 0; step < arc_steps; step++) {
 		build_quad(
 			face_base + step * 2,
-			 fan_vert(0, arcs, step),
-				   fan_vert(0, arcs, step + 1),
-				   fan_vert(1, arcs, step + 1),
-				   fan_vert(1, arcs, step),
-				   step % 2 == 1, // Alternate so neither side collects every extra edge
-			 false
+			fan_vert(0, arcs, step),
+			fan_vert(0, arcs, step + 1),
+			fan_vert(1, arcs, step + 1),
+			fan_vert(1, arcs, step),
+			step % 2 == 1, // Alternate so neither side collects every extra edge
+			false
 		);
 	}
 }
@@ -165,7 +170,7 @@ void build_strip(uint face_base) {
 void main() {
 	uint idx = gl_GlobalInvocationID.x;
 
-	// Selected faces now point at the retracted verts shrink wrote
+	// Selected faces now point at the retracted corners shrink wrote
 	if (idx < selected_face_count) {
 		uint base = selected_vertex_count + idx * 3;
 		out_faces[idx] = u16vec3(base, base + 1, base + 2);
@@ -173,14 +178,15 @@ void main() {
 
 	if (idx >= shared_count) return;
 
-	edge = shared_edges[idx];
+	corners = shared_edges[idx];
 	arc_steps = segments * 2;
 	arc_count = arc_steps + 1;
 
 	uint fan_verts = (arcs - 1) * arc_count + arc_count - 2;
 	uint fan_faces = arc_steps + (arcs - 1) * arc_steps * 2;
 
-	ring_base = selected_vertex_count + selected_face_count * 3 + idx * fan_verts * 2;
+	apex_base = selected_vertex_count + selected_face_count * 3;
+	ring_base = apex_base + selected_face_count * 3 + idx * fan_verts * 2;
 	arc_base = ring_base + (arcs - 1) * arc_count * 2;
 
 	uint face_base = selected_face_count + idx * (fan_faces * 2 + arc_steps * 2);

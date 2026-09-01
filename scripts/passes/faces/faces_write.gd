@@ -19,9 +19,8 @@ func allocate() -> void:
 	var selected := params.selected_vertex_count
 	var shrunk := params.selected_face_count * 3
 	var fans := params.max_shared_edges * params.fan_vertex_count * 2
-	var apexes := params.selected_face_count * 3
 
-	params.out_vertex_count = selected + shrunk + fans + apexes
+	params.out_vertex_count = selected + shrunk + fans
 	prints(
 		"params.in_face_count:", params.in_face_count,
 		"params.selected_vertex_count:", params.selected_vertex_count,
@@ -30,7 +29,6 @@ func allocate() -> void:
 		"selected:", selected,
 		"shrunk:", shrunk,
 		"fans:", fans,
-		"apexes:", apexes,
 		"params.out_vertex_count:", params.out_vertex_count,
 	)
 	params.out_index_count = 3 * (
