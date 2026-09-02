@@ -72,9 +72,9 @@ uvec2 edge_at_corner(uint global_corner) {
 	return sorted_edge(edge_at(out_faces[face], global_corner % 3));
 }
 
-// w = 1 anchors the vert, so nothing downstream moves it
+// w = 1 marks vert as sticky
 void anchor(uint vert) {
-	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = floatBitsToUint(1);
+	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = 1;
 }
 
 void main() {
