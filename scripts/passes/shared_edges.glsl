@@ -1,4 +1,5 @@
-// Record every edge shared by two faces.
+// List every edge shared by two selected faces, store the apex verts.
+// Anchor the verts on the boundary.
 #[compute]
 #version 450
 
@@ -9,9 +10,6 @@ const uint FILL_GROUP_SIZE = 256;
 
 // X = face, Y = edge
 layout(local_size_x = 64, local_size_y = 3) in;
-
-// One corner per invocation per tile
-const uint TILE_SIZE = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
 
 layout(push_constant, std430) uniform PushParams {
 	uint selected_face_count;
@@ -47,9 +45,6 @@ layout(set = 2, binding = 0, std430) restrict writeonly buffer DispatchBuffer {
 	uvec3 dispatch; // Indirect bevel_fill.glsl
 };
 
-// Two pages: the group scans one while the next is fetched into the other
-shared uvec2 tile_edges[2][TILE_SIZE];
-
 // AB = BA, so store sorted and two corners share an edge iff their pairs match
 uvec2 sorted_edge(uvec2 edge) {
 	return uvec2(min(edge.x, edge.y), max(edge.x, edge.y));
@@ -63,11 +58,8 @@ uvec2 edge_at(uvec3 corners, uint corner) {
 	return corners.zx;
 }
 
-// Out of range corners are never compared, so any value will do
 uvec2 edge_at_corner(uint global_corner) {
 	uint face = global_corner / 3;
-
-	if (face >= selected_face_count) return uvec2(0);
 
 	return sorted_edge(edge_at(out_faces[face], global_corner % 3));
 }
@@ -78,63 +70,40 @@ void anchor(uint vert) {
 }
 
 void main() {
-	uint local = gl_LocalInvocationIndex;
-	uint self = gl_WorkGroupID.x * TILE_SIZE + local;
-	uint corner_count = selected_face_count * 3;
+	uint face = gl_GlobalInvocationID.x;
+	uint corner = gl_LocalInvocationID.y;
 
-	// Fill repoints every selected face too, so its dispatch must cover them all.
 	// Uniform across the dispatch, so one invocation seeds it for everyone
-	if (gl_WorkGroupID.x == 0 && local == 0) {
+	if (gl_GlobalInvocationID.x == 0 && corner == 0) {
+		// Fill repoints every selected face too, so its dispatch must cover them all
 		atomicMax(dispatch.x, (selected_face_count + FILL_GROUP_SIZE - 1) / FILL_GROUP_SIZE);
 		dispatch.y = 1;
 		dispatch.z = 1;
 	}
 
-	// Out of range invocations stay resident: the tile loop barriers are group wide
-	bool in_range = self < corner_count;
+	if (face >= selected_face_count) return;
 
+	uint self = face * 3 + corner;
 	uvec2 edge = edge_at_corner(self);
-	// The scan runs to the end now, so track the match rather than stopping at one
 	bool has_twin = false;
 
-	tile_edges[0][local] = edge_at_corner(local);
+	for (uint twin = 0; twin < selected_face_count * 3; twin++) {
+		if (twin == self || edge_at_corner(twin) != edge) continue;
 
-	uint tile_count = (corner_count + TILE_SIZE - 1) / TILE_SIZE;
+		has_twin = true;
 
-	for (uint tile = 0; tile < tile_count; tile++) {
-		uint base = tile * TILE_SIZE;
-		uint current_page = tile % 2;
-		uint next_page = (tile + 1) % 2;
+		// Every incident face pairs with every other, listed once by the lower corner
+		if (twin < self) continue;
 
-		barrier();
+		uint slot = atomicAdd(shared_count, 1);
 
-		// Nobody reads the next page this pass, so the fetch races nothing
-		tile_edges[next_page][local] = edge_at_corner(base + TILE_SIZE + local);
+		shared_edges[slot].faces = uvec2(face, twin / 3);
+		shared_edges[slot].apexes = edge;
 
-		if (!in_range) continue;
-
-		uint span = min(TILE_SIZE, corner_count - base);
-
-		for (uint i = 0; i < span; i++) {
-			uint twin = base + i;
-
-			if (twin == self || tile_edges[current_page][i] != edge) continue;
-
-			has_twin = true;
-
-			// Every incident face pairs with every other, listed once by the lower corner
-			if (twin < self) continue;
-
-			uint slot = atomicAdd(shared_count, 1);
-
-			shared_edges[slot].faces = uvec2(self / 3, twin / 3);
-			shared_edges[slot].apexes = edge;
-
-			atomicMax(dispatch.x, (slot + FILL_GROUP_SIZE) / FILL_GROUP_SIZE);
-		}
+		atomicMax(dispatch.x, (slot + FILL_GROUP_SIZE) / FILL_GROUP_SIZE);
 	}
 
-	if (in_range && !has_twin) {
+	if (!has_twin) {
 		anchor(edge.x);
 		anchor(edge.y);
 	}
