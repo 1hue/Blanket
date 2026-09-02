@@ -40,7 +40,8 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 
 layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
-	SharedEdge shared_edges[]; // Initial values are 0 (a valid vert index), but (0,0) is a degenerate edge
+	// Zero-initialised and 0 is a valid vert index, but (0,0) is degenerate
+	layout(offset = 16) SharedEdge shared_edges[];
 };
 
 layout(set = 2, binding = 0, std430) restrict buffer DispatchBuffer {

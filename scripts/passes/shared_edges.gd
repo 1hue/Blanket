@@ -18,8 +18,7 @@ func _pre() -> void:
 ## Sizes depend on the selection, so this runs after faces_write
 func init_uniforms() -> void:
 	# shared_count, then at most one entry per pair of selected face edges
-	shared_edge_buffer_size = snappedi(4 + params.max_shared_edges * 24 + 1, 4)
-	prints("shared_edge_buffer_size", shared_edge_buffer_size)
+	shared_edge_buffer_size = align_buffer(16 + params.max_shared_edges * 24)
 	shared_edge_buffer = rd.storage_buffer_create(shared_edge_buffer_size)
 
 	shared_edge_uniform_set = rd.uniform_set_create([

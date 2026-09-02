@@ -61,16 +61,31 @@ func update() -> void:
 
 
 #region Debug
-func debug() -> void:
+func debug_shared_edges() -> void:
 	var shared_edges := rd.buffer_get_data(uniforms.shared_edge_buffer)
-	prints(
-		"shared_edges", shared_edges.decode_u32(0),
-		shared_edges.slice(4).to_int32_array()
-	)
+	var shared_edge_count := shared_edges.decode_u32(0)
+	var shared_edges_struct: Array[Array] = []
+
+	const SHARED_EDGE_OFFSET := 16
+	const SHARED_EDGE_STRIDE := 24 # apexes + retracted[2], 3 * uvec2
+
+	for i in shared_edge_count:
+		var at := SHARED_EDGE_OFFSET + i * SHARED_EDGE_STRIDE
+		shared_edges_struct.append([
+			Vector2i(shared_edges.decode_u32(at), shared_edges.decode_u32(at + 4)),
+			Vector2i(shared_edges.decode_u32(at + 8), shared_edges.decode_u32(at + 12)),
+			Vector2i(shared_edges.decode_u32(at + 16), shared_edges.decode_u32(at + 20)),
+		])
+
+	print_rich("[color=gold]shared_edges[%d]: " % shared_edge_count, shared_edges_struct, "[/color]")
+
+
+func debug() -> void:
+	debug_shared_edges()
 
 	var faces_buffer := rd.buffer_get_data(uniforms.faces_buffer)
 	print_rich(
-		"[color=gold]",
+		"[color=steel_blue]",
 		"faces_buffer.face_count ", faces_buffer.decode_u32(0),
 		" | faces_buffer.vertex_count ", faces_buffer.decode_u32(4),
 		"\n[/color][color=cadet_blue]params.faces_table_size ", params.faces_table_size,
