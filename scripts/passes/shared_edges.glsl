@@ -1,15 +1,13 @@
-// List every edge shared by two selected faces, store the apex verts.
-// Anchor the verts on the boundary.
-// X = face, Y = edge.
+// Record every edge shared by two faces.
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
-const uint NONE = 0xFFFFFFFFu;
 const uint FILL_GROUP_SIZE = 256;
 
+// X = face, Y = edge
 layout(local_size_x = 64, local_size_y = 3) in;
 
 // One corner per invocation per tile
@@ -22,8 +20,9 @@ layout(push_constant, std430) uniform PushParams {
 };
 
 struct SharedEdge {
-	uvec2 apexes; // Original ends of edge A_B, sorted
-	uvec2 retracted[2]; // [A1_B1, A2_B2], written by shrink
+	uvec2 faces; // Which 2 faces in index_buffer
+	uvec2 apexes; // 2 indices forming the shared edge
+	uvec2 retracted[2]; // Resultant edges, per face
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
@@ -40,11 +39,11 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 
 layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
-	// Zero-initialised and 0 is a valid vert index, but (0,0) is degenerate
+	// Zero-initialised but (0,0) is a degenerate edge, even if 0 is a valid vert index
 	layout(offset = 16) SharedEdge shared_edges[];
 };
 
-layout(set = 2, binding = 0, std430) restrict buffer DispatchBuffer {
+layout(set = 2, binding = 0, std430) restrict writeonly buffer DispatchBuffer {
 	uvec3 dispatch; // Indirect bevel_fill.glsl
 };
 
@@ -95,7 +94,8 @@ void main() {
 	bool in_range = self < corner_count;
 
 	uvec2 edge = edge_at_corner(self);
-	uint twin = NONE;
+	// The scan runs to the end now, so track the match rather than stopping at one
+	bool has_twin = false;
 
 	tile_edges[0][local] = edge_at_corner(local);
 
@@ -111,35 +111,31 @@ void main() {
 		// Nobody reads the next page this pass, so the fetch races nothing
 		tile_edges[next_page][local] = edge_at_corner(base + TILE_SIZE + local);
 
-		if (in_range && twin == NONE) {
-			uint span = min(TILE_SIZE, corner_count - base);
+		if (!in_range) continue;
 
-			for (uint i = 0; i < span; i++) {
-				uint other = base + i;
+		uint span = min(TILE_SIZE, corner_count - base);
 
-				if (other == self) continue;
+		for (uint i = 0; i < span; i++) {
+			uint twin = base + i;
 
-				if (tile_edges[current_page][i] == edge) {
-					twin = other;
-					break;
-				}
-			}
+			if (twin == self || tile_edges[current_page][i] != edge) continue;
+
+			has_twin = true;
+
+			// Every incident face pairs with every other, listed once by the lower corner
+			if (twin < self) continue;
+
+			uint slot = atomicAdd(shared_count, 1);
+
+			shared_edges[slot].faces = uvec2(self / 3, twin / 3);
+			shared_edges[slot].apexes = edge;
+
+			atomicMax(dispatch.x, (slot + FILL_GROUP_SIZE) / FILL_GROUP_SIZE);
 		}
 	}
 
-	// Nothing on the far side, so both ends anchor the selection
-	if (in_range && twin == NONE) {
+	if (in_range && !has_twin) {
 		anchor(edge.x);
 		anchor(edge.y);
-		return;
 	}
-
-	// Both corners find each other, so only the lower one lists the edge
-	if (!in_range || self > twin) return;
-
-	uint slot = atomicAdd(shared_count, 1);
-
-	shared_edges[slot].apexes = edge;
-
-	atomicMax(dispatch.x, (slot + FILL_GROUP_SIZE) / FILL_GROUP_SIZE);
 }

@@ -67,14 +67,14 @@ func debug_shared_edges() -> void:
 	var shared_edges_struct: Array[Array] = []
 
 	const SHARED_EDGE_OFFSET := 16
-	const SHARED_EDGE_STRIDE := 24 # apexes + retracted[2], 3 * uvec2
 
 	for i in shared_edge_count:
-		var at := SHARED_EDGE_OFFSET + i * SHARED_EDGE_STRIDE
+		var at := SHARED_EDGE_OFFSET + i * SharedEdgesPass.STRIDE
 		shared_edges_struct.append([
 			Vector2i(shared_edges.decode_u32(at), shared_edges.decode_u32(at + 4)),
 			Vector2i(shared_edges.decode_u32(at + 8), shared_edges.decode_u32(at + 12)),
 			Vector2i(shared_edges.decode_u32(at + 16), shared_edges.decode_u32(at + 20)),
+			Vector2i(shared_edges.decode_u32(at + 24), shared_edges.decode_u32(at + 28)),
 		])
 
 	print_rich("[color=gold]shared_edges[%d]: " % shared_edge_count, shared_edges_struct, "[/color]")
@@ -83,23 +83,23 @@ func debug_shared_edges() -> void:
 func debug() -> void:
 	debug_shared_edges()
 
-	var faces_buffer := rd.buffer_get_data(uniforms.faces_buffer)
-	print_rich(
-		"[color=steel_blue]",
-		"faces_buffer.face_count ", faces_buffer.decode_u32(0),
-		" | faces_buffer.vertex_count ", faces_buffer.decode_u32(4),
-		"\n[/color][color=cadet_blue]params.faces_table_size ", params.faces_table_size,
-		" | params.selected_vertex_count ", params.selected_vertex_count,
-		" | params.out_index_stride ", params.out_index_stride,
-		" | params.out_vertex_count ", params.out_vertex_count,
-		" | params.out_vertex_stride ", params.out_vertex_stride,
-		"\nparams.out_color_offset ", params.out_color_offset,
-		" | params.out_custom_offset ", params.out_custom_offset,
-		" | params.out_attribute_stride ", params.out_attribute_stride,
-		" | params.selected_face_count: ", params.selected_face_count,
-		"\nbevel_fill_dispatch_buffer: ", rd.buffer_get_data(uniforms.bevel_fill_dispatch_buffer).to_int32_array(),
-		"[/color]"
-	)
+	#var faces_buffer := rd.buffer_get_data(uniforms.faces_buffer)
+	#print_rich(
+		#"[color=steel_blue]",
+		#" faces_buffer.face_count ", faces_buffer.decode_u32(0),
+		#" | faces_buffer.vertex_count ", faces_buffer.decode_u32(4),
+		#"\n[/color][color=cadet_blue]params.faces_table_size ", params.faces_table_size,
+		#" | params.selected_vertex_count ", params.selected_vertex_count,
+		#" | params.out_index_stride ", params.out_index_stride,
+		#" | params.out_vertex_count ", params.out_vertex_count,
+		#" | params.out_vertex_stride ", params.out_vertex_stride,
+		#"\nparams.out_color_offset ", params.out_color_offset,
+		#" | params.out_custom_offset ", params.out_custom_offset,
+		#" | params.out_attribute_stride ", params.out_attribute_stride,
+		#" | params.selected_face_count: ", params.selected_face_count,
+		#"\nbevel_fill_dispatch_buffer: ", rd.buffer_get_data(uniforms.bevel_fill_dispatch_buffer).to_int32_array(),
+		#"[/color]"
+	#)
 	#print_rich("[color=goldenrod]faces_buffer.faces[] int16: ", ComputeUtil.to_int16_array(faces_buffer.slice(8)), "[/color]")
 	#var table := rd.buffer_get_data(uniforms.faces_table_buffer)
 	#print_rich("[color=cadet_blue]table_buffer[", table.size() / 4, "] uint32: ", ComputeUtil.to_uint32_array(table), "[/color]")

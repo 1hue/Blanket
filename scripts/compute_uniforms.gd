@@ -23,7 +23,9 @@ var bevel_shrink_dispatch_buffer: RID
 var bevel_out_set: RID
 var shared_edge_set: RID
 var shared_edge_buffer: RID
+var corner_edge_buffer: RID
 var bevel_fill_dispatch_buffer: RID
+var bevel_fill_dispatch_set: RID
 
 var normals_sum: RID
 var normals_sum_set: RID
