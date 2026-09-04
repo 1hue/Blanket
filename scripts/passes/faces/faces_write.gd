@@ -21,16 +21,6 @@ func allocate() -> void:
 	var fans := params.max_shared_edges * params.fan_vertex_count * 2
 
 	params.out_vertex_count = selected + shrunk + fans
-	prints(
-		"params.in_face_count:", params.in_face_count,
-		"params.selected_vertex_count:", params.selected_vertex_count,
-		"params.bevel_arcs:", params.bevel_arcs,
-		"params.bevel_segments:", params.bevel_segments,
-		"selected:", selected,
-		"shrunk:", shrunk,
-		"fans:", fans,
-		"params.out_vertex_count:", params.out_vertex_count,
-	)
 	params.out_index_count = 3 * (
 		params.selected_face_count + params.max_shared_edges * (params.fan_face_count * 2 + params.arc_steps * 2)
 	)

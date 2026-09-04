@@ -137,12 +137,12 @@ void build_fan(uint end, uint face_base) {
 		for (uint step = 0; step < arc_steps; step++) {
 			build_quad(
 				band + step * 2,
-			  fan_vert(end, ring, step),
-					   fan_vert(end, ring, step + 1),
-					   fan_vert(end, ring + 1, step + 1),
-					   fan_vert(end, ring + 1, step),
-					   (ring + step) % 2 == 1, // Alternate the diagonal
-					   reverse
+				fan_vert(end, ring, step),
+				fan_vert(end, ring, step + 1),
+				fan_vert(end, ring + 1, step + 1),
+				fan_vert(end, ring + 1, step),
+				(ring + step) % 2 == 1, // Alternate the diagonal
+				reverse
 			);
 		}
 	}
@@ -152,12 +152,12 @@ void build_strip(uint face_base) {
 	for (uint step = 0; step < arc_steps; step++) {
 		build_quad(
 			face_base + step * 2,
-			 fan_vert(0, arcs, step),
-				   fan_vert(0, arcs, step + 1),
-				   fan_vert(1, arcs, step + 1),
-				   fan_vert(1, arcs, step),
-				   step % 2 == 1, // Alternate so neither side collects every extra edge
-			 false
+			fan_vert(0, arcs, step),
+			fan_vert(0, arcs, step + 1),
+			fan_vert(1, arcs, step + 1),
+			fan_vert(1, arcs, step),
+			step % 2 == 1, // Alternate so neither side collects every extra edge
+			false
 		);
 	}
 }

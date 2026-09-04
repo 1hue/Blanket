@@ -1,13 +1,11 @@
-// Retract each selected face from its shared edges, and repoint the face at the result.
-// X = face, Y = corner.
+// Retract each selected face from its shared edges
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
-const uint NONE = 0xFFFFFFFFu;
-
+// X = face, Y = corner
 layout(local_size_x = 64, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
@@ -16,12 +14,6 @@ layout(push_constant, std430) uniform PushParams {
 	uint selected_face_count;
 	uint out_custom_offset;
 	uint out_attribute_stride;
-};
-
-struct SharedEdge {
-	uvec2 apexes; // Original ends of edge A_B, sorted
-	uvec2 corners; // The two face corners sharing it, face * 3 + corner
-	uvec2 retracted[2]; // [A1_A2, B1_B2], one per apex, ordered as corners
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
@@ -37,19 +29,23 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
-	uint shared_count;
-	uint retracted_count; // Verts claimed so far, past selected_vertex_count
-	layout(offset = 16) SharedEdge shared_edges[];
+	uint shared_count; // unused
 };
 
-// Prefilled with NONE, so an unshared corner needs no sentinel of its own
-layout(set = 1, binding = 1, std430) restrict buffer CornerEdgeBuffer {
-	uint corner_edges[]; // Edge slot leaving each corner, indexed face * 3 + corner
+// Bit c set = edge c of this face is shared. Retraction reads only this.
+layout(set = 1, binding = 1, std430) restrict buffer FaceEdgeBuffer {
+	uint shared_mask[];
 };
 
-// One run of retracted verts per face, claimed by its first corner
-shared uint face_base[gl_WorkGroupSize.x];
+void copy_attributes(uint src, uint dst) {
+	uint s = src * out_attribute_stride;
+	uint d = dst * out_attribute_stride;
+	for (uint i = out_custom_offset; i < out_attribute_stride; ++i) {
+		out_attributes[d + i] = out_attributes[s + i];
+	}
+}
 
+// Edge c runs from corner c to corner c+1, so corner c sits on edges c and c-1
 uint next_corner(uint corner) {
 	return (corner + 1) % 3;
 }
@@ -58,99 +54,57 @@ uint prev_corner(uint corner) {
 	return (corner + 2) % 3;
 }
 
-uint edge_at(uint face, uint corner) {
-	return corner_edges[face * 3 + corner];
+bool is_shared(uint mask, uint edge) {
+	return (mask & (1 << edge)) != 0;
 }
 
-// A corner moves if either the edge leaving it or the edge arriving is shared
-bool needs_vert(uint face, uint corner) {
-	return edge_at(face, corner) != NONE || edge_at(face, prev_corner(corner)) != NONE;
+bool retracts(uint mask, uint corner) {
+	return is_shared(mask, corner) || is_shared(mask, prev_corner(corner));
 }
 
-// Retreats toward the corner opposite whichever edge is shared, or between both.
-// Weights are 0 or 1, so an unshared edge contributes nothing without a branch.
-vec3 inset(vec3 self, vec3 toward_next, vec3 toward_prev, float next_weight, float prev_weight) {
-	return mix(
-		self,
-		(toward_next * next_weight + toward_prev * prev_weight) / (next_weight + prev_weight),
-		shrink
-	);
-}
-
-// The retracted vert inherits whether it may move
-void copy_custom(uint from, uint to) {
-	uint source = (out_custom_offset + from * out_attribute_stride) / 4;
-	uint target = (out_custom_offset + to * out_attribute_stride) / 4;
-
-	out_attributes[target + 3] = out_attributes[source + 3];
-}
-
-// The apex it started from picks the pair, the corner that owns the edge picks the half,
-// so all four writers of a slot land somewhere different and nothing races
-void publish(uint slot, uint owner, uint apex, uint vert) {
-	if (slot == NONE) return;
-
-	uint pair = apex == shared_edges[slot].apexes.x ? 0 : 1;
-	uint side = owner == shared_edges[slot].corners.x ? 0 : 1;
-
-	shared_edges[slot].retracted[pair][side] = vert;
+uint retracted_at(uint face_idx, uint corner) {
+	return selected_vertex_count + 3 * face_idx + corner;
 }
 
 void main() {
-	uint face = gl_GlobalInvocationID.x;
-	uint corner = gl_LocalInvocationID.y;
-	// Out of range invocations stay resident: the barrier below is group wide
-	bool in_range = face < selected_face_count;
+	uint face_idx = gl_GlobalInvocationID.x;
+	uint corner = gl_GlobalInvocationID.y;
+	if (face_idx >= selected_face_count) return;
 
-	uvec3 corners = in_range ? uvec3(out_faces[face]) : uvec3(0);
+	uint mask = shared_mask[face_idx];
+	uvec3 face = uvec3(out_faces[face_idx]);
 
-	// Every corner reads all three, so each derives its own rank without sharing
-	bvec3 needs = bvec3(
-		in_range && needs_vert(face, 0),
-						in_range && needs_vert(face, 1),
-						in_range && needs_vert(face, 2)
-	);
-
-	// The face claims one contiguous run, so corners left in place cost nothing
-	if (corner == 0 && any(needs)) {
-		uint wanted = uint(needs.x) + uint(needs.y) + uint(needs.z);
-
-		face_base[gl_LocalInvocationID.x] =
-		selected_vertex_count + atomicAdd(retracted_count, wanted);
-	}
-
-	// Everyone is done reading out_faces, and the run is claimed
-	barrier();
-
-	if (!in_range || !any(needs)) return;
-
-	uint base = face_base[gl_LocalInvocationID.x];
-	uvec3 rank = uvec3(0, uint(needs.x), uint(needs.x) + uint(needs.y));
-
-	// One invocation assembles, so the three corners do not race on one vector
+	// One lane owns the u16vec3 store: three lanes writing 2-byte components
+	// of a 6-byte element risks dword read-modify-write on some drivers
 	if (corner == 0) {
-		out_faces[face] = u16vec3(
-			needs.x ? base + rank.x : corners.x,
-			needs.y ? base + rank.y : corners.y,
-			needs.z ? base + rank.z : corners.z
-		);
+		uvec3 repointed = face;
+
+		for (uint i = 0; i < 3; ++i) {
+			if (retracts(mask, i)) repointed[i] = retracted_at(face_idx, i);
+		}
+
+		out_faces[face_idx] = u16vec3(repointed);
 	}
 
-	if (!needs[corner]) return;
+	if (!retracts(mask, corner)) return;
 
+	uint next = next_corner(corner);
 	uint prev = prev_corner(corner);
-	uint retracted = base + rank[corner];
+	vec3 apex = out_positions[face[corner]];
+	vec3 pull = vec3(0);
 
-	out_positions[retracted] = inset(
-		out_positions[corners[corner]],
-		out_positions[corners[prev]],
-		out_positions[corners[next_corner(corner)]],
-									 float(edge_at(face, corner) != NONE),
-									 float(edge_at(face, prev) != NONE)
-	);
-	copy_custom(corners[corner], retracted);
+	// Each shared edge pulls the corner toward the vert it doesn't touch.
+	// Both are corners of this face, so one lane holds the whole inset -
+	// no accumulation, no competing writes, no ordering
+	if (is_shared(mask, corner)) {
+		pull += out_positions[face[prev]] - apex;
+	}
+	if (is_shared(mask, prev)) {
+		pull += out_positions[face[next]] - apex;
+	}
 
-	// This corner sits on the edge leaving it and on the one arriving from behind
-	publish(edge_at(face, corner), face * 3 + corner, corners[corner], retracted);
-	publish(edge_at(face, prev), face * 3 + prev, corners[corner], retracted);
+	uint slot = retracted_at(face_idx, corner);
+
+	out_positions[slot] = apex + shrink * pull;
+	copy_attributes(face[corner], slot);
 }

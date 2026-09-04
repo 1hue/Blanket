@@ -38,7 +38,7 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		FacesDedupePass.new(mesh, surface, params, uniforms),
 		FacesWritePass.new(mesh, surface, params, uniforms),
 		SharedEdgesPass.new(mesh, surface, params, uniforms),
-		#BevelShrinkPass.new(mesh, surface, params, uniforms),
+		BevelShrinkPass.new(mesh, surface, params, uniforms),
 		#BevelFillPass.new(mesh, surface, params, uniforms),
 		#SmoothSumPass.new(mesh, surface, params, uniforms),
 		#SmoothWritePass.new(mesh, surface, params, uniforms),
@@ -69,7 +69,7 @@ func debug_shared_edges() -> void:
 	const SHARED_EDGE_OFFSET := 16
 
 	for i in shared_edge_count:
-		var at := SHARED_EDGE_OFFSET + i * SharedEdgesPass.STRIDE
+		var at := SHARED_EDGE_OFFSET + i * SharedEdgesPass.STRUCT_STRIDE
 		shared_edges_struct.append([
 			Vector2i(shared_edges.decode_u32(at), shared_edges.decode_u32(at + 4)),
 			Vector2i(shared_edges.decode_u32(at + 8), shared_edges.decode_u32(at + 12)),
@@ -83,6 +83,15 @@ func debug_shared_edges() -> void:
 func debug() -> void:
 	debug_shared_edges()
 
+	prints(
+		"params.max_shared_edges:", params.max_shared_edges,
+		"params.in_face_count:", params.in_face_count,
+		"params.selected_vertex_count:", params.selected_vertex_count,
+		"params.bevel_arcs:", params.bevel_arcs,
+		"params.bevel_segments:", params.bevel_segments,
+		"params.out_vertex_count:", params.out_vertex_count,
+		"params.out_attribute_stride", params.out_attribute_stride,
+	)
 	#var faces_buffer := rd.buffer_get_data(uniforms.faces_buffer)
 	#print_rich(
 		#"[color=steel_blue]",

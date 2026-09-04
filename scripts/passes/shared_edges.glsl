@@ -8,10 +8,11 @@
 
 const uint FILL_GROUP_SIZE = 256;
 
-// X = face, Y = edge
+// X = face, Y = corner (the edge running from that corner to the next)
 layout(local_size_x = 64, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
+	uint selected_vertex_count;
 	uint selected_face_count;
 	uint out_custom_offset;
 	uint out_attribute_stride;
@@ -41,7 +42,12 @@ layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	layout(offset = 16) SharedEdge shared_edges[];
 };
 
-layout(set = 2, binding = 0, std430) restrict writeonly buffer DispatchBuffer {
+// Bit c set = edge c of this face is shared. Retraction reads only this.
+layout(set = 1, binding = 1, std430) restrict buffer FaceEdgeBuffer {
+	uint shared_mask[];
+};
+
+layout(set = 2, binding = 0, std430) restrict buffer DispatchBuffer {
 	uvec3 dispatch; // Indirect bevel_fill.glsl
 };
 
@@ -61,7 +67,19 @@ uvec2 edge_at(uvec3 corners, uint corner) {
 uvec2 edge_at_corner(uint global_corner) {
 	uint face = global_corner / 3;
 
-	return sorted_edge(edge_at(out_faces[face], global_corner % 3));
+	return sorted_edge(edge_at(uvec3(out_faces[face]), global_corner % 3));
+}
+
+// Every corner gets its own retracted vert, so the slot is just its address.
+// Returned in apex order, since apexes are sorted and corners are wound.
+uvec2 retracted_at_corner(uint global_corner, uvec2 apexes) {
+	uvec3 corners = uvec3(out_faces[global_corner / 3]);
+	uint corner = global_corner % 3;
+	uvec2 pair = uvec2(corner, (corner + 1) % 3);
+
+	if (corners[corner] != apexes.x) pair = pair.yx;
+
+	return selected_vertex_count + 3 * (global_corner / 3) + pair;
 }
 
 // w = 1 marks vert as sticky
@@ -71,10 +89,10 @@ void anchor(uint vert) {
 
 void main() {
 	uint face = gl_GlobalInvocationID.x;
-	uint corner = gl_LocalInvocationID.y;
+	uint corner = gl_GlobalInvocationID.y;
 
 	// Uniform across the dispatch, so one invocation seeds it for everyone
-	if (gl_GlobalInvocationID.x == 0 && corner == 0) {
+	if (face == 0 && corner == 0) {
 		// Fill repoints every selected face too, so its dispatch must cover them all
 		atomicMax(dispatch.x, (selected_face_count + FILL_GROUP_SIZE - 1) / FILL_GROUP_SIZE);
 		dispatch.y = 1;
@@ -92,18 +110,22 @@ void main() {
 
 		has_twin = true;
 
-		// Every incident face pairs with every other, listed once by the lower corner
 		if (twin < self) continue;
 
 		uint slot = atomicAdd(shared_count, 1);
 
 		shared_edges[slot].faces = uvec2(face, twin / 3);
 		shared_edges[slot].apexes = edge;
+		shared_edges[slot].retracted[0] = retracted_at_corner(self, edge);
+		shared_edges[slot].retracted[1] = retracted_at_corner(twin, edge);
 
 		atomicMax(dispatch.x, (slot + FILL_GROUP_SIZE) / FILL_GROUP_SIZE);
 	}
 
-	if (!has_twin) {
+	if (has_twin) {
+		// Retraction needs both edges at a corner; each is found by its own lane
+		atomicOr(shared_mask[face], 1 << corner);
+	} else {
 		anchor(edge.x);
 		anchor(edge.y);
 	}
