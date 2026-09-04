@@ -24,6 +24,7 @@ var bevel_out_set: RID
 var shared_edge_set: RID
 var shared_edge_buffer: RID
 var shared_mask_buffer: RID
+var shared_mask_set: RID
 var corner_edge_buffer: RID
 var bevel_fill_dispatch_buffer: RID
 var bevel_fill_dispatch_set: RID

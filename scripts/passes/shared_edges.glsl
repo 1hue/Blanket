@@ -43,11 +43,11 @@ layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 };
 
 // Bit c set = edge c of this face is shared. Retraction reads only this.
-layout(set = 1, binding = 1, std430) restrict buffer FaceEdgeBuffer {
+layout(set = 2, binding = 0, std430) restrict buffer SharedMaskBuffer {
 	uint shared_mask[];
 };
 
-layout(set = 2, binding = 0, std430) restrict buffer DispatchBuffer {
+layout(set = 3, binding = 0, std430) restrict buffer DispatchBuffer {
 	uvec3 dispatch; // Indirect bevel_fill.glsl
 };
 

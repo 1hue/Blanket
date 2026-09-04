@@ -9,7 +9,7 @@
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
-	float shrink; // Must match bevel_shrink.glsl
+	float bevel_width; // Must match bevel_shrink.glsl
 	uint segments; // Per side of the crease
 	uint arcs; // Rings from apex out to the arc
 	uint selected_vertex_count;
@@ -35,7 +35,7 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict readonly buffer SharedEdgeBuffer {
+layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
 	SharedEdge shared_edges[];
 };
@@ -81,7 +81,7 @@ mat3 arc_anchors(uint end) {
 	vec3 apex = out_positions[edge.apexes[end]];
 	vec3 along = out_positions[edge.apexes[1 - end]];
 
-	return mat3(out_positions[pair.x], mix(apex, along, shrink), out_positions[pair.y]);
+	return mat3(out_positions[pair.x], mix(apex, along, bevel_width), out_positions[pair.y]);
 }
 
 // Ring 0 is the apex, ring `arcs` is the arc, whose ends are the retracted verts

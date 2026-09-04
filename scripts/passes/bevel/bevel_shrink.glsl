@@ -31,12 +31,8 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
-	uint shared_count; // unused
-};
-
 // Bit c set = edge c of this face is shared. Retraction reads only this.
-layout(set = 1, binding = 1, std430) restrict buffer FaceEdgeBuffer {
+layout(set = 1, binding = 0, std430) restrict buffer FaceEdgeBuffer {
 	uint shared_mask[];
 };
 
