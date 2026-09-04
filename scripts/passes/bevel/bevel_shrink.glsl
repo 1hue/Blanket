@@ -5,11 +5,14 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
+const float k_miter_limit = 2.0; // Multiples of width a sharp corner may travel
+const float k_min_scale = 0.05; // Smallest the face may shrink to
+
 // X = face, Y = corner
 layout(local_size_x = 64, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
-	float shrink; // 0 = unchanged, 1 = moved onto the opposite corner
+	float bevel_width; // Inset distance from each shared edge, model space
 	uint selected_vertex_count;
 	uint selected_face_count;
 	uint out_custom_offset;
@@ -66,6 +69,62 @@ uint retracted_at(uint face_idx, uint corner) {
 	return selected_vertex_count + 3 * face_idx + corner;
 }
 
+// Insetting from every side collapses the face at the inradius, A/s. Cap
+// below it so the worst case is a tiny copy of the original, never an
+// inverted one. Edges that aren't shared don't inset, so this is loose
+// for boundary faces - which is fine, it only ever clamps
+float max_width(uvec3 face) {
+	vec3 p0 = out_positions[face.x];
+	vec3 p1 = out_positions[face.y];
+	vec3 p2 = out_positions[face.z];
+	float perimeter = distance(p0, p1) + distance(p1, p2) + distance(p2, p0);
+	if (perimeter < 1e-9) return 0.0;
+
+	float inradius = length(cross(p1 - p0, p2 - p0)) / perimeter;
+
+	return inradius * (1.0 - k_min_scale);
+}
+
+// Corner c lies on edges c and c-1. Each contributes a line: offset inward
+// by the width if shared, left in place if not. The corner is their
+// intersection, so a boundary edge holds the corner on itself and the
+// silhouette is preserved
+vec3 corner_inset(uvec3 face, uint mask, uint corner, float width) {
+	vec3 apex = out_positions[face[corner]];
+	vec3 to_next = out_positions[face[next_corner(corner)]] - apex;
+	vec3 to_prev = out_positions[face[prev_corner(corner)]] - apex;
+	vec3 normal = cross(to_next, to_prev);
+	float area2 = length(normal);
+	if (area2 < 1e-9) return apex; // Degenerate face, no plane to work in
+
+	// 2D basis in the face plane, with the next edge along x
+	vec3 ex = normalize(to_next);
+	vec3 ey = cross(normal / area2, ex);
+	vec2 prev2 = vec2(dot(to_prev, ex), dot(to_prev, ey));
+
+	// Inward normals: prev2 is on the interior side, so ey points inward
+	// for the next edge. Mirror that to get the prev edge's normal
+	vec2 n_next = vec2(0.0, sign(prev2.y));
+	vec2 n_prev = vec2(-prev2.y, prev2.x) / length(prev2) * -sign(prev2.y);
+	float d_next = is_shared(mask, corner) ? width : 0.0;
+	float d_prev = is_shared(mask, prev_corner(corner)) ? width : 0.0;
+
+	// Solve for p with dot(p, n) = d on both offset lines
+	float det = n_next.x * n_prev.y - n_next.y * n_prev.x;
+	if (abs(det) < 1e-6) return apex; // Parallel edges, no intersection
+
+	vec2 p = vec2(
+		d_next * n_prev.y - d_prev * n_next.y,
+		d_prev * n_next.x - d_next * n_prev.x
+	) / det;
+
+	// A sharp corner intersects far out on the bisector - cap the travel
+	float reach = length(p);
+	if (reach > k_miter_limit * width) p *= k_miter_limit * width / reach;
+
+	return apex + p.x * ex + p.y * ey;
+}
+
 void main() {
 	uint face_idx = gl_GlobalInvocationID.x;
 	uint corner = gl_GlobalInvocationID.y;
@@ -88,23 +147,8 @@ void main() {
 
 	if (!retracts(mask, corner)) return;
 
-	uint next = next_corner(corner);
-	uint prev = prev_corner(corner);
-	vec3 apex = out_positions[face[corner]];
-	vec3 pull = vec3(0);
-
-	// Each shared edge pulls the corner toward the vert it doesn't touch.
-	// Both are corners of this face, so one lane holds the whole inset -
-	// no accumulation, no competing writes, no ordering
-	if (is_shared(mask, corner)) {
-		pull += out_positions[face[prev]] - apex;
-	}
-	if (is_shared(mask, prev)) {
-		pull += out_positions[face[next]] - apex;
-	}
-
 	uint slot = retracted_at(face_idx, corner);
 
-	out_positions[slot] = apex + shrink * pull;
+	out_positions[slot] = corner_inset(face, mask, corner, min(bevel_width, max_width(face)));
 	copy_attributes(face[corner], slot);
 }

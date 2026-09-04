@@ -5,7 +5,7 @@ signal changed
 
 const DEFAULT_DEPTH = 0.1
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
-const DEFAULT_BEVEL_SHRINK = 0.3
+const DEFAULT_BEVEL_WIDTH = 0.2
 const DEFAULT_BEVEL_SEGMENTS = 1
 const DEFAULT_BEVEL_ARCS = 1
 const DEFAULT_SMOOTH_STRENGTH = 0.5
@@ -48,7 +48,7 @@ var faces_table_size: int
 #endregion
 
 #region Bevel
-var bevel_shrink := DEFAULT_BEVEL_SHRINK
+var bevel_width := DEFAULT_BEVEL_WIDTH
 ## Strips on each side of a crease.
 var bevel_segments := DEFAULT_BEVEL_SEGMENTS
 ## Wedge segments or rings around each corner vert.

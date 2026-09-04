@@ -9,7 +9,7 @@ func _pre() -> void:
 
 
 func pack_params() -> PackedByteArray:
-	push_constant.encode_float(0, params.bevel_shrink)
+	push_constant.encode_float(0, params.bevel_width)
 	push_constant.encode_u32(4, params.bevel_segments)
 	push_constant.encode_u32(8, params.bevel_arcs)
 	push_constant.encode_u32(12, params.selected_vertex_count)
