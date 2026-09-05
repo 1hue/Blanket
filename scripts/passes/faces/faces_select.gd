@@ -10,14 +10,10 @@ var faces_scratch_set: RID
 var index_scratch_buffer: RID
 var vertex_scratch_buffer: RID
 
-var faces_dedupe_dispatch_set: RID
-var faces_dedupe_dispatch_buffer: RID
-
 
 func _pre() -> void:
 	push_constant.resize(SIZE_PARAMS)
 	init_faces_scratch_buffers()
-	init_faces_dedupe_dispatch_buffer()
 
 
 func init_faces_scratch_buffers() -> void:
@@ -36,15 +32,6 @@ func init_faces_scratch_buffers() -> void:
 	sets.faces_scratch = faces_scratch_set
 	sets.index_scratch_buffer = index_scratch_buffer
 	sets.vertex_scratch_buffer = vertex_scratch_buffer
-
-
-func init_faces_dedupe_dispatch_buffer() -> void:
-	faces_dedupe_dispatch_buffer = dispatch_buffer_create()
-	faces_dedupe_dispatch_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([faces_dedupe_dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-	], SurfaceShaders.faces_select.shader, 2)
-
-	sets.faces_dedupe_dispatch_buffer = faces_dedupe_dispatch_buffer
 
 
 func pack_params() -> PackedByteArray:
@@ -72,7 +59,7 @@ func compute() -> void:
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, faces_scratch_set, 1)
-	rd.compute_list_bind_uniform_set(compute_list, faces_dedupe_dispatch_set, 2)
+	rd.compute_list_bind_uniform_set(compute_list, sets.dispatch, 2)
 	rd.compute_list_dispatch(compute_list, ceili(params.in_face_count / float(WORKGROUP_SIZE)), 1, 1)
 	rd.compute_list_end()
 
@@ -82,7 +69,6 @@ func _notification(what) -> void:
 		return
 	for rid in [
 		faces_scratch_set, index_scratch_buffer, vertex_scratch_buffer,
-		faces_dedupe_dispatch_set, faces_dedupe_dispatch_buffer
 	]:
 		if rid.is_valid():
 			rd.free_rid(rid)

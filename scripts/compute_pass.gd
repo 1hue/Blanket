@@ -23,16 +23,6 @@ func _init(p_mesh: ArrayMesh, p_surface: ComputeSurface, p_params: ComputeParams
 	_pre()
 
 
-func dispatch_buffer_create(size := 12, init: PackedInt32Array = [1, 1, 1]) -> RID:
-	var bytes := PackedByteArray()
-	bytes.resize(size)
-
-	for i in init.size():
-		bytes.encode_u32(i * 4, init[i])
-
-	return rd.storage_buffer_create(size, bytes, RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT)
-
-
 func align_buffer(size: int) -> int:
 	return snappedi(size + 1, 4)
 

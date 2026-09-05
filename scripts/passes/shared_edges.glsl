@@ -14,6 +14,7 @@ layout(local_size_x = 64, local_size_y = 3) in;
 layout(push_constant, std430) uniform PushParams {
 	uint out_custom_offset;
 	uint out_attribute_stride;
+	uint max_shared_edges;
 };
 
 struct SharedEdge {
@@ -35,7 +36,7 @@ layout(set = 0, binding = 1, scalar) restrict buffer FacesOutIndexBuffer {
 layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
 	// Zero-initialised but (0,0) is a degenerate edge, even if 0 is a valid vert index
-	layout(offset = 16) SharedEdge shared_edges[];
+	SharedEdge shared_edges[];
 };
 
 // Bit c set = edge c of this face is shared. Retraction reads only this.
@@ -43,8 +44,8 @@ layout(set = 2, binding = 0, std430) restrict buffer SharedMaskBuffer {
 	uint shared_mask[];
 };
 
-layout(set = 3, binding = 0, std430) restrict buffer BevelFillDispatchBuffer {
-	uvec3 dispatch;
+layout(set = 3, binding = 0, scalar) restrict writeonly buffer DispatchBuffer {
+	layout(offset = 48) uvec3 dispatch_fill;
 };
 
 // AB = BA, so store sorted and two corners share an edge iff their pairs match
@@ -90,9 +91,7 @@ void main() {
 	// Uniform across the dispatch, so one invocation seeds it for everyone
 	if (face == 0 && corner == 0) {
 		// Fill repoints every selected face too, so its dispatch must cover them all
-		atomicMax(dispatch.x, (face_count + FILL_WORKGROUP_SIZE - 1) / FILL_WORKGROUP_SIZE);
-		dispatch.y = 1;
-		dispatch.z = 1;
+		atomicMax(dispatch_fill.x, (face_count + FILL_WORKGROUP_SIZE - 1) / FILL_WORKGROUP_SIZE);
 	}
 
 	if (face >= face_count) return;
@@ -110,12 +109,14 @@ void main() {
 
 		uint slot = atomicAdd(shared_count, 1);
 
+		if (slot >= max_shared_edges) return; // Non-manifold input overflowed the buffer
+
 		shared_edges[slot].faces = uvec2(face, twin / 3);
 		shared_edges[slot].apexes = edge;
 		shared_edges[slot].retracted[0] = retracted_at_corner(self, edge);
 		shared_edges[slot].retracted[1] = retracted_at_corner(twin, edge);
 
-		atomicMax(dispatch.x, 1 + slot / FILL_WORKGROUP_SIZE);
+		atomicMax(dispatch_fill.x, 1 + slot / FILL_WORKGROUP_SIZE);
 	}
 
 	if (has_twin) {

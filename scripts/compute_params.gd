@@ -41,12 +41,6 @@ var out_face_stride: int:
 	get: return out_index_stride * 3
 #endregion
 
-#region Faces select
-var selected_vertex_count: int
-var selected_index_count: int
-var selected_face_count: int
-#endregion
-
 #region Bevel
 var bevel_width := DEFAULT_BEVEL_WIDTH
 ## Strips on each side of a crease.
@@ -55,7 +49,7 @@ var bevel_segments := DEFAULT_BEVEL_SEGMENTS
 var bevel_arcs := DEFAULT_BEVEL_ARCS
 var smooth_strength := DEFAULT_SMOOTH_STRENGTH
 var max_shared_edges: int:
-	get: return selected_face_count * 3 / 2
+	get: return in_face_count * 3 / 2
 var arc_steps: int:
 	get: return bevel_segments * 2
 var arc_count: int:

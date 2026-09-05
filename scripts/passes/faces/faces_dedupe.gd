@@ -11,14 +11,10 @@ var table_buffer: RID
 var table_buffer_size: int
 var table_clear: PackedByteArray
 
-var faces_write_dispatch_set: RID
-var faces_write_dispatch_buffer: RID
-
 
 func _pre() -> void:
 	push_constant.resize(SIZE_PARAMS)
 	init_table_buffer()
-	init_faces_write_dispatch()
 
 
 func init_table_buffer() -> void:
@@ -42,16 +38,6 @@ func init_table_buffer() -> void:
 	sets.faces_table_buffer = table_buffer
 
 
-func init_faces_write_dispatch() -> void:
-	faces_write_dispatch_buffer = dispatch_buffer_create()
-
-	faces_write_dispatch_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([faces_write_dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-	], SurfaceShaders.faces_dedupe.shader, 3)
-
-	sets.faces_write_dispatch_buffer = faces_write_dispatch_buffer
-
-
 func compute() -> void:
 	rd.buffer_update(table_buffer, 0, table_buffer_size, table_clear)
 
@@ -60,16 +46,14 @@ func compute() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.faces_scratch, 1)
 	rd.compute_list_bind_uniform_set(compute_list, table_set, 2)
-	rd.compute_list_bind_uniform_set(compute_list, faces_write_dispatch_set, 3)
-	rd.compute_list_dispatch_indirect(compute_list, sets.faces_dedupe_dispatch_buffer, 0)
+	rd.compute_list_bind_uniform_set(compute_list, sets.dispatch, 3)
+	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, 0)
 	rd.compute_list_end()
 
 
 func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
-	for rid in [
-		table_set, table_buffer, faces_write_dispatch_set, faces_write_dispatch_buffer,
-	]:
+	for rid in [table_set, table_buffer]:
 		if rid.is_valid():
 			rd.free_rid(rid)

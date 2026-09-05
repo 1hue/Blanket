@@ -19,20 +19,20 @@ layout(set = 0, binding = 0, scalar) restrict readonly buffer InVertexBuffer {
 };
 
 layout(set = 0, binding = 1, scalar) restrict readonly buffer InIndexBuffer {
-	u16vec3 in_faces[]; // Unused
+	u16vec3 in_faces[]; // unused
 };
 
 layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
-	uint in_attributes[]; // Unused
+	uint in_attributes[]; // unused
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
-	uint out_vertex_count; // Unused
-	vec3 out_positions[]; // Unused
+	uint vertex_count; // unused
+	vec3 out_positions[]; // unused
 };
 
 layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
-	uint out_face_count;
+	uint face_count;
 	uvec3 out_faces[];
 };
 
@@ -72,7 +72,7 @@ void main() {
 	uint face = gl_GlobalInvocationID.x;
 	uint corner = gl_GlobalInvocationID.y;
 
-	if (face >= out_face_count) return;
+	if (face >= face_count) return;
 
 	out_faces[face][corner] = out_vert_of(out_faces[face][corner]);
 }

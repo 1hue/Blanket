@@ -37,7 +37,7 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		FacesSelectPass.new(mesh, surface, params, sets),
 		FacesDedupePass.new(mesh, surface, params, sets),
 		FacesWritePass.new(mesh, surface, params, sets),
-		#SharedEdgesPass.new(mesh, surface, params, sets),
+		SharedEdgesPass.new(mesh, surface, params, sets),
 		#BevelShrinkPass.new(mesh, surface, params, sets),
 		#BevelFillPass.new(mesh, surface, params, sets),
 		#SmoothSumPass.new(mesh, surface, params, sets),
@@ -113,7 +113,6 @@ func dumpf(buffer: RID, name := "") -> void:
 
 func debug_faces_multipass() -> void:
 	prints(
-		#"params.max_shared_edges:", params.max_shared_edges,
 		"params.in_face_count:", params.in_face_count,
 		"params.bevel_arcs:", params.bevel_arcs,
 		"params.bevel_segments:", params.bevel_segments,

@@ -15,8 +15,6 @@ layout(push_constant, std430) uniform PushParams {
 	float bevel_width; // Must match bevel_shrink.glsl
 	uint segments; // Per side of the crease
 	uint arcs; // Rings from apex out to the arc
-	uint selected_vertex_count;
-	uint selected_face_count;
 	uint out_color_offset;
 	uint out_custom_offset;
 	uint out_attribute_stride;
@@ -40,9 +38,19 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
+layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
+	uint vertex_count;
+	vec3 in_positions[]; // unused
+};
+
+layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
+	uint face_count;
+	uvec3 in_faces[]; // unused
+};
+
+layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
-	layout(offset = 16) SharedEdge shared_edges[];
+	SharedEdge shared_edges[];
 };
 
 SharedEdge edge;
@@ -202,10 +210,10 @@ void main() {
 	uint fan_verts = (arcs - 1) * arc_count + arc_count - 2;
 	uint fan_faces = arc_steps + (arcs - 1) * arc_steps * 2;
 
-	ring_base = selected_vertex_count + selected_face_count * 3 + idx * fan_verts * 2;
+	ring_base = vertex_count + face_count * 3 + idx * fan_verts * 2;
 	arc_base = ring_base + (arcs - 1) * arc_count * 2;
 
-	uint face_base = selected_face_count + idx * (fan_faces * 2 + arc_steps * 2);
+	uint face_base = face_count + idx * (fan_faces * 2 + arc_steps * 2);
 
 	build_fan(0, face_base);
 	build_fan(1, face_base + fan_faces);

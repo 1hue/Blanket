@@ -1,6 +1,7 @@
 extends ComputePass
 class_name BevelShrinkPass
 
+const WORKGROUP_SIZE = 64
 const SIZE_PARAMS = 24
 
 
@@ -10,8 +11,6 @@ func _pre() -> void:
 
 func pack_params() -> PackedByteArray:
 	push_constant.encode_float(0, params.bevel_width)
-	push_constant.encode_u32(4, params.selected_vertex_count)
-	push_constant.encode_u32(8, params.selected_face_count)
 	push_constant.encode_u32(12, params.out_color_offset)
 	push_constant.encode_u32(16, params.out_custom_offset)
 	push_constant.encode_u32(20, params.out_attribute_stride)
@@ -23,7 +22,8 @@ func compute() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_shrink.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
-	rd.compute_list_bind_uniform_set(compute_list, uniforms.out_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, uniforms.shared_mask_set, 1)
-	rd.compute_list_dispatch(compute_list, ceili(params.selected_face_count / 64.0), 1, 1)
+	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 0)
+	rd.compute_list_bind_uniform_set(compute_list, sets.faces_scratch, 1)
+	rd.compute_list_bind_uniform_set(compute_list, sets.shared_mask, 2)
+	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch, 0)
 	rd.compute_list_end()

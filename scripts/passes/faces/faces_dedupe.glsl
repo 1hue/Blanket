@@ -20,20 +20,20 @@ layout(set = 0, binding = 0, scalar) restrict readonly buffer InVertexBuffer {
 };
 
 layout(set = 0, binding = 1, scalar) restrict readonly buffer InIndexBuffer {
-	u16vec3 in_faces[]; // Unused
+	u16vec3 in_faces[]; // unused
 };
 
 layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
-	uint in_attributes[]; // Unused
+	uint in_attributes[]; // unused
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
-	uint out_vertex_count;
+	uint vertex_count;
 	vec3 out_positions[];
 };
 
 layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
-	uint out_face_count;
+	uint face_count;
 	uvec3 out_faces[];
 };
 
@@ -42,8 +42,10 @@ layout(set = 2, binding = 0, scalar) restrict buffer FacesTableBuffer {
 	layout(offset = 8) TableEntry table[];
 };
 
-layout(set = 3, binding = 0, std430) restrict writeonly buffer FacesWriteDispatchBuffer {
-	uvec3 dispatch;
+layout(set = 3, binding = 0, scalar) restrict writeonly buffer DispatchBuffer {
+	layout(offset = 12) uvec3 dispatch_write;
+	uvec3 dispatch_shared;
+	uvec3 dispatch_shrink;
 };
 
 uint hash(vec3 position) {
@@ -61,7 +63,7 @@ void main() {
 	uint face = gl_GlobalInvocationID.x;
 	uint corner = gl_GlobalInvocationID.y;
 
-	if (face >= out_face_count) return;
+	if (face >= face_count) return;
 
 	// A corner claiming its own position is the first to reach it, so it gets a slot
 	uint vert = out_faces[face][corner];
@@ -72,7 +74,7 @@ void main() {
 		uint holder = atomicCompSwap(table[slot].vert, EMPTY, vert);
 
 		if (holder == EMPTY) {
-			uint out_vert = atomicAdd(out_vertex_count, 1);
+			uint out_vert = atomicAdd(vertex_count, 1);
 
 			table[slot].out_vert = out_vert;
 			out_positions[out_vert] = position; // Claimant is the survivor, so write it here
@@ -85,6 +87,10 @@ void main() {
 	}
 
 	if (corner == 0) {
-		atomicMax(dispatch.x, 1 + face / WRITE_WORKGROUP_SIZE);
+		uint groups = 1 + face / WRITE_WORKGROUP_SIZE;
+
+		atomicMax(dispatch_write.x, groups);
+		atomicMax(dispatch_shared.x, groups);
+		atomicMax(dispatch_shrink.x, groups);
 	}
 }

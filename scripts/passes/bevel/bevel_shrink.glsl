@@ -15,8 +15,6 @@ layout(local_size_x = 64, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
 	float bevel_width; // Inset distance from each shared edge, model space
-	uint selected_vertex_count;
-	uint selected_face_count;
 	uint out_color_offset;
 	uint out_custom_offset;
 	uint out_attribute_stride;
@@ -34,8 +32,18 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
+layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
+	uint vertex_count;
+	vec3 in_positions[]; // unused
+};
+
+layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
+	uint face_count;
+	uvec3 in_faces[]; // unused
+};
+
 // Bit c set = edge c of this face is shared. Retraction reads only this.
-layout(set = 1, binding = 0, std430) restrict buffer FaceEdgeBuffer {
+layout(set = 2, binding = 0, std430) restrict buffer SharedMaskBuffer {
 	uint shared_mask[];
 };
 
@@ -61,7 +69,7 @@ bool is_retracted(uint mask, uint corner) {
 }
 
 uint retracted_at(uint face_idx, uint corner) {
-	return selected_vertex_count + 3 * face_idx + corner;
+	return vertex_count + 3 * face_idx + corner;
 }
 
 // Insetting from every side collapses the face at the inradius, A/s. Cap
@@ -123,7 +131,7 @@ vec3 inset_corner(uvec3 face, uint mask, uint corner, float width) {
 void main() {
 	uint face_idx = gl_GlobalInvocationID.x;
 	uint corner = gl_GlobalInvocationID.y;
-	if (face_idx >= selected_face_count) return;
+	if (face_idx >= face_count) return;
 
 	uint mask = shared_mask[face_idx];
 	uvec3 face = uvec3(out_faces[face_idx]);
