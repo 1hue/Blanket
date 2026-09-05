@@ -58,7 +58,7 @@ func init_in_mesh_set() -> void:
 
 
 func init_indirect_dispatch() -> void:
-	dispatch_buffer = dispatch_buffer_create(4)
+	dispatch_buffer = dispatch_buffer_create(5)
 	dispatch = rd.uniform_set_create([
 		ComputeUtil.create_uniform([dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.faces_select.shader, 2)

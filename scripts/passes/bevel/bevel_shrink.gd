@@ -14,8 +14,8 @@ func allocate_out_mesh() -> void:
 	var verts := rd.buffer_get_data(sets.vertex_scratch_buffer, 0, 4).decode_u32(0)
 	var shared := rd.buffer_get_data(sets.shared_edge_buffer, 0, 4).decode_u32(0)
 
-	params.out_vertex_count = verts + faces * 3 + shared * params.fan_vertex_count
-	params.out_index_count = (faces + shared * params.fan_face_count) * 3
+	params.out_vertex_count = verts + faces * 3 + shared * params.edge_vertex_count
+	params.out_index_count = (faces + shared * params.edge_face_count) * 3
 
 	surface.allocate(
 		params.out_vertex_count,

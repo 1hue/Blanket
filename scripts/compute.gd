@@ -36,7 +36,7 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		FacesWritePass.new(mesh, surface, params, sets),
 		SharedEdgesPass.new(mesh, surface, params, sets),
 		BevelShrinkPass.new(mesh, surface, params, sets),
-		#BevelFillPass.new(mesh, surface, params, sets),
+		BevelFillPass.new(mesh, surface, params, sets),
 		#SmoothSumPass.new(mesh, surface, params, sets),
 		#SmoothWritePass.new(mesh, surface, params, sets),
 		#NormalsSumPass.new(mesh, surface, params, sets),
@@ -116,8 +116,10 @@ func dump_u16vec3(buffer: RID, name := "", has_count := false) -> void:
 
 func dump_vec3(buffer: RID, name := "", has_count := false) -> void:
 	var bytes := rd.buffer_get_data(buffer)
-	var values := bytes.slice(4 if has_count else 0).to_vector3_array()
-	var label := "%s[count=%d/%d]" % [name, bytes.decode_u32(0), values.size()] if has_count else "%s[%d]" % [name, values.size()]
+	var offset := 4 if has_count else 0
+	var capacity := (bytes.size() - offset) / 12
+	var values := bytes.slice(offset, offset + capacity * 12).to_vector3_array()
+	var label := "%s[count=%d/%d]" % [name, bytes.decode_u32(0), capacity] if has_count else "%s[%d]" % [name, capacity]
 	print_rich("[color=goldenrod]%s: " % label, values)
 
 
@@ -127,14 +129,6 @@ func dumpf(buffer: RID, name := "") -> void:
 
 
 func debug_faces_multipass() -> void:
-	prints(
-		"params.in_face_count:", params.in_face_count,
-		"params.bevel_arcs:", params.bevel_arcs,
-		"params.bevel_segments:", params.bevel_segments,
-		"params.out_vertex_count:", params.out_vertex_count,
-		"params.out_attribute_stride", params.out_attribute_stride,
-	)
-
 	dump_uvec3(sets.index_scratch_buffer, "index_scratch_buffer", true)
 	dump_vec3(sets.vertex_scratch_buffer, "vertex_scratch_buffer", true)
 
@@ -143,6 +137,9 @@ func debug_out_mesh() -> void:
 	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
 	prints(
+		"params.in_face_count:", params.in_face_count,
+		"params.bevel_arcs:", params.bevel_arcs,
+		"params.bevel_segments:", params.bevel_segments,
 		"params.out_index_count:", params.out_index_count,
 		"params.out_vertex_count:", params.out_vertex_count,
 		"params.out_index_stride", params.out_index_stride,

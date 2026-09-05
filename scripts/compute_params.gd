@@ -58,6 +58,11 @@ var fan_vertex_count: int:
 	get: return (bevel_arcs - 1) * arc_count + arc_count - 2
 var fan_face_count: int:
 	get: return arc_steps + (bevel_arcs - 1) * arc_steps * 2
+## Both apex fans plus the strip bridging their arcs
+var edge_vertex_count: int:
+	get: return fan_vertex_count * 2
+var edge_face_count: int:
+	get: return fan_face_count * 2 + arc_steps * 2
 #endregion
 
 ## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees

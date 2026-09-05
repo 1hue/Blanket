@@ -40,12 +40,12 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 
 layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
 	uint vertex_count;
-	vec3 in_positions[]; // unused
+	vec3 in_positions[];
 };
 
 layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
 	uint face_count;
-	uvec3 in_faces[]; // unused
+	uvec3 in_faces[];
 };
 
 layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
@@ -196,7 +196,6 @@ void build_strip(uint face_base) {
 void main() {
 	uint idx = gl_GlobalInvocationID.x;
 
-	if (idx == 0) out_positions[15] = vec3(float(shared_count), float(idx), 1.0);
 	if (idx >= shared_count) return;
 
 	edge = shared_edges[idx];
@@ -212,7 +211,6 @@ void main() {
 
 	ring_base = vertex_count + face_count * 3 + idx * fan_verts * 2;
 	arc_base = ring_base + (arcs - 1) * arc_count * 2;
-
 	uint face_base = face_count + idx * (fan_faces * 2 + arc_steps * 2);
 
 	build_fan(0, face_base);
