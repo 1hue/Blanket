@@ -81,43 +81,52 @@ func debug_shared_edges() -> void:
 
 
 func dumpi(buffer: RID, name := "") -> void:
-	var data := rd.buffer_get_data(buffer)
-	print_rich("[color=burlywood]%s: " % name, data.to_int32_array() ,"[/color]")
+	var bytes := rd.buffer_get_data(buffer)
+	print_rich("[color=burlywood]%s: " % name, bytes.to_int32_array() ,"[/color]")
+
+
+func dump_uvec3(buffer: RID, name := "") -> void:
+	const INDEX_STRIDE := 12
+	var bytes := rd.buffer_get_data(buffer)
+	var count := bytes.decode_u32(0)
+	var capacity := (bytes.size() - 4) / INDEX_STRIDE
+	var values: Array[Vector3i] = []
+	values.resize(capacity)
+
+	for i in capacity:
+		var at := 4 + i * INDEX_STRIDE
+		values[i] = Vector3i(bytes.decode_u32(at), bytes.decode_u32(at + 4), bytes.decode_u32(at + 8))
+
+	print_rich("[color=light_sea_green]%s[count=%d/%d]: " % [name, count, capacity], values, "[/color]")
+
+
+func dump_vec3(buffer: RID, name := "") -> void:
+	var bytes := rd.buffer_get_data(buffer)
+	var values := bytes.slice(4).to_vector3_array()
+	print_rich("[color=goldenrod]%s[count=%d/%d]: " % [name, bytes.decode_u32(0), values.size()], values)
 
 
 func dumpf(buffer: RID, name := "") -> void:
-	var data := rd.buffer_get_data(buffer)
-	print_rich("[color=burlywood]%s: " % name, data.to_float32_array() ,"[/color]")
+	var bytes := rd.buffer_get_data(buffer)
+	print_rich("[color=burlywood]%s: " % name, bytes.to_float32_array() ,"[/color]")
 
 
-func debug() -> void:
-	#debug_shared_edges()
-
+func debug_faces_multipass() -> void:
 	prints(
-		"params.max_shared_edges:", params.max_shared_edges,
+		#"params.max_shared_edges:", params.max_shared_edges,
 		"params.in_face_count:", params.in_face_count,
-		"params.selected_vertex_count:", params.selected_vertex_count,
 		"params.bevel_arcs:", params.bevel_arcs,
 		"params.bevel_segments:", params.bevel_segments,
 		"params.out_vertex_count:", params.out_vertex_count,
 		"params.out_attribute_stride", params.out_attribute_stride,
 	)
-	var faces_select_buffer := rd.buffer_get_data(sets.faces_select_buffer)
-	print_rich(
-		"[color=steel_blue]",
-		" faces_select_buffer.face_count ", faces_select_buffer.decode_u32(0),
-		" | faces_select_buffer.vertex_count ", faces_select_buffer.decode_u32(4),
-		" | params.selected_vertex_count ", params.selected_vertex_count,
-		" | params.out_index_stride ", params.out_index_stride,
-		" | params.out_vertex_count ", params.out_vertex_count,
-		" | params.out_vertex_stride ", params.out_vertex_stride,
-		"\nparams.out_color_offset ", params.out_color_offset,
-		" | params.out_custom_offset ", params.out_custom_offset,
-		" | params.out_attribute_stride ", params.out_attribute_stride,
-		" | params.selected_face_count: ", params.selected_face_count,
-		#"\nbevel_fill_dispatch_buffer: ", rd.buffer_get_data(sets.bevel_fill_dispatch_buffer).to_int32_array(),
-		"[/color]"
-	)
+
+	dump_uvec3(sets.index_scratch_buffer, "index_scratch_buffer")
+	dump_vec3(sets.vertex_scratch_buffer, "vertex_scratch_buffer")
+
+
+func debug() -> void:
+	debug_faces_multipass()
 	#print_rich("[color=goldenrod]faces_buffer.faces[] int16: ", ComputeUtil.to_int16_array(faces_buffer.slice(8)), "[/color]")
 	#var table := rd.buffer_get_data(uniforms.faces_table_buffer)
 	#print_rich("[color=cadet_blue]table_buffer[", table.size() / 4, "] uint32: ", ComputeUtil.to_uint32_array(table), "[/color]")

@@ -1,4 +1,4 @@
-// Give each surviving vertex a dense slot in the new surface, merging by position.
+// Merge vertices by position and place each survivor in the scratch buffer
 #[compute]
 #version 450
 
@@ -6,8 +6,14 @@
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
 const uint EMPTY = 0xFFFFFFFFu;
+const uint WRITE_WORKGROUP_SIZE = 64;
 
-layout(local_size_x = 256) in;
+struct TableEntry {
+	uint vert; // Source vertex holding this position, EMPTY if free
+	uint out_vert; // Where its position lives in the scratch buffer
+};
+
+layout(local_size_x = 64, local_size_y = 3) in; // X = face, Y = corner
 
 layout(set = 0, binding = 0, scalar) restrict readonly buffer InVertexBuffer {
 	vec3 in_positions[];
@@ -21,23 +27,23 @@ layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
 	uint in_attributes[]; // Unused
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer FacesSelectBuffer {
-	uint face_count;
-	uint vertex_count; // Survivors found, and the new surface's vertex count
-	u16vec3 faces[];
+layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
+	uint out_vertex_count;
+	vec3 out_positions[];
 };
 
-layout(set = 2, binding = 0, std430) restrict buffer FacesTableBuffer {
+layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
+	uint out_face_count;
+	uvec3 out_faces[];
+};
+
+layout(set = 2, binding = 0, scalar) restrict buffer FacesTableBuffer {
 	uint table_size;
-	uint table[]; // Per table slot: the vertex holding that position, cleared to EMPTY
+	layout(offset = 8) TableEntry table[];
 };
 
-layout(set = 3, binding = 0, scalar) restrict buffer FacesSlotBuffer {
-	uint16_t slots[]; // Per source vertex: its dense slot, valid only for survivors
-};
-
-layout(set = 4, binding = 0, std430) restrict writeonly buffer FacesDedupeDispatchBuffer {
-	uvec3 dispatch; // faces_write.glsl
+layout(set = 3, binding = 0, std430) restrict writeonly buffer FacesWriteDispatchBuffer {
+	uvec3 dispatch;
 };
 
 uint hash(vec3 position) {
@@ -53,32 +59,32 @@ uint hash(vec3 position) {
 
 void main() {
 	uint face = gl_GlobalInvocationID.x;
+	uint corner = gl_GlobalInvocationID.y;
 
-	if (face >= face_count) return;
-
-	u16vec3 corners = faces[face];
+	if (face >= out_face_count) return;
 
 	// A corner claiming its own position is the first to reach it, so it gets a slot
-	for (uint c = 0; c < 3; c++) {
-		uint vert = corners[c];
-		vec3 position = in_positions[vert];
-		uint slot = hash(position) & (table_size - 1);
+	uint vert = out_faces[face][corner];
+	vec3 position = in_positions[vert];
+	uint slot = hash(position) & (table_size - 1);
 
-		for (uint probe = 0; probe < table_size; probe++) {
-			uint holder = atomicCompSwap(table[slot], EMPTY, vert);
+	for (uint probe = 0; probe < table_size; probe++) {
+		uint holder = atomicCompSwap(table[slot].vert, EMPTY, vert);
 
-			if (holder == EMPTY) {
-				slots[vert] = uint16_t(atomicAdd(vertex_count, 1)); // Claimed it, so it's new
-				break;
-			}
+		if (holder == EMPTY) {
+			uint out_vert = atomicAdd(out_vertex_count, 1);
 
-			if (in_positions[holder] == position) break; // Already has a slot
-
-			slot = (slot + 1) & (table_size - 1);
+			table[slot].out_vert = out_vert;
+			out_positions[out_vert] = position; // Claimant is the survivor, so write it here
+			break;
 		}
+
+		if (in_positions[holder] == position) break; // Already has a slot
+
+		slot = (slot + 1) & (table_size - 1);
 	}
 
-	atomicMax(dispatch.x, (face + 256) / 256);
-	dispatch.y = 1;
-	dispatch.z = 1;
+	if (corner == 0) {
+		atomicMax(dispatch.x, 1 + face / WRITE_WORKGROUP_SIZE);
+	}
 }

@@ -6,7 +6,7 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
-const uint FILL_GROUP_SIZE = 256;
+const uint FILL_WORKGROUP_SIZE = 256;
 
 // X = face, Y = corner (the edge running from that corner to the next)
 layout(local_size_x = 64, local_size_y = 3) in;
@@ -90,7 +90,7 @@ void main() {
 	// Uniform across the dispatch, so one invocation seeds it for everyone
 	if (face == 0 && corner == 0) {
 		// Fill repoints every selected face too, so its dispatch must cover them all
-		atomicMax(dispatch.x, (face_count + FILL_GROUP_SIZE - 1) / FILL_GROUP_SIZE);
+		atomicMax(dispatch.x, (face_count + FILL_WORKGROUP_SIZE - 1) / FILL_WORKGROUP_SIZE);
 		dispatch.y = 1;
 		dispatch.z = 1;
 	}
@@ -115,7 +115,7 @@ void main() {
 		shared_edges[slot].retracted[0] = retracted_at_corner(self, edge);
 		shared_edges[slot].retracted[1] = retracted_at_corner(twin, edge);
 
-		atomicMax(dispatch.x, (slot + FILL_GROUP_SIZE) / FILL_GROUP_SIZE);
+		atomicMax(dispatch.x, 1 + slot / FILL_WORKGROUP_SIZE);
 	}
 
 	if (has_twin) {

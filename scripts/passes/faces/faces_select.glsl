@@ -5,6 +5,8 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
+const uint DEDUPE_WORKGROUP_SIZE = 64;
+
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
@@ -30,14 +32,18 @@ layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
 	uint in_attributes[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer FacesSelectBuffer {
-	uint face_count;
-	uint vertex_count; // Filled by faces_dedupe.glsl
-	u16vec3 faces[]; // Source vertex indices of every upright face
+layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
+	uint out_vertex_count; // Unused
+	vec3 out_positions[]; // Unused
+};
+
+layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
+	uint out_face_count;
+	uvec3 out_faces[]; // Source vertex indices until faces_write.glsl repoints them
 };
 
 layout(set = 2, binding = 0, std430) restrict writeonly buffer FacesDedupeDispatchBuffer {
-	uvec3 dispatch; // Indirect args for faces_dedupe.glsl
+	uvec3 dispatch;
 };
 
 vec3 oct_decode(vec2 e) {
@@ -73,17 +79,15 @@ void main() {
 	bool is_upright = dot(face_normal, local_up) > upright_dot;
 	vec4 color = is_upright ? vec4(0, 1, 0, 1) : vec4(1, 0, 0, 1);
 
-	// Debug visualization on the source mesh, regardless of eligibility
+	// Debug visualization on the source mesh
 	write_color(corners.x, color);
 	write_color(corners.y, color);
 	write_color(corners.z, color);
 
 	if (!is_upright) return;
 
-	uint slot = atomicAdd(face_count, 1);
-	faces[slot] = corners;
+	uint slot = atomicAdd(out_face_count, 1);
+	out_faces[slot] = corners;
 
-	atomicMax(dispatch.x, (slot + 256) / 256);
-	dispatch.y = 1;
-	dispatch.z = 1;
+	atomicMax(dispatch.x, 1 + slot / DEDUPE_WORKGROUP_SIZE);
 }

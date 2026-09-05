@@ -7,7 +7,12 @@
 
 const uint EMPTY = 0xFFFFFFFFu;
 
-layout(local_size_x = 256) in;
+struct TableEntry {
+	uint vert; // Source vertex holding this position, EMPTY if free
+	uint out_vert; // Where its position lives in the scratch buffer
+};
+
+layout(local_size_x = 64, local_size_y = 3) in; // X = face, Y = corner
 
 layout(set = 0, binding = 0, scalar) restrict readonly buffer InVertexBuffer {
 	vec3 in_positions[];
@@ -21,29 +26,19 @@ layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
 	uint in_attributes[]; // Unused
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
-	uint face_count;
-	uint vertex_count;
-	u16vec3 faces[];
+layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
+	uint out_vertex_count; // Unused
+	vec3 out_positions[]; // Unused
 };
 
-layout(set = 2, binding = 0, std430) restrict buffer FacesTableBuffer {
-	uint table_size;
-	uint table[];
-};
-
-layout(set = 3, binding = 0, scalar) restrict buffer FacesSlotBuffer {
-	uint16_t slots[];
-};
-
-layout(set = 4, binding = 0, scalar) restrict writeonly buffer FacesOutVertexBuffer {
-	uint out_vertex_count;
-	vec3 out_positions[];
-};
-
-layout(set = 4, binding = 1, scalar) restrict writeonly buffer FacesOutIndexBuffer {
+layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
 	uint out_face_count;
 	uvec3 out_faces[];
+};
+
+layout(set = 2, binding = 0, scalar) restrict buffer FacesTableBuffer {
+	uint table_size;
+	layout(offset = 8) TableEntry table[];
 };
 
 uint hash(vec3 position) {
@@ -57,36 +52,27 @@ uint hash(vec3 position) {
 	return h;
 }
 
-// Walks the table faces_dedupe.glsl built
-uint survivor_of(uint vert) {
+uint out_vert_of(uint vert) {
 	vec3 position = in_positions[vert];
 	uint slot = hash(position) & (table_size - 1);
 
 	for (uint probe = 0; probe < table_size; probe++) {
-		uint holder = table[slot];
+		TableEntry entry = table[slot];
 
-		if (holder == EMPTY) return vert;
-		if (in_positions[holder] == position) return holder;
+		if (entry.vert == EMPTY) break; // Unreachable: dedupe claimed every corner
+		if (in_positions[entry.vert] == position) return entry.out_vert;
 
 		slot = (slot + 1) & (table_size - 1);
 	}
 
-	return vert;
+	return 0;
 }
 
 void main() {
 	uint face = gl_GlobalInvocationID.x;
+	uint corner = gl_GlobalInvocationID.y;
 
-	if (face >= face_count) return;
+	if (face >= out_face_count) return;
 
-	uvec3 corners = faces[face];
-	uvec3 merged = uvec3(survivor_of(corners.x), survivor_of(corners.y), survivor_of(corners.z));
-	uvec3 dense = uvec3(slots[merged.x], slots[merged.y], slots[merged.z]);
-
-	out_faces[face] = dense;
-
-	// Merged corners share a slot, so these writes land on top of each other harmlessly
-	out_positions[dense.x] = in_positions[merged.x];
-	out_positions[dense.y] = in_positions[merged.y];
-	out_positions[dense.z] = in_positions[merged.z];
+	out_faces[face][corner] = out_vert_of(out_faces[face][corner]);
 }
