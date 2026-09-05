@@ -71,7 +71,7 @@ func compute() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.faces_dedupe.pipeline)
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
-	rd.compute_list_bind_uniform_set(compute_list, sets.faces, 1)
+	rd.compute_list_bind_uniform_set(compute_list, sets.faces_select, 1)
 	rd.compute_list_bind_uniform_set(compute_list, table_set, 2)
 	rd.compute_list_bind_uniform_set(compute_list, slot_set, 3)
 	rd.compute_list_bind_uniform_set(compute_list, faces_write_dispatch_set, 4)

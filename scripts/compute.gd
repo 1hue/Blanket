@@ -102,11 +102,11 @@ func debug() -> void:
 		"params.out_vertex_count:", params.out_vertex_count,
 		"params.out_attribute_stride", params.out_attribute_stride,
 	)
-	var faces_buffer := rd.buffer_get_data(sets.faces_buffer)
+	var faces_select_buffer := rd.buffer_get_data(sets.faces_select_buffer)
 	print_rich(
 		"[color=steel_blue]",
-		" faces_buffer.face_count ", faces_buffer.decode_u32(0),
-		" | faces_buffer.vertex_count ", faces_buffer.decode_u32(4),
+		" faces_select_buffer.face_count ", faces_select_buffer.decode_u32(0),
+		" | faces_select_buffer.vertex_count ", faces_select_buffer.decode_u32(4),
 		" | params.selected_vertex_count ", params.selected_vertex_count,
 		" | params.out_index_stride ", params.out_index_stride,
 		" | params.out_vertex_count ", params.out_vertex_count,

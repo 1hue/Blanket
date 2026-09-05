@@ -3,8 +3,8 @@ class_name FacesSelectPass
 
 const SIZE_PARAMS = 40
 
-var faces_set: RID
-var faces_buffer: RID
+var faces_select_set: RID
+var faces_select_buffer: RID
 var faces_buffer_size: int
 
 var faces_dedupe_dispatch_set: RID
@@ -20,13 +20,13 @@ func _pre() -> void:
 func init_faces_buffer() -> void:
 	# face_count, vertex_count, then at most every source face
 	faces_buffer_size = align_buffer(8 + params.in_face_count * 6)
-	faces_buffer = rd.storage_buffer_create(faces_buffer_size)
-	faces_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([faces_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+	faces_select_buffer = rd.storage_buffer_create(faces_buffer_size)
+	faces_select_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([faces_select_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.faces_select.shader, 1)
 
-	sets.faces = faces_set
-	sets.faces_buffer = faces_buffer
+	sets.faces_select = faces_select_set
+	sets.faces_select_buffer = faces_select_buffer
 
 
 func init_faces_dedupe_dispatch_buffer() -> void:
@@ -54,14 +54,14 @@ func pack_params() -> PackedByteArray:
 
 
 func compute() -> void:
-	rd.buffer_clear(faces_buffer, 0, faces_buffer_size)
+	rd.buffer_clear(faces_select_buffer, 0, faces_buffer_size)
 	rd.buffer_clear(faces_dedupe_dispatch_buffer, 0, 12)
 
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.faces_select.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
-	rd.compute_list_bind_uniform_set(compute_list, faces_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, faces_select_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, faces_dedupe_dispatch_set, 2)
 	rd.compute_list_dispatch(compute_list, ceili(params.in_face_count / 256.0), 1, 1)
 	rd.compute_list_end()
@@ -70,6 +70,6 @@ func compute() -> void:
 func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
-	for rid in [faces_set, faces_buffer, faces_dedupe_dispatch_set, faces_dedupe_dispatch_buffer]:
+	for rid in [faces_select_set, faces_select_buffer, faces_dedupe_dispatch_set, faces_dedupe_dispatch_buffer]:
 		if rid.is_valid():
 			rd.free_rid(rid)

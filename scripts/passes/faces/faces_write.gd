@@ -16,7 +16,7 @@ func _pre() -> void:
 
 ## Holds the deduped selection. The real surface is sized in shared_edges, once shared_count is known.
 func allocate() -> void:
-	var counts := rd.buffer_get_data(sets.faces_buffer, 0, 8)
+	var counts := rd.buffer_get_data(sets.faces_select_buffer, 0, 8)
 	params.selected_face_count = counts.decode_u32(0)
 	params.selected_vertex_count = counts.decode_u32(4)
 
@@ -40,7 +40,7 @@ func compute() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.faces_write.pipeline)
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
-	rd.compute_list_bind_uniform_set(compute_list, sets.faces, 1)
+	rd.compute_list_bind_uniform_set(compute_list, sets.faces_select, 1)
 	rd.compute_list_bind_uniform_set(compute_list, sets.faces_table, 2)
 	rd.compute_list_bind_uniform_set(compute_list, sets.faces_slot, 3)
 	rd.compute_list_bind_uniform_set(compute_list, faces_out_set, 4)

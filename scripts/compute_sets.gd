@@ -10,8 +10,8 @@ var out_mesh: RID
 
 #region Faces
 var faces_out: RID # Selected faces Vertex + Index buffer
-var faces: RID # u16vec3 faces[]
-var faces_buffer: RID
+var faces_select: RID # u16vec3 faces[]
+var faces_select_buffer: RID
 var faces_table: RID
 var faces_table_buffer: RID
 var faces_slot: RID
