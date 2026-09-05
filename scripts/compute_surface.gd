@@ -29,7 +29,7 @@ func _init(p_mesh: ArrayMesh, p_source_idx: int) -> void:
 
 ## Size empty mesh arrays and install the surface for manipulation GPU-side.
 ## Set custom_aabb since positions are all zero at this point.
-func allocate(new_vertex_count: int, new_index_count: int, array_types: int = Mesh.ARRAY_NORMAL) -> void:
+func allocate(new_vertex_count: int, new_index_count: int, array_types: int = Mesh.ARRAY_FORMAT_NORMAL) -> void:
 	remove()
 
 	var vertices := PackedVector3Array()
@@ -42,22 +42,22 @@ func allocate(new_vertex_count: int, new_index_count: int, array_types: int = Me
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_INDEX] = indices
 
-	if array_types & Mesh.ARRAY_NORMAL:
+	if array_types & Mesh.ARRAY_FORMAT_NORMAL:
 		var normals := PackedVector3Array()
 		normals.resize(new_vertex_count)
 		arrays[Mesh.ARRAY_NORMAL] = normals
 
-	if array_types & Mesh.ARRAY_TANGENT:
+	if array_types & Mesh.ARRAY_FORMAT_TANGENT:
 		var tangents := PackedFloat32Array()
 		tangents.resize(new_vertex_count * 4)
 		arrays[Mesh.ARRAY_TANGENT] = tangents
 
-	if array_types & Mesh.ARRAY_CUSTOM0:
+	if array_types & Mesh.ARRAY_FORMAT_CUSTOM0:
 		var custom_0 := PackedFloat32Array()
 		custom_0.resize(new_vertex_count * 4)
 		arrays[Mesh.ARRAY_CUSTOM0] = custom_0
 
-	if array_types & Mesh.ARRAY_COLOR:
+	if array_types & Mesh.ARRAY_FORMAT_COLOR:
 		var colors := PackedColorArray()
 		colors.resize(new_vertex_count)
 		arrays[Mesh.ARRAY_COLOR] = colors

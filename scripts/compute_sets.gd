@@ -22,7 +22,6 @@ var faces_table_buffer: RID
 #region Bevel
 var shared_edge: RID
 var shared_edge_buffer: RID
-var bevel_shrink_dispatch_buffer: RID
 var bevel_out: RID
 var shared_mask_buffer: RID
 var shared_mask: RID
@@ -78,7 +77,7 @@ func dispatch_buffer_create(count := 1, init: PackedInt32Array = []) -> RID:
 
 ## Free scratch buffers after bake
 #func cleanup_bake() -> void:
-	#for rid in [faces_set, edges_set, faces_dispatch_set, edges_dispatch_set]:
+	#for rid in [faces_set, edges_set]:
 		#if rid.is_valid():
 			#rd.free_rid(rid)
 

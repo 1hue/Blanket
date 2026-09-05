@@ -34,12 +34,12 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 
 layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
 	uint vertex_count;
-	vec3 in_positions[]; // unused
+	vec3 in_positions[];
 };
 
 layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
 	uint face_count;
-	uvec3 in_faces[]; // unused
+	uvec3 in_faces[];
 };
 
 // Bit c set = edge c of this face is shared. Retraction reads only this.
@@ -77,13 +77,11 @@ uint retracted_at(uint face_idx, uint corner) {
 // inverted one. Edges that aren't shared don't inset, so this is loose
 // for boundary faces - which is fine, it only ever clamps
 float max_width(uvec3 face) {
-	vec3 p0 = out_positions[face.x];
-	vec3 p1 = out_positions[face.y];
-	vec3 p2 = out_positions[face.z];
-	float perimeter = distance(p0, p1) + distance(p1, p2) + distance(p2, p0);
+	mat3 p = mat3(in_positions[face.x], in_positions[face.y], in_positions[face.z]);
+	float perimeter = distance(p[0], p[1]) + distance(p[1], p[2]) + distance(p[2], p[0]);
 	if (perimeter < 1e-9) return 0.0;
 
-	float inradius = length(cross(p1 - p0, p2 - p0)) / perimeter;
+	float inradius = length(cross(p[1] - p[0], p[2] - p[0])) / perimeter;
 
 	return inradius * (1.0 - MIN_SCALE);
 }
@@ -93,9 +91,9 @@ float max_width(uvec3 face) {
 // intersection, so a boundary edge holds the corner on itself and the
 // silhouette is preserved
 vec3 inset_corner(uvec3 face, uint mask, uint corner, float width) {
-	vec3 apex = out_positions[face[corner]];
-	vec3 to_next = out_positions[face[next_corner(corner)]] - apex;
-	vec3 to_prev = out_positions[face[prev_corner(corner)]] - apex;
+	vec3 apex = in_positions[face[corner]];
+	vec3 to_next = in_positions[face[next_corner(corner)]] - apex;
+	vec3 to_prev = in_positions[face[prev_corner(corner)]] - apex;
 	vec3 normal = cross(to_next, to_prev);
 	float area2 = length(normal);
 	if (area2 < 1e-9) return apex; // Degenerate face, no plane to work in
@@ -134,10 +132,11 @@ void main() {
 	if (face_idx >= face_count) return;
 
 	uint mask = shared_mask[face_idx];
-	uvec3 face = uvec3(out_faces[face_idx]);
+	uvec3 face = in_faces[face_idx];
 
-	// One lane owns the u16vec3 store: three lanes writing 2-byte components
-	// of a 6-byte element risks dword read-modify-write on some drivers
+	// The selection occupies the first vertex_count slots of the new surface
+	out_positions[face[corner]] = in_positions[face[corner]];
+
 	if (corner == 0) {
 		uvec3 repointed = face;
 

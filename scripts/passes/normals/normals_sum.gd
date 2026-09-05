@@ -14,8 +14,8 @@ func _pre() -> void:
 		ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.normals_sum.shader, 0)
 
-	uniforms.normals_sum = buffer
-	uniforms.normals_sum_set = uniform_set
+	sets.normals_sum_buffer = buffer
+	sets.normals_sum = uniform_set
 
 
 ## Rerun after anything that moves verts - shape.glsl changes every wall's tilt
@@ -25,7 +25,7 @@ func compute() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.normals_sum.pipeline)
 	rd.compute_list_bind_uniform_set(compute_list, uniform_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, uniforms.bevel_out_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 1)
 	rd.compute_list_dispatch(compute_list, ceili(params.bevel_index_count / 3.0 / 256.0), 1, 1)
 	rd.compute_list_end()
 

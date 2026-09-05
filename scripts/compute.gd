@@ -14,9 +14,6 @@ var mesh_rid: RID:
 	get: return mesh.get_rid()
 var in_uniform_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 
-#var debug_buffer: RID
-#var debug_uniform_set: RID
-
 var bake_passes: Array[ComputePass]
 
 
@@ -38,7 +35,7 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		FacesDedupePass.new(mesh, surface, params, sets),
 		FacesWritePass.new(mesh, surface, params, sets),
 		SharedEdgesPass.new(mesh, surface, params, sets),
-		#BevelShrinkPass.new(mesh, surface, params, sets),
+		BevelShrinkPass.new(mesh, surface, params, sets),
 		#BevelFillPass.new(mesh, surface, params, sets),
 		#SmoothSumPass.new(mesh, surface, params, sets),
 		#SmoothWritePass.new(mesh, surface, params, sets),
@@ -85,25 +82,43 @@ func dumpi(buffer: RID, name := "") -> void:
 	print_rich("[color=burlywood]%s: " % name, bytes.to_int32_array() ,"[/color]")
 
 
-func dump_uvec3(buffer: RID, name := "") -> void:
+func dump_uvec3(buffer: RID, name := "", has_count := false) -> void:
 	const INDEX_STRIDE := 12
 	var bytes := rd.buffer_get_data(buffer)
-	var count := bytes.decode_u32(0)
-	var capacity := (bytes.size() - 4) / INDEX_STRIDE
+	var offset := 4 if has_count else 0
+	var capacity := (bytes.size() - offset) / INDEX_STRIDE
 	var values: Array[Vector3i] = []
 	values.resize(capacity)
 
 	for i in capacity:
-		var at := 4 + i * INDEX_STRIDE
+		var at := offset + i * INDEX_STRIDE
 		values[i] = Vector3i(bytes.decode_u32(at), bytes.decode_u32(at + 4), bytes.decode_u32(at + 8))
 
-	print_rich("[color=light_sea_green]%s[count=%d/%d]: " % [name, count, capacity], values, "[/color]")
+	var label := "%s[count=%d/%d]" % [name, bytes.decode_u32(0), capacity] if has_count else "%s[%d]" % [name, capacity]
+	print_rich("[color=light_sea_green]%s: " % label, values, "[/color]")
 
 
-func dump_vec3(buffer: RID, name := "") -> void:
+func dump_u16vec3(buffer: RID, name := "", has_count := false) -> void:
+	const STRIDE := 6
 	var bytes := rd.buffer_get_data(buffer)
-	var values := bytes.slice(4).to_vector3_array()
-	print_rich("[color=goldenrod]%s[count=%d/%d]: " % [name, bytes.decode_u32(0), values.size()], values)
+	var offset := 4 if has_count else 0
+	var capacity := (bytes.size() - offset) / STRIDE
+	var values: Array[Vector3i] = []
+	values.resize(capacity)
+
+	for i in capacity:
+		var at := offset + i * STRIDE
+		values[i] = Vector3i(bytes.decode_u16(at), bytes.decode_u16(at + 2), bytes.decode_u16(at + 4))
+
+	var label := "%s[count=%d/%d]" % [name, bytes.decode_u32(0), capacity] if has_count else "%s[%d]" % [name, capacity]
+	print_rich("[color=light_sea_green]%s: " % label, values, "[/color]")
+
+
+func dump_vec3(buffer: RID, name := "", has_count := false) -> void:
+	var bytes := rd.buffer_get_data(buffer)
+	var values := bytes.slice(4 if has_count else 0).to_vector3_array()
+	var label := "%s[count=%d/%d]" % [name, bytes.decode_u32(0), values.size()] if has_count else "%s[%d]" % [name, values.size()]
+	print_rich("[color=goldenrod]%s: " % label, values)
 
 
 func dumpf(buffer: RID, name := "") -> void:
@@ -120,12 +135,26 @@ func debug_faces_multipass() -> void:
 		"params.out_attribute_stride", params.out_attribute_stride,
 	)
 
-	dump_uvec3(sets.index_scratch_buffer, "index_scratch_buffer")
-	dump_vec3(sets.vertex_scratch_buffer, "vertex_scratch_buffer")
+	dump_uvec3(sets.index_scratch_buffer, "index_scratch_buffer", true)
+	dump_vec3(sets.vertex_scratch_buffer, "vertex_scratch_buffer", true)
+
+
+func debug_out_mesh() -> void:
+	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
+	prints(
+		"params.out_index_count:", params.out_index_count,
+		"params.out_vertex_count:", params.out_vertex_count,
+		"params.out_index_stride", params.out_index_stride,
+		"params.out_attribute_stride", params.out_attribute_stride,
+	)
+	dump_u16vec3(index_buffer, "index_buffer")
+	dump_vec3(vertex_buffer, "vertex_buffer")
 
 
 func debug() -> void:
 	debug_faces_multipass()
+	debug_out_mesh()
 	#print_rich("[color=goldenrod]faces_buffer.faces[] int16: ", ComputeUtil.to_int16_array(faces_buffer.slice(8)), "[/color]")
 	#var table := rd.buffer_get_data(uniforms.faces_table_buffer)
 	#print_rich("[color=cadet_blue]table_buffer[", table.size() / 4, "] uint32: ", ComputeUtil.to_uint32_array(table), "[/color]")
