@@ -9,10 +9,6 @@ const uint EMPTY = 0xFFFFFFFFu;
 
 layout(local_size_x = 256) in;
 
-layout(push_constant, std430) uniform PushParams {
-	uint table_size; // Power of two
-};
-
 layout(set = 0, binding = 0, scalar) restrict readonly buffer InVertexBuffer {
 	vec3 in_positions[];
 };
@@ -25,13 +21,14 @@ layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
 	uint in_attributes[]; // Unused
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
+layout(set = 1, binding = 0, scalar) restrict buffer FacesSelectBuffer {
 	uint face_count;
 	uint vertex_count; // Survivors found, and the new surface's vertex count
 	u16vec3 faces[];
 };
 
 layout(set = 2, binding = 0, std430) restrict buffer FacesTableBuffer {
+	uint table_size;
 	uint table[]; // Per table slot: the vertex holding that position, cleared to EMPTY
 };
 

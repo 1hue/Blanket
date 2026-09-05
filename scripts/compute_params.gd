@@ -43,8 +43,8 @@ var out_face_stride: int:
 
 #region Faces select
 var selected_vertex_count: int
+var selected_index_count: int
 var selected_face_count: int
-var faces_table_size: int
 #endregion
 
 #region Bevel

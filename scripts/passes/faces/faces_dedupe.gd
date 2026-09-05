@@ -4,79 +4,78 @@ class_name FacesDedupePass
 const SIZE_PARAMS = 4
 const EMPTY_BYTE = UINT32_MAX
 
+var table_set: RID
 var table_buffer: RID
 var table_buffer_size: int
-var table_uniform_set: RID
 var table_clear: PackedByteArray
 
+var slot_set: RID
 var slot_buffer: RID
-var slot_uniform_set: RID
 
-var dispatch_buffer: RID
-var dispatch_uniform_set: RID
+var faces_write_dispatch_set: RID
+var faces_write_dispatch_buffer: RID
 
 
 func _pre() -> void:
 	push_constant.resize(SIZE_PARAMS)
-	init_uniforms()
+	init_table_buffer()
+	init_slot_buffer()
+	init_faces_write_dispatch()
 
 
-func init_uniforms() -> void:
+func init_table_buffer() -> void:
 	# Power of two above 2x the vertex count, so probes stay short
-	params.faces_table_size = nearest_po2(params.in_vertex_count * 2)
+	var table_size := nearest_po2(params.in_vertex_count * 2)
 
-	table_buffer_size = align_buffer(params.faces_table_size * 4)
+	# uint table_size header, then array
+	table_buffer_size = align_buffer(4 + table_size * 4)
 	table_buffer = rd.storage_buffer_create(table_buffer_size)
-
-	# Cached, since buffer_clear only zeroes and empty slots must read as all bits set
 	table_clear.resize(table_buffer_size)
 	table_clear.fill(EMPTY_BYTE)
+	table_clear.encode_u32(0, table_size)
 
-	table_uniform_set = rd.uniform_set_create([
+	table_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([table_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.faces_dedupe.shader, 2)
 
+	sets.faces_table = table_set
+	sets.faces_table_buffer = table_buffer
+
+
+func init_slot_buffer() -> void:
 	# Only survivors are ever read back, so this needs no clearing
 	slot_buffer = rd.storage_buffer_create(params.in_vertex_count * 2)
 
-	slot_uniform_set = rd.uniform_set_create([
+	slot_set = rd.uniform_set_create([
 		ComputeUtil.create_uniform([slot_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.faces_dedupe.shader, 3)
 
-	dispatch_buffer = rd.storage_buffer_create(
-		12, PackedByteArray(), RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
-	)
+	sets.faces_slot = slot_set
+	sets.faces_slot_buffer = slot_buffer
 
-	dispatch_uniform_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+
+func init_faces_write_dispatch() -> void:
+	faces_write_dispatch_buffer = dispatch_buffer_create()
+
+	faces_write_dispatch_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([faces_write_dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.faces_dedupe.shader, 4)
 
-	uniforms.faces_table_set = table_uniform_set
-	uniforms.faces_table_buffer = table_buffer
-	uniforms.faces_slot_set = slot_uniform_set
-	uniforms.faces_slot_buffer = slot_buffer
-	uniforms.faces_write_dispatch_buffer = dispatch_buffer
-
-
-func pack_params() -> PackedByteArray:
-	push_constant.encode_u32(0, params.faces_table_size)
-
-	return push_constant
+	sets.faces_write_dispatch_buffer = faces_write_dispatch_buffer
 
 
 func compute() -> void:
 	rd.buffer_update(table_buffer, 0, table_buffer_size, table_clear)
-	rd.buffer_clear(dispatch_buffer, 0, 12)
+	rd.buffer_clear(faces_write_dispatch_buffer, 0, 12)
 
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.faces_dedupe.pipeline)
-	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
-	rd.compute_list_bind_uniform_set(compute_list, uniforms.source_set, 0)
-	rd.compute_list_bind_uniform_set(compute_list, uniforms.faces_set, 1)
-	rd.compute_list_bind_uniform_set(compute_list, table_uniform_set, 2)
-	rd.compute_list_bind_uniform_set(compute_list, slot_uniform_set, 3)
-	rd.compute_list_bind_uniform_set(compute_list, dispatch_uniform_set, 4)
-	rd.compute_list_dispatch_indirect(compute_list, uniforms.faces_dedupe_dispatch_buffer, 0)
+	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
+	rd.compute_list_bind_uniform_set(compute_list, sets.faces, 1)
+	rd.compute_list_bind_uniform_set(compute_list, table_set, 2)
+	rd.compute_list_bind_uniform_set(compute_list, slot_set, 3)
+	rd.compute_list_bind_uniform_set(compute_list, faces_write_dispatch_set, 4)
+	rd.compute_list_dispatch_indirect(compute_list, sets.faces_dedupe_dispatch_buffer, 0)
 	rd.compute_list_end()
 
 
@@ -84,9 +83,7 @@ func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
 	for rid in [
-		table_uniform_set, table_buffer,
-		slot_uniform_set, slot_buffer,
-		dispatch_uniform_set, dispatch_buffer,
+		table_set, table_buffer, slot_set, slot_buffer, faces_write_dispatch_set, faces_write_dispatch_buffer,
 	]:
 		if rid.is_valid():
 			rd.free_rid(rid)

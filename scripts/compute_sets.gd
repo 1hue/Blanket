@@ -1,39 +1,42 @@
 extends RefCounted
-class_name ComputeUniforms
+class_name ComputeSets
 
 # TODO Clean up vars
 var rd: RenderingDevice
 var surface: ComputeSurface
 
+var in_mesh: RID # 0 = Verts, 1 = Indices, 2 = Attributes
+var out_mesh: RID
+
 #region Faces
-var faces_set: RID
+var faces_out: RID # Selected faces Vertex + Index buffer
+var faces: RID # u16vec3 faces[]
 var faces_buffer: RID
-var faces_dedupe_dispatch_buffer: RID
+var faces_table: RID
 var faces_table_buffer: RID
-var faces_table_set: RID
+var faces_slot: RID
 var faces_slot_buffer: RID
-var faces_slot_set: RID
+var faces_dedupe_dispatch_buffer: RID
 var faces_write_dispatch_buffer: RID
 #endregion
 
-var source_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
-var out_set: RID
-
-var bevel_shrink_dispatch_buffer: RID
-var bevel_out_set: RID
-var shared_edge_set: RID
+#region Bevel
+var shared_edge: RID
 var shared_edge_buffer: RID
+var bevel_shrink_dispatch_buffer: RID
+var bevel_out: RID
 var shared_mask_buffer: RID
-var shared_mask_set: RID
+var shared_mask: RID
 var corner_edge_buffer: RID
 var bevel_fill_dispatch_buffer: RID
-var bevel_fill_dispatch_set: RID
+var bevel_fill_dispatch: RID
+#endregion
 
 var normals_sum: RID
-var normals_sum_set: RID
+var normals_sum_buffer: RID
 
 var smooth_sum: RID
-var smooth_sum_set: RID
+var smooth_sum_buffer: RID
 
 var debug: RID
 
@@ -42,15 +45,15 @@ func _init(p_surface: ComputeSurface) -> void:
 	rd = RenderingServer.get_rendering_device()
 	surface = p_surface
 
-	_init_source_set()
+	_init_in_mesh_set()
 
 
-func _init_source_set() -> void:
+func _init_in_mesh_set() -> void:
 	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
 	var attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
 
-	source_set = rd.uniform_set_create([
+	in_mesh = rd.uniform_set_create([
 		ComputeUtil.create_uniform([vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 		ComputeUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
 		ComputeUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
@@ -68,6 +71,6 @@ func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
 
-	for rid in [source_set]: # Free uniform set -> free buffer
+	for rid in [in_mesh]: # Free uniform set -> free buffer
 		if rid.is_valid():
 			rd.free_rid(rid)

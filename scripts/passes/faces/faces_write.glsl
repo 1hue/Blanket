@@ -9,10 +9,6 @@ const uint EMPTY = 0xFFFFFFFFu;
 
 layout(local_size_x = 256) in;
 
-layout(push_constant, std430) uniform PushParams {
-	uint table_size;
-};
-
 layout(set = 0, binding = 0, scalar) restrict readonly buffer InVertexBuffer {
 	vec3 in_positions[];
 };
@@ -32,6 +28,7 @@ layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
 };
 
 layout(set = 2, binding = 0, std430) restrict buffer FacesTableBuffer {
+	uint table_size;
 	uint table[];
 };
 
@@ -39,16 +36,14 @@ layout(set = 3, binding = 0, scalar) restrict buffer FacesSlotBuffer {
 	uint16_t slots[];
 };
 
-layout(set = 4, binding = 0, scalar) restrict writeonly buffer OutVertexBuffer {
+layout(set = 4, binding = 0, scalar) restrict writeonly buffer FacesOutVertexBuffer {
+	uint out_vertex_count;
 	vec3 out_positions[];
 };
 
-layout(set = 4, binding = 1, scalar) restrict writeonly buffer OutIndexBuffer {
-	u16vec3 out_faces[];
-};
-
-layout(set = 4, binding = 2, std430) restrict writeonly buffer OutAttributeBuffer {
-	uint out_attributes[];
+layout(set = 4, binding = 1, scalar) restrict writeonly buffer FacesOutIndexBuffer {
+	uint out_face_count;
+	uvec3 out_faces[];
 };
 
 uint hash(vec3 position) {
@@ -84,9 +79,9 @@ void main() {
 
 	if (face >= face_count) return;
 
-	u16vec3 corners = faces[face];
+	uvec3 corners = faces[face];
 	uvec3 merged = uvec3(survivor_of(corners.x), survivor_of(corners.y), survivor_of(corners.z));
-	u16vec3 dense = u16vec3(slots[merged.x], slots[merged.y], slots[merged.z]);
+	uvec3 dense = uvec3(slots[merged.x], slots[merged.y], slots[merged.z]);
 
 	out_faces[face] = dense;
 

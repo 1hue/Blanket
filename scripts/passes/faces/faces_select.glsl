@@ -30,13 +30,13 @@ layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
 	uint in_attributes[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer FacesBuffer {
+layout(set = 1, binding = 0, scalar) restrict buffer FacesSelectBuffer {
 	uint face_count;
 	uint vertex_count; // Filled by faces_dedupe.glsl
 	u16vec3 faces[]; // Source vertex indices of every upright face
 };
 
-layout(set = 2, binding = 0, std430) restrict writeonly buffer FacesSelectDispatchBuffer {
+layout(set = 2, binding = 0, std430) restrict writeonly buffer FacesDedupeDispatchBuffer {
 	uvec3 dispatch; // Indirect args for faces_dedupe.glsl
 };
 

@@ -39,16 +39,6 @@ layout(set = 1, binding = 0, std430) restrict buffer FaceEdgeBuffer {
 	uint shared_mask[];
 };
 
-void copy_attributes(uint src, uint dst) {
-	uint source = (out_custom_offset + src * out_attribute_stride) / 4;
-	uint target = (out_custom_offset + dst * out_attribute_stride) / 4;
-
-	out_attributes[target] = out_attributes[source];
-	out_attributes[target + 1] = out_attributes[source + 1];
-	out_attributes[target + 2] = out_attributes[source + 2];
-	out_attributes[target + 3] = out_attributes[source + 3];
-}
-
 void write_color(uint vert, uint color) {
 	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
 }
@@ -158,6 +148,5 @@ void main() {
 	uint slot = retracted_at(face_idx, corner);
 
 	out_positions[slot] = inset_corner(face, mask, corner, min(bevel_width, max_width(face)));
-	copy_attributes(face[corner], slot);
 	write_color(slot, COLOR_RETRACTED);
 }
