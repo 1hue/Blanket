@@ -11,8 +11,9 @@ default_value = 1.0
 
 [resource]
 modes/cull = 2
+flags/depth_prepass_alpha = true
+flags/unshaded = true
 flags/wireframe = true
-flags/ambient_light_disabled = true
 flags/fog_disabled = true
 flags/specular_occlusion_disabled = true
 nodes/fragment/2/node = SubResource("VisualShaderNodeInput_6dr6d")

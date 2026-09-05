@@ -5,8 +5,10 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
-const float k_miter_limit = 2.0; // Multiples of width a sharp corner may travel
-const float k_min_scale = 0.05; // Smallest the face may shrink to
+const float MITER_LIMIT = 2.0; // Multiples of width a sharp corner may travel
+const float MIN_SCALE = 0.05; // Smallest the face may shrink to
+const uint COLOR_RETRACTED = 0xFF1CA038; // Gasoline green
+const uint COLOR_ORIGINAL = 0xFFE06020; // Blue
 
 // X = face, Y = corner
 layout(local_size_x = 64, local_size_y = 3) in;
@@ -15,6 +17,7 @@ layout(push_constant, std430) uniform PushParams {
 	float bevel_width; // Inset distance from each shared edge, model space
 	uint selected_vertex_count;
 	uint selected_face_count;
+	uint out_color_offset;
 	uint out_custom_offset;
 	uint out_attribute_stride;
 };
@@ -37,11 +40,17 @@ layout(set = 1, binding = 0, std430) restrict buffer FaceEdgeBuffer {
 };
 
 void copy_attributes(uint src, uint dst) {
-	uint s = src * out_attribute_stride;
-	uint d = dst * out_attribute_stride;
-	for (uint i = out_custom_offset; i < out_attribute_stride; ++i) {
-		out_attributes[d + i] = out_attributes[s + i];
-	}
+	uint source = (out_custom_offset + src * out_attribute_stride) / 4;
+	uint target = (out_custom_offset + dst * out_attribute_stride) / 4;
+
+	out_attributes[target] = out_attributes[source];
+	out_attributes[target + 1] = out_attributes[source + 1];
+	out_attributes[target + 2] = out_attributes[source + 2];
+	out_attributes[target + 3] = out_attributes[source + 3];
+}
+
+void write_color(uint vert, uint color) {
+	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
 }
 
 // Edge c runs from corner c to corner c+1, so corner c sits on edges c and c-1
@@ -57,7 +66,7 @@ bool is_shared(uint mask, uint edge) {
 	return (mask & (1 << edge)) != 0;
 }
 
-bool retracts(uint mask, uint corner) {
+bool is_retracted(uint mask, uint corner) {
 	return is_shared(mask, corner) || is_shared(mask, prev_corner(corner));
 }
 
@@ -78,14 +87,14 @@ float max_width(uvec3 face) {
 
 	float inradius = length(cross(p1 - p0, p2 - p0)) / perimeter;
 
-	return inradius * (1.0 - k_min_scale);
+	return inradius * (1.0 - MIN_SCALE);
 }
 
 // Corner c lies on edges c and c-1. Each contributes a line: offset inward
 // by the width if shared, left in place if not. The corner is their
 // intersection, so a boundary edge holds the corner on itself and the
 // silhouette is preserved
-vec3 corner_inset(uvec3 face, uint mask, uint corner, float width) {
+vec3 inset_corner(uvec3 face, uint mask, uint corner, float width) {
 	vec3 apex = out_positions[face[corner]];
 	vec3 to_next = out_positions[face[next_corner(corner)]] - apex;
 	vec3 to_prev = out_positions[face[prev_corner(corner)]] - apex;
@@ -116,7 +125,7 @@ vec3 corner_inset(uvec3 face, uint mask, uint corner, float width) {
 
 	// A sharp corner intersects far out on the bisector - cap the travel
 	float reach = length(p);
-	if (reach > k_miter_limit * width) p *= k_miter_limit * width / reach;
+	if (reach > MITER_LIMIT * width) p *= MITER_LIMIT * width / reach;
 
 	return apex + p.x * ex + p.y * ey;
 }
@@ -135,16 +144,20 @@ void main() {
 		uvec3 repointed = face;
 
 		for (uint i = 0; i < 3; ++i) {
-			if (retracts(mask, i)) repointed[i] = retracted_at(face_idx, i);
+			if (is_retracted(mask, i)) repointed[i] = retracted_at(face_idx, i);
 		}
 
 		out_faces[face_idx] = u16vec3(repointed);
 	}
 
-	if (!retracts(mask, corner)) return;
+	if (!is_retracted(mask, corner)) {
+		write_color(face[corner], COLOR_ORIGINAL);
+		return;
+	}
 
 	uint slot = retracted_at(face_idx, corner);
 
-	out_positions[slot] = corner_inset(face, mask, corner, min(bevel_width, max_width(face)));
+	out_positions[slot] = inset_corner(face, mask, corner, min(bevel_width, max_width(face)));
 	copy_attributes(face[corner], slot);
+	write_color(slot, COLOR_RETRACTED);
 }

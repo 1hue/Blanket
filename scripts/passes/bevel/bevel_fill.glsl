@@ -1,10 +1,13 @@
-// Bridge each shared edge with a fan at both apexes and a strip between their arcs,
-// and repoint the selected faces at their retracted verts.
+// Bridge each shared edge with a fan at both apexes and a strip between their arcs.
 #[compute]
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
+
+const uint COLOR_APEX = 0xFF3030E0; // Red
+const uint COLOR_RING = 0xFFE08030; // Blue
+const uint COLOR_ARC = 0xFF30E030; // Green
 
 layout(local_size_x = 256) in;
 
@@ -14,13 +17,15 @@ layout(push_constant, std430) uniform PushParams {
 	uint arcs; // Rings from apex out to the arc
 	uint selected_vertex_count;
 	uint selected_face_count;
+	uint out_color_offset;
 	uint out_custom_offset;
 	uint out_attribute_stride;
 };
 
 struct SharedEdge {
+	uvec2 faces; // Unused here, but part of the layout
 	uvec2 apexes;
-	uvec2 retracted[2];
+	uvec2 retracted[2]; // Per face, in apex order
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
@@ -37,7 +42,7 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 
 layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	uint shared_count;
-	SharedEdge shared_edges[];
+	layout(offset = 16) SharedEdge shared_edges[];
 };
 
 SharedEdge edge;
@@ -54,6 +59,10 @@ void copy_custom(uint from, uint to) {
 	out_attributes[target + 1] = out_attributes[source + 1];
 	out_attributes[target + 2] = out_attributes[source + 2];
 	out_attributes[target + 3] = out_attributes[source + 3];
+}
+
+void write_color(uint vert, uint color) {
+	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
 }
 
 void write_vertex(uint vert, vec3 position, uint inherit_from) {
@@ -74,26 +83,37 @@ vec3 arc_point(mat3 anchors, uint step) {
 	return mix(anchors[0], anchors[1], float(step) / float(segments));
 }
 
+// Retracted is per face, in apex order - the arc at one apex crosses from one face's vert to the other's
+uvec2 arc_ends(uint end) {
+	return uvec2(edge.retracted[0][end], edge.retracted[1][end]);
+}
+
 mat3 arc_anchors(uint end) {
-	uvec2 pair = edge.retracted[end];
+	uvec2 pair = arc_ends(end);
 
 	// The crease sits on the original edge, so it lies in both faces' planes
 	vec3 apex = out_positions[edge.apexes[end]];
 	vec3 along = out_positions[edge.apexes[1 - end]];
+	float t = clamp(bevel_width / max(distance(apex, along), 1e-9), 0.0, 0.5);
+	vec3 crease = mix(apex, along, t);
 
-	return mat3(out_positions[pair.x], mix(apex, along, bevel_width), out_positions[pair.y]);
+	return mat3(out_positions[pair.x], crease, out_positions[pair.y]);
 }
 
 // Ring 0 is the apex, ring `arcs` is the arc, whose ends are the retracted verts
 uint fan_vert(uint end, uint ring, uint step) {
-	uvec2 pair = edge.retracted[end];
-
 	if (ring == 0) return edge.apexes[end];
-	if (ring < arcs) return ring_base + (end * (arcs - 1) + ring - 1) * arc_count + step;
-	if (step == 0) return pair.x;
-	if (step == arc_steps) return pair.y;
 
-	return arc_base + end * (arc_count - 2) + step - 1;
+	uvec2 pair = arc_ends(end);
+
+	if (ring == arcs) {
+		if (step == 0) return pair.x;
+		if (step == arc_steps) return pair.y;
+
+		return arc_base + end * (arc_count - 2) + step - 1;
+	}
+
+	return ring_base + (end * (arcs - 1) + ring - 1) * arc_count + step;
 }
 
 void build_quad(uint face, uint inner_a, uint inner_b, uint outer_b, uint outer_a, bool flip, bool reverse) {
@@ -113,6 +133,8 @@ void build_fan(uint end, uint face_base) {
 	mat3 anchors = arc_anchors(end);
 	bool reverse = end == 1; // The two apexes sit at opposite ends of the edge
 
+	write_color(apex_vert, COLOR_APEX);
+
 	for (uint ring = 1; ring <= arcs; ring++) {
 		float t = float(ring) / float(arcs);
 
@@ -123,6 +145,7 @@ void build_fan(uint end, uint face_base) {
 			if (ring == arcs && (step == 0 || step == arc_steps)) continue;
 
 			write_vertex(vert, mix(apex, arc_point(anchors, step), t), apex_vert);
+			write_color(vert, ring == arcs ? COLOR_ARC : COLOR_RING);
 		}
 	}
 
@@ -165,15 +188,14 @@ void build_strip(uint face_base) {
 void main() {
 	uint idx = gl_GlobalInvocationID.x;
 
-	// Selected faces now point at the retracted verts shrink wrote
-	if (idx < selected_face_count) {
-		uint base = selected_vertex_count + idx * 3;
-		out_faces[idx] = u16vec3(base, base + 1, base + 2);
-	}
-
+	if (idx == 0) out_positions[15] = vec3(float(shared_count), float(idx), 1.0);
 	if (idx >= shared_count) return;
 
 	edge = shared_edges[idx];
+
+	// (0, 0) is zero-init = degenerate edge
+	if (edge.apexes.x == edge.apexes.y) return;
+
 	arc_steps = segments * 2;
 	arc_count = arc_steps + 1;
 

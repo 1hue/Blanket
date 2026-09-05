@@ -46,10 +46,12 @@ func init_uniforms() -> void:
 		ComputeUtil.create_uniform([dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
 	], SurfaceShaders.shared_edges.shader, 3)
 
-	uniforms.shared_edge_set = shared_edge_uniform_set
-	uniforms.shared_mask_set = shared_mask_uniform_set
 	uniforms.shared_edge_buffer = shared_edge_buffer
+	uniforms.shared_edge_set = shared_edge_uniform_set
+
 	uniforms.shared_mask_buffer = shared_mask_buffer
+	uniforms.shared_mask_set = shared_mask_uniform_set
+
 	uniforms.bevel_fill_dispatch_buffer = dispatch_buffer
 
 
@@ -83,7 +85,8 @@ func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
 	for rid in [
-		shared_edge_uniform_set, shared_edge_buffer, shared_mask_uniform_set, shared_mask_buffer,
+		shared_edge_uniform_set, shared_edge_buffer,
+		shared_mask_uniform_set, shared_mask_buffer,
 		dispatch_uniform_set, dispatch_buffer,
 	]:
 		if rid.is_valid():
