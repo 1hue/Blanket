@@ -1,4 +1,4 @@
-// List every edge shared by two selected faces, store the apex verts.
+// Find every edge shared by two selected faces, store the apex verts.
 // Anchor the verts on the boundary.
 #[compute]
 #version 450
@@ -15,6 +15,7 @@ layout(push_constant, std430) uniform PushParams {
 	uint out_custom_offset;
 	uint out_attribute_stride;
 	uint max_shared_edges;
+	float crease_dot; // Max face-vs-face dot to still bevel
 };
 
 struct SharedEdge {
@@ -23,14 +24,14 @@ struct SharedEdge {
 	uvec2 retracted[2]; // Resultant edges, per face
 };
 
-layout(set = 0, binding = 0, scalar) restrict buffer FacesOutVertexBuffer {
-	uint vertex_count;
-	vec3 out_positions[]; // unused
+layout(set = 0, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
+	uint sel_vertex_count;
+	vec3 sel_positions[]; // unused
 };
 
-layout(set = 0, binding = 1, scalar) restrict buffer FacesOutIndexBuffer {
-	uint face_count;
-	uvec3 out_faces[];
+layout(set = 0, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
+	uint sel_face_count;
+	uvec3 sel_faces[];
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
@@ -48,6 +49,20 @@ layout(set = 3, binding = 0, scalar) restrict writeonly buffer DispatchBuffer {
 	layout(offset = 48) uvec3 dispatch_fill;
 };
 
+vec3 face_normal(uint face) {
+	uvec3 corners = sel_faces[face];
+	vec3 p0 = sel_positions[corners.x];
+	vec3 p1 = sel_positions[corners.y];
+	vec3 p2 = sel_positions[corners.z];
+
+	return normalize(cross(p1 - p0, p2 - p0));
+}
+
+// Near-coplanar faces get no bevel - the crease isn't visible enough to be worth the geometry
+bool is_creased(uint face_a, uint face_b) {
+	return dot(face_normal(face_a), face_normal(face_b)) < crease_dot;
+}
+
 // AB = BA, so store sorted and two corners share an edge iff their pairs match
 uvec2 sorted_edge(uvec2 edge) {
 	return uvec2(min(edge.x, edge.y), max(edge.x, edge.y));
@@ -64,19 +79,19 @@ uvec2 edge_at(uvec3 corners, uint corner) {
 uvec2 edge_at_corner(uint global_corner) {
 	uint face = global_corner / 3;
 
-	return sorted_edge(edge_at(out_faces[face], global_corner % 3));
+	return sorted_edge(edge_at(sel_faces[face], global_corner % 3));
 }
 
 // Every corner gets its own retracted vert, so the slot is just its address.
 // Returned in apex order, since apexes are sorted and corners are wound.
 uvec2 retracted_at_corner(uint global_corner, uvec2 apexes) {
-	uvec3 corners = out_faces[global_corner / 3];
+	uvec3 corners = sel_faces[global_corner / 3];
 	uint corner = global_corner % 3;
 	uvec2 pair = uvec2(corner, (corner + 1) % 3);
 
 	if (corners[corner] != apexes.x) pair = pair.yx;
 
-	return vertex_count + 3 * (global_corner / 3) + pair;
+	return sel_vertex_count + 3 * (global_corner / 3) + pair;
 }
 
 // w = 1 marks vert as sticky
@@ -91,17 +106,18 @@ void main() {
 	// Uniform across the dispatch, so one invocation seeds it for everyone
 	if (face == 0 && corner == 0) {
 		// Fill repoints every selected face too, so its dispatch must cover them all
-		atomicMax(dispatch_fill.x, (face_count + FILL_WORKGROUP_SIZE - 1) / FILL_WORKGROUP_SIZE);
+		atomicMax(dispatch_fill.x, (sel_face_count + FILL_WORKGROUP_SIZE - 1) / FILL_WORKGROUP_SIZE);
 	}
 
-	if (face >= face_count) return;
+	if (face >= sel_face_count) return;
 
 	uint self = face * 3 + corner;
 	uvec2 edge = edge_at_corner(self);
 	bool has_twin = false;
 
-	for (uint twin = 0; twin < face_count * 3; twin++) {
+	for (uint twin = 0; twin < sel_face_count * 3; twin++) {
 		if (twin == self || edge_at_corner(twin) != edge) continue;
+// 		if (!is_creased(face, twin / 3)) continue; // Flat enough to leave alone
 
 		has_twin = true;
 

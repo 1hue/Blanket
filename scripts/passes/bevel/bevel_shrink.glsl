@@ -32,14 +32,14 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
-	uint vertex_count;
-	vec3 in_positions[];
+layout(set = 1, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
+	uint sel_vertex_count;
+	vec3 sel_positions[];
 };
 
-layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
-	uint face_count;
-	uvec3 in_faces[];
+layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
+	uint sel_face_count;
+	uvec3 sel_faces[];
 };
 
 // Bit c set = edge c of this face is shared. Retraction reads only this.
@@ -69,7 +69,7 @@ bool is_retracted(uint mask, uint corner) {
 }
 
 uint retracted_at(uint face_idx, uint corner) {
-	return vertex_count + 3 * face_idx + corner;
+	return sel_vertex_count + 3 * face_idx + corner;
 }
 
 // Insetting from every side collapses the face at the inradius, A/s. Cap
@@ -77,7 +77,7 @@ uint retracted_at(uint face_idx, uint corner) {
 // inverted one. Edges that aren't shared don't inset, so this is loose
 // for boundary faces - which is fine, it only ever clamps
 float max_width(uvec3 face) {
-	mat3 p = mat3(in_positions[face.x], in_positions[face.y], in_positions[face.z]);
+	mat3 p = mat3(sel_positions[face.x], sel_positions[face.y], sel_positions[face.z]);
 	float perimeter = distance(p[0], p[1]) + distance(p[1], p[2]) + distance(p[2], p[0]);
 	if (perimeter < 1e-9) return 0.0;
 
@@ -91,9 +91,9 @@ float max_width(uvec3 face) {
 // intersection, so a boundary edge holds the corner on itself and the
 // silhouette is preserved
 vec3 inset_corner(uvec3 face, uint mask, uint corner, float width) {
-	vec3 apex = in_positions[face[corner]];
-	vec3 to_next = in_positions[face[next_corner(corner)]] - apex;
-	vec3 to_prev = in_positions[face[prev_corner(corner)]] - apex;
+	vec3 apex = sel_positions[face[corner]];
+	vec3 to_next = sel_positions[face[next_corner(corner)]] - apex;
+	vec3 to_prev = sel_positions[face[prev_corner(corner)]] - apex;
 	vec3 normal = cross(to_next, to_prev);
 	float area2 = length(normal);
 	if (area2 < 1e-9) return apex; // Degenerate face, no plane to work in
@@ -129,13 +129,12 @@ vec3 inset_corner(uvec3 face, uint mask, uint corner, float width) {
 void main() {
 	uint face_idx = gl_GlobalInvocationID.x;
 	uint corner = gl_GlobalInvocationID.y;
-	if (face_idx >= face_count) return;
+	if (face_idx >= sel_face_count) return;
 
 	uint mask = shared_mask[face_idx];
-	uvec3 face = in_faces[face_idx];
+	uvec3 face = sel_faces[face_idx];
 
-	// The selection occupies the first vertex_count slots of the new surface
-	out_positions[face[corner]] = in_positions[face[corner]];
+	out_positions[face[corner]] = sel_positions[face[corner]];
 
 	if (corner == 0) {
 		uvec3 repointed = face;

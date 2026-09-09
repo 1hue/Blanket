@@ -6,9 +6,10 @@ signal changed
 const DEFAULT_DEPTH = 0.1
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
 const DEFAULT_BEVEL_WIDTH = 0.2
-const DEFAULT_BEVEL_SEGMENTS = 2
-const DEFAULT_BEVEL_ARCS = 2
+const DEFAULT_BEVEL_SEGMENTS = 1
+const DEFAULT_BEVEL_ARCS = 1
 const DEFAULT_SMOOTH_STRENGTH = 0.5
+const DEFAULT_MIN_CREASE_DEGREES = 15.0
 
 #region Source surface
 var in_vertex_count: int
@@ -67,6 +68,15 @@ var edge_face_count: int:
 
 ## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees
 var upright_dot := cos(deg_to_rad(DEFAULT_MAX_SLOPE_DEGREES))
+
+## Below this angle between adjacent faces, the edge is treated as flat and left unbeveled
+var crease_dot := cos(deg_to_rad(DEFAULT_MIN_CREASE_DEGREES))
+
+var min_crease_degrees := DEFAULT_MIN_CREASE_DEGREES:
+	set(value):
+		min_crease_degrees = value
+		crease_dot = cos(deg_to_rad(value))
+		changed.emit()
 
 ## World up translated to model local space, normalized
 var local_up := Vector3.UP:

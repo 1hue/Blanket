@@ -12,9 +12,9 @@ var dispatch_buffer: RID
 var dispatch: RID
 
 #region Faces
-var faces_scratch: RID # Vertex + Index buffer
-var index_scratch_buffer: RID
-var vertex_scratch_buffer: RID
+var selected_faces: RID # Vertex + Index buffer
+var selected_index_buffer: RID
+var selected_vertex_buffer: RID
 var faces_table: RID
 var faces_table_buffer: RID
 #endregion

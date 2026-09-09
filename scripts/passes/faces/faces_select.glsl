@@ -32,14 +32,14 @@ layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
 	uint in_attributes[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
-	uint vertex_count; // Unused
-	vec3 out_positions[]; // Unused
+layout(set = 1, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
+	uint sel_vertex_count; // Unused
+	vec3 sel_positions[]; // Unused
 };
 
-layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
-	uint face_count;
-	uvec3 out_faces[]; // Source vertex indices until faces_write.glsl repoints them
+layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
+	uint sel_face_count;
+	uvec3 sel_faces[]; // Source vertex indices until faces_write.glsl repoints them
 };
 
 layout(set = 2, binding = 0, scalar) restrict writeonly buffer DispatchBuffer {
@@ -86,8 +86,8 @@ void main() {
 
 	if (!is_upright) return;
 
-	uint slot = atomicAdd(face_count, 1);
-	out_faces[slot] = corners;
+	uint slot = atomicAdd(sel_face_count, 1);
+	sel_faces[slot] = corners;
 
 	atomicMax(dispatch_dedupe.x, 1 + slot / DEDUPE_WORKGROUP_SIZE);
 }

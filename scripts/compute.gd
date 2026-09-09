@@ -129,8 +129,8 @@ func dumpf(buffer: RID, name := "") -> void:
 
 
 func debug_faces_multipass() -> void:
-	dump_uvec3(sets.index_scratch_buffer, "index_scratch_buffer", true)
-	dump_vec3(sets.vertex_scratch_buffer, "vertex_scratch_buffer", true)
+	dump_uvec3(sets.selected_index_buffer, "selected_index_buffer", true)
+	dump_vec3(sets.selected_vertex_buffer, "selected_vertex_buffer", true)
 
 
 func debug_out_mesh() -> void:

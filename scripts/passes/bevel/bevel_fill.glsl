@@ -38,14 +38,14 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
-layout(set = 1, binding = 0, scalar) restrict buffer FacesVertexScratchBuffer {
-	uint vertex_count;
-	vec3 in_positions[];
+layout(set = 1, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
+	uint sel_vertex_count;
+	vec3 sel_positions[]; // unused
 };
 
-layout(set = 1, binding = 1, scalar) restrict buffer FacesIndexScratchBuffer {
-	uint face_count;
-	uvec3 in_faces[];
+layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
+	uint sel_face_count;
+	uvec3 sel_faces[]; // unused
 };
 
 layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
@@ -209,9 +209,9 @@ void main() {
 	uint fan_verts = (arcs - 1) * arc_count + arc_count - 2;
 	uint fan_faces = arc_steps + (arcs - 1) * arc_steps * 2;
 
-	ring_base = vertex_count + face_count * 3 + idx * fan_verts * 2;
+	ring_base = sel_vertex_count + sel_face_count * 3 + idx * fan_verts * 2;
 	arc_base = ring_base + (arcs - 1) * arc_count * 2;
-	uint face_base = face_count + idx * (fan_faces * 2 + arc_steps * 2);
+	uint face_base = sel_face_count + idx * (fan_faces * 2 + arc_steps * 2);
 
 	build_fan(0, face_base);
 	build_fan(1, face_base + fan_faces);

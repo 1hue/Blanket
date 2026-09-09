@@ -24,7 +24,7 @@ func compute() -> void:
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_fill.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 0)
-	rd.compute_list_bind_uniform_set(compute_list, sets.faces_scratch, 1)
+	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 1)
 	rd.compute_list_bind_uniform_set(compute_list, sets.shared_edge, 2)
 	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, 48)
 	rd.compute_list_end()

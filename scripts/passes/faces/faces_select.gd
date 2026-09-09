@@ -6,32 +6,32 @@ const SIZE_PARAMS = 40
 const VERTEX_STRIDE = 12 # vec3
 const INDEX_STRIDE = 12 # uvec3 for simplicity
 
-var faces_scratch_set: RID
-var index_scratch_buffer: RID
-var vertex_scratch_buffer: RID
+var selected_faces_set: RID
+var selected_index_buffer: RID
+var selected_vertex_buffer: RID
 
 
 func _pre() -> void:
 	push_constant.resize(SIZE_PARAMS)
-	init_faces_scratch_buffers()
+	init_selected_faces_buffers()
 
 
-func init_faces_scratch_buffers() -> void:
+func init_selected_faces_buffers() -> void:
 	var max_verts := mini(params.in_vertex_count, params.in_face_count * 3)
 	var vertex_size := align_buffer(4 + maxi(max_verts, 1) * VERTEX_STRIDE)
 	var index_size := align_buffer(4 + maxi(params.in_face_count, 1) * INDEX_STRIDE)
 
-	vertex_scratch_buffer = rd.storage_buffer_create(vertex_size)
-	index_scratch_buffer = rd.storage_buffer_create(index_size)
+	selected_vertex_buffer = rd.storage_buffer_create(vertex_size)
+	selected_index_buffer = rd.storage_buffer_create(index_size)
 
-	faces_scratch_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([vertex_scratch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-		ComputeUtil.create_uniform([index_scratch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
+	selected_faces_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([selected_vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		ComputeUtil.create_uniform([selected_index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
 	], SurfaceShaders.faces_select.shader, 1)
 
-	sets.faces_scratch = faces_scratch_set
-	sets.index_scratch_buffer = index_scratch_buffer
-	sets.vertex_scratch_buffer = vertex_scratch_buffer
+	sets.selected_faces = selected_faces_set
+	sets.selected_index_buffer = selected_index_buffer
+	sets.selected_vertex_buffer = selected_vertex_buffer
 
 
 func pack_params() -> PackedByteArray:
@@ -51,14 +51,14 @@ func pack_params() -> PackedByteArray:
 
 func compute() -> void:
 	# Clear the counts - buffers not always zeroed
-	rd.buffer_clear(index_scratch_buffer, 0, 4)
-	rd.buffer_clear(vertex_scratch_buffer, 0, 4)
+	rd.buffer_clear(selected_index_buffer, 0, 4)
+	rd.buffer_clear(selected_vertex_buffer, 0, 4)
 
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.faces_select.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
-	rd.compute_list_bind_uniform_set(compute_list, faces_scratch_set, 1)
+	rd.compute_list_bind_uniform_set(compute_list, selected_faces_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, sets.dispatch, 2)
 	rd.compute_list_dispatch(compute_list, ceili(params.in_face_count / float(WORKGROUP_SIZE)), 1, 1)
 	rd.compute_list_end()
@@ -67,8 +67,6 @@ func compute() -> void:
 func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
-	for rid in [
-		faces_scratch_set, index_scratch_buffer, vertex_scratch_buffer,
-	]:
+	for rid in [selected_faces_set, selected_index_buffer, selected_vertex_buffer]:
 		if rid.is_valid():
 			rd.free_rid(rid)
