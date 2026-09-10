@@ -7,7 +7,7 @@ var surface: ComputeSurface
 
 var in_mesh: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 var out_mesh: RID
-## 0 = faces_dedupe, 1 = faces_write, 2 = shared_edges, 3 = bevel_shrink, 4 = bevel_fill
+## 0 = faces_dedupe, 1 = faces_write, 2 = shared_edges, 3 = out_mesh, 4 = bevel_shrink, 5 = bevel_fill
 var dispatch_buffer: RID
 var dispatch: RID
 
@@ -58,7 +58,7 @@ func init_in_mesh_set() -> void:
 
 
 func init_indirect_dispatch() -> void:
-	dispatch_buffer = dispatch_buffer_create(5)
+	dispatch_buffer = dispatch_buffer_create(6)
 	dispatch = rd.uniform_set_create([
 		ComputeUtil.create_uniform([dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.faces_select.shader, 2)

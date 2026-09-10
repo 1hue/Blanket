@@ -6,7 +6,9 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
+const uint OUT_MESH_WORKGROUP_SIZE = 64;
 const uint FILL_WORKGROUP_SIZE = 256;
+const uint FLAG_BOUNDARY = 1;
 
 // X = face, Y = corner (the edge running from that corner to the next)
 layout(local_size_x = 64, local_size_y = 3) in;
@@ -26,7 +28,7 @@ struct SharedEdge {
 
 layout(set = 0, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
 	uint sel_vertex_count;
-	vec3 sel_positions[]; // unused
+	vec3 sel_positions[];
 };
 
 layout(set = 0, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
@@ -45,8 +47,13 @@ layout(set = 2, binding = 0, std430) restrict buffer SharedMaskBuffer {
 	uint shared_mask[];
 };
 
-layout(set = 3, binding = 0, scalar) restrict writeonly buffer DispatchBuffer {
-	layout(offset = 48) uvec3 dispatch_fill;
+layout(set = 2, binding = 1, std430) restrict buffer VertexFlagBuffer {
+	uint vertex_flags[];
+};
+
+layout(set = 3, binding = 0, scalar) restrict buffer DispatchBuffer {
+	layout(offset = 36) uvec3 dispatch_out_mesh;
+	layout(offset = 60) uvec3 dispatch_fill;
 };
 
 vec3 face_normal(uint face) {
@@ -96,6 +103,7 @@ uvec2 retracted_at_corner(uint global_corner, uvec2 apexes) {
 
 // w = 1 marks vert as sticky
 void anchor(uint vert) {
+	atomicOr(vertex_flags[vert], FLAG_BOUNDARY);
 // 	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = 1;
 }
 
@@ -105,7 +113,9 @@ void main() {
 
 	// Uniform across the dispatch, so one invocation seeds it for everyone
 	if (face == 0 && corner == 0) {
-		// Fill repoints every selected face too, so its dispatch must cover them all
+		uint lanes = max(sel_vertex_count, sel_face_count);
+		atomicMax(dispatch_out_mesh.x, (lanes + OUT_MESH_WORKGROUP_SIZE - 1) / OUT_MESH_WORKGROUP_SIZE);
+
 		atomicMax(dispatch_fill.x, (sel_face_count + FILL_WORKGROUP_SIZE - 1) / FILL_WORKGROUP_SIZE);
 	}
 
@@ -117,7 +127,7 @@ void main() {
 
 	for (uint twin = 0; twin < sel_face_count * 3; twin++) {
 		if (twin == self || edge_at_corner(twin) != edge) continue;
-// 		if (!is_creased(face, twin / 3)) continue; // Flat enough to leave alone
+		//if (!is_creased(face, twin / 3)) continue; // Flat enough to leave alone
 
 		has_twin = true;
 
@@ -125,7 +135,7 @@ void main() {
 
 		uint slot = atomicAdd(shared_count, 1);
 
-		if (slot >= max_shared_edges) return; // Non-manifold input overflowed the buffer
+		if (slot >= max_shared_edges) break; // Non-manifold input overflowed the buffer
 
 		shared_edges[slot].faces = uvec2(face, twin / 3);
 		shared_edges[slot].apexes = edge;

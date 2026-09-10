@@ -8,7 +8,6 @@
 const float MITER_LIMIT = 2.0; // Multiples of width a sharp corner may travel
 const float MIN_SCALE = 0.05; // Smallest the face may shrink to
 const uint COLOR_RETRACTED = 0xFF1CA038; // Gasoline green
-const uint COLOR_ORIGINAL = 0xFFE06020; // Blue
 
 // X = face, Y = corner
 layout(local_size_x = 64, local_size_y = 3) in;
@@ -47,8 +46,17 @@ layout(set = 2, binding = 0, std430) restrict buffer SharedMaskBuffer {
 	uint shared_mask[];
 };
 
+// out_mesh owns the boundary flags - retracted verts are never anchored
+layout(set = 2, binding = 1, std430) restrict buffer VertexFlagBuffer {
+	uint vertex_flags[]; // unused
+};
+
 void write_color(uint vert, uint color) {
 	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
+}
+
+void write_custom_w(uint vert, float value) {
+	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = floatBitsToUint(value);
 }
 
 // Edge c runs from corner c to corner c+1, so corner c sits on edges c and c-1
@@ -134,8 +142,6 @@ void main() {
 	uint mask = shared_mask[face_idx];
 	uvec3 face = sel_faces[face_idx];
 
-	out_positions[face[corner]] = sel_positions[face[corner]];
-
 	if (corner == 0) {
 		uvec3 repointed = face;
 
@@ -146,13 +152,12 @@ void main() {
 		out_faces[face_idx] = u16vec3(repointed);
 	}
 
-	if (!is_retracted(mask, corner)) {
-		write_color(face[corner], COLOR_ORIGINAL);
-		return;
-	}
+	if (!is_retracted(mask, corner)) return;
 
+	// A retracted vert is new geometry, so it carries no boundary flag
 	uint slot = retracted_at(face_idx, corner);
 
 	out_positions[slot] = inset_corner(face, mask, corner, min(bevel_width, max_width(face)));
+	write_custom_w(slot, 0.0);
 	write_color(slot, COLOR_RETRACTED);
 }

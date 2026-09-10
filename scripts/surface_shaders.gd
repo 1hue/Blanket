@@ -31,6 +31,7 @@ var faces_select: ShaderPipeline
 var faces_dedupe: ShaderPipeline
 var faces_write: ShaderPipeline
 var shared_edges: ShaderPipeline
+var out_mesh: ShaderPipeline
 var bevel_shrink: ShaderPipeline
 var bevel_fill: ShaderPipeline
 var verts: ShaderPipeline
@@ -52,6 +53,7 @@ func _init() -> void:
 	faces_dedupe = ShaderPipeline.new("res://scripts/passes/faces/faces_dedupe.glsl")
 	faces_write = ShaderPipeline.new("res://scripts/passes/faces/faces_write.glsl")
 	shared_edges = ShaderPipeline.new("res://scripts/passes/shared_edges.glsl")
+	out_mesh = ShaderPipeline.new("res://scripts/passes/out_mesh.glsl")
 	bevel_shrink = ShaderPipeline.new("res://scripts/passes/bevel/bevel_shrink.glsl")
 	bevel_fill = ShaderPipeline.new("res://scripts/passes/bevel/bevel_fill.glsl")
 	#shape = ShaderPipeline.new("res://scripts/passes/shape.glsl")

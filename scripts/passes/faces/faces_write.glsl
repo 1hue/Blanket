@@ -27,7 +27,7 @@ layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
-	uint sel_vertex_count; // unused
+	uint sel_vertex_count;
 	vec3 sel_positions[]; // unused
 };
 

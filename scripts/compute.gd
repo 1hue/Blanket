@@ -35,8 +35,9 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		FacesDedupePass.new(mesh, surface, params, sets),
 		FacesWritePass.new(mesh, surface, params, sets),
 		SharedEdgesPass.new(mesh, surface, params, sets),
-		BevelShrinkPass.new(mesh, surface, params, sets),
-		BevelFillPass.new(mesh, surface, params, sets),
+		OutMeshPass.new(mesh, surface, params, sets),
+		#BevelShrinkPass.new(mesh, surface, params, sets),
+		#BevelFillPass.new(mesh, surface, params, sets),
 		#SmoothSumPass.new(mesh, surface, params, sets),
 		#SmoothWritePass.new(mesh, surface, params, sets),
 		#NormalsSumPass.new(mesh, surface, params, sets),
@@ -123,6 +124,19 @@ func dump_vec3(buffer: RID, name := "", has_count := false) -> void:
 	print_rich("[color=goldenrod]%s: " % label, values)
 
 
+func dump_attributes(buffer: RID, name := "") -> void:
+	var bytes := rd.buffer_get_data(buffer)
+	var stride: int = params.out_attribute_stride
+	var count := bytes.size() / stride
+
+	for i in count:
+		var base := i * stride
+		var color := bytes.decode_u32(base + params.out_color_offset)
+		var w := bytes.decode_float(base + params.out_custom_offset + 12)
+
+		print_rich("[color=goldenrod]%s[%d]: color=%08X anchor=%.0f" % [name, i, color, w])
+
+
 func dumpf(buffer: RID, name := "") -> void:
 	var bytes := rd.buffer_get_data(buffer)
 	print_rich("[color=burlywood]%s: " % name, bytes.to_float32_array() ,"[/color]")
@@ -136,6 +150,7 @@ func debug_faces_multipass() -> void:
 func debug_out_mesh() -> void:
 	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
+	var attr_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, surface.idx)
 	prints(
 		"params.in_face_count:", params.in_face_count,
 		"params.bevel_arcs:", params.bevel_arcs,
@@ -147,6 +162,7 @@ func debug_out_mesh() -> void:
 	)
 	dump_u16vec3(index_buffer, "index_buffer")
 	dump_vec3(vertex_buffer, "vertex_buffer")
+	#dump_attributes(attr_buffer, "attr_buffer")
 
 
 func debug() -> void:
@@ -157,23 +173,4 @@ func debug() -> void:
 	#print_rich("[color=cadet_blue]table_buffer[", table.size() / 4, "] uint32: ", ComputeUtil.to_uint32_array(table), "[/color]")
 	#var slots := rd.buffer_get_data(uniforms.faces_slot_buffer)
 	#print_rich("[color=cadet_blue]slots_buffer[", slots.size() / 2, "] uint16: ", ComputeUtil.to_int16_array(slots), "[/color]")
-
-	#var attr_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, surface.idx)
-	#var attrs := rd.buffer_get_data(attr_buffer)
-	#print_rich(
-		#"[color=aqua]attr_buffer[%s]: " % attrs.size(), attrs, "[/color]"
-	#)
-
-	#var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
-	#var indices := rd.buffer_get_data(index_buffer, 0, params.out_index_count * params.out_index_stride)
-	#print_rich(
-		#"[color=aqua]index_buffer[out_index_count=", params.out_index_count, "]: ", ComputeUtil.to_vector3i_array(ComputeUtil.to_int16_array(indices)), "[/color]"
-	#)
-##
-	#var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
-	#var positions := rd.buffer_get_data(vertex_buffer, 0, params.out_vertex_count * params.out_vertex_stride)
-	#print_rich(
-		#"[color=gold]vertex_buffer[out_vertex_count=", params.out_vertex_count, "]: ", positions.to_vector3_array(), "[/color]"
-	#)
-	pass
 #endregion

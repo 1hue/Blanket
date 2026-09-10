@@ -33,8 +33,8 @@ layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
-	uint sel_vertex_count; // Unused
-	vec3 sel_positions[]; // Unused
+	uint sel_vertex_count; // unused
+	vec3 sel_positions[]; // unused
 };
 
 layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
@@ -42,7 +42,7 @@ layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 	uvec3 sel_faces[]; // Source vertex indices until faces_write.glsl repoints them
 };
 
-layout(set = 2, binding = 0, scalar) restrict writeonly buffer DispatchBuffer {
+layout(set = 2, binding = 0, scalar) restrict buffer DispatchBuffer {
 	uvec3 dispatch_dedupe;
 };
 

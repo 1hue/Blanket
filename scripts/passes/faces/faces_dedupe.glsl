@@ -42,10 +42,10 @@ layout(set = 2, binding = 0, scalar) restrict buffer FacesTableBuffer {
 	layout(offset = 8) TableEntry table[];
 };
 
-layout(set = 3, binding = 0, scalar) restrict writeonly buffer DispatchBuffer {
+layout(set = 3, binding = 0, scalar) restrict buffer DispatchBuffer {
 	layout(offset = 12) uvec3 dispatch_write;
-	uvec3 dispatch_shared;
-	uvec3 dispatch_shrink;
+	layout(offset = 24) uvec3 dispatch_shared;
+	layout(offset = 48) uvec3 dispatch_shrink;
 };
 
 uint hash(vec3 position) {
