@@ -2,88 +2,124 @@ extends ComputePass
 class_name SharedEdgesPass
 
 const WORKGROUP_SIZE = 64
-const SIZE_PARAMS = 16
+const SIZE_PARAMS = 12
+const SHARED_EDGE_STRIDE = 32
+const BOUNDARY_EDGE_STRIDE = 8
 const STRUCT_STRIDE = 32
 
 var shared_edge_set: RID
 var shared_edge_buffer: RID
 var shared_edge_buffer_size: int
-var boundary_flag_buffer: RID
-var boundary_flag_buffer_size: int
 
-var shared_mask_set: RID
-var shared_mask_buffer: RID
-var shared_mask_buffer_size: int
+var face_edge_mask_set: RID
+var face_edge_mask_buffer: RID
+var face_edge_mask_buffer_size: int
+
+var vertex_flag_set: RID
+var vertex_flag_buffer: RID
+var vertex_flag_buffer_size: int
+
+var boundary_set: RID
+var boundary_buffer: RID
+var boundary_buffer_size: int
 
 
 func _pre() -> void:
 	push_constant.resize(SIZE_PARAMS)
 	init_shared_edge_buffer()
-	init_shared_mask_buffer()
+	init_face_edge_mask_buffer()
+	init_vertex_flag_buffer()
+	init_boundary_buffer()
 
 
 func init_shared_edge_buffer() -> void:
-	# shared_count, then one entry per manifold edge pair across the whole source mesh
-	shared_edge_buffer_size = align_buffer(4 + params.max_shared_edges * STRUCT_STRIDE)
+	# shared_edge_count, then one entry per creased pair found across the selection
+	shared_edge_buffer_size = align_buffer(4 + params.max_shared_edges * SHARED_EDGE_STRIDE)
 	shared_edge_buffer = rd.storage_buffer_create(shared_edge_buffer_size)
 
 	shared_edge_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([shared_edge_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
+		ComputeUtil.create_uniform([shared_edge_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.shared_edges.shader, 1)
 
 	sets.shared_edge_buffer = shared_edge_buffer
 	sets.shared_edge = shared_edge_set
 
 
-func init_shared_mask_buffer() -> void:
+func init_face_edge_mask_buffer() -> void:
 	# One 3-bit mask per face, marking which of its edges are shared
-	shared_mask_buffer_size = align_buffer(maxi(params.in_face_count, 1) * 4)
-	shared_mask_buffer = rd.storage_buffer_create(shared_mask_buffer_size)
+	face_edge_mask_buffer_size = align_buffer(maxi(params.in_face_count, 1) * 4)
+	face_edge_mask_buffer = rd.storage_buffer_create(face_edge_mask_buffer_size)
 
-	boundary_flag_buffer_size = align_buffer(params.in_vertex_count * 4)
-	boundary_flag_buffer = rd.storage_buffer_create(boundary_flag_buffer_size)
-
-	shared_mask_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([shared_mask_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
-		ComputeUtil.create_uniform([boundary_flag_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
+	face_edge_mask_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([face_edge_mask_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.shared_edges.shader, 2)
 
-	sets.shared_mask_buffer = shared_mask_buffer
-	sets.shared_mask = shared_mask_set
-	sets.boundary_flag_buffer = boundary_flag_buffer
+	sets.face_edge_mask_buffer = face_edge_mask_buffer
+	sets.face_edge_mask = face_edge_mask_set
+
+
+func init_vertex_flag_buffer() -> void:
+	# One flag word per deduped vert - in_vertex_count is the upper bound
+	vertex_flag_buffer_size = align_buffer(maxi(params.in_vertex_count, 1) * 4)
+	vertex_flag_buffer = rd.storage_buffer_create(vertex_flag_buffer_size)
+
+	vertex_flag_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([vertex_flag_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+	], SurfaceShaders.shared_edges.shader, 3)
+
+	sets.vertex_flag_buffer = vertex_flag_buffer
+	sets.vertex_flag = vertex_flag_set
+
+
+func init_boundary_buffer() -> void:
+	# boundary_count, then one wound edge per unpaired corner
+	boundary_buffer_size = align_buffer(4 + params.max_boundary_edges * BOUNDARY_EDGE_STRIDE)
+	boundary_buffer = rd.storage_buffer_create(boundary_buffer_size)
+
+	boundary_set = rd.uniform_set_create([
+		ComputeUtil.create_uniform([boundary_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+	], SurfaceShaders.shared_edges.shader, 4)
+
+	sets.boundary_buffer = boundary_buffer
+	sets.boundary = boundary_set
 
 
 func pack_params() -> PackedByteArray:
-	push_constant.encode_u32(0, params.out_custom_offset)
-	push_constant.encode_u32(4, params.out_attribute_stride)
-	push_constant.encode_u32(8, params.max_shared_edges)
-	push_constant.encode_float(12, params.crease_dot)
+	push_constant.encode_u32(0, params.max_shared_edges)
+	push_constant.encode_u32(4, params.max_boundary_edges)
+	push_constant.encode_float(8, params.crease_dot)
 
 	return push_constant
 
 
 func compute() -> void:
 	rd.buffer_clear(shared_edge_buffer, 0, shared_edge_buffer_size)
-	rd.buffer_clear(shared_mask_buffer, 0, shared_mask_buffer_size)
-	rd.buffer_clear(boundary_flag_buffer, 0, boundary_flag_buffer_size)
+	rd.buffer_clear(face_edge_mask_buffer, 0, face_edge_mask_buffer_size)
+	rd.buffer_clear(vertex_flag_buffer, 0, vertex_flag_buffer_size)
+	rd.buffer_clear(boundary_buffer, 0, boundary_buffer_size)
 
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.shared_edges.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 0)
 	rd.compute_list_bind_uniform_set(compute_list, shared_edge_set, 1)
-	rd.compute_list_bind_uniform_set(compute_list, shared_mask_set, 2)
-	rd.compute_list_bind_uniform_set(compute_list, sets.dispatch, 3)
-	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, 24)
+	rd.compute_list_bind_uniform_set(compute_list, face_edge_mask_set, 2)
+	rd.compute_list_bind_uniform_set(compute_list, vertex_flag_set, 3)
+	rd.compute_list_bind_uniform_set(compute_list, boundary_set, 4)
+	rd.compute_list_bind_uniform_set(compute_list, sets.dispatch, 5)
+	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, 2 * 12)
 	rd.compute_list_end()
 
 
 func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
+
 	for rid in [
 		shared_edge_set, shared_edge_buffer,
-		shared_mask_set, shared_mask_buffer, boundary_flag_buffer
+		face_edge_mask_set, face_edge_mask_buffer,
+		vertex_flag_set, vertex_flag_buffer,
+		boundary_set, boundary_buffer,
 	]:
 		if rid.is_valid():
 			rd.free_rid(rid)

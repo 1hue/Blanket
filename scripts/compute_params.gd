@@ -51,6 +51,8 @@ var bevel_arcs := DEFAULT_BEVEL_ARCS
 var smooth_strength := DEFAULT_SMOOTH_STRENGTH
 var max_shared_edges: int:
 	get: return in_face_count * 3
+var max_boundary_edges: int:
+	get: return in_face_count * 3
 var arc_steps: int:
 	get: return bevel_segments * 2
 var arc_count: int:
@@ -64,6 +66,11 @@ var edge_vertex_count: int:
 	get: return fan_vertex_count * 2
 var edge_face_count: int:
 	get: return fan_face_count * 2 + arc_steps * 2
+#endregion
+
+#region Wall
+var wall_vertex_base: int
+var wall_face_base: int
 #endregion
 
 ## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees

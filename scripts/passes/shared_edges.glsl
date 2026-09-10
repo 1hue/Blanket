@@ -1,5 +1,5 @@
 // Find every edge shared by two selected faces, store the apex verts.
-// Anchor the verts on the boundary.
+// Anchor the verts on the boundary and record its edges for the wall.
 #[compute]
 #version 450
 
@@ -8,15 +8,15 @@
 
 const uint OUT_MESH_WORKGROUP_SIZE = 64;
 const uint FILL_WORKGROUP_SIZE = 256;
+const uint BOUNDARY_WORKGROUP_SIZE = 64;
 const uint FLAG_BOUNDARY = 1;
 
 // X = face, Y = corner (the edge running from that corner to the next)
 layout(local_size_x = 64, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
-	uint out_custom_offset;
-	uint out_attribute_stride;
 	uint max_shared_edges;
+	uint max_boundary_edges;
 	float crease_dot; // Max face-vs-face dot to still bevel
 };
 
@@ -37,24 +37,29 @@ layout(set = 0, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 };
 
 layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
-	uint shared_count;
-	// Zero-initialised but (0,0) is a degenerate edge, even if 0 is a valid vert index
+	uint shared_edge_count;
 	SharedEdge shared_edges[];
 };
 
 // Bit c set = edge c of this face is shared. Retraction reads only this.
-layout(set = 2, binding = 0, std430) restrict buffer SharedMaskBuffer {
-	uint shared_mask[];
+layout(set = 2, binding = 0, std430) restrict buffer FaceEdgeMaskBuffer {
+	uint face_edge_mask[];
 };
 
-// Bit 0 set = vert lies on the selection boundary, so it must not move
-layout(set = 2, binding = 1, std430) restrict buffer VertexFlagBuffer {
+// Bit 0 set = vert lies on the selection boundary
+layout(set = 3, binding = 0, std430) restrict buffer VertexFlagBuffer {
 	uint vertex_flags[];
 };
 
-layout(set = 3, binding = 0, scalar) restrict buffer DispatchBuffer {
+layout(set = 4, binding = 0, scalar) restrict buffer BoundaryBuffer {
+	uint boundary_count;
+	uvec2 boundary_edges[]; // Face winding order - the wall needs the direction
+};
+
+layout(set = 5, binding = 0, scalar) restrict buffer DispatchBuffer {
 	layout(offset = 36) uvec3 dispatch_out_mesh;
 	layout(offset = 60) uvec3 dispatch_fill;
+	uvec3 dispatch_boundary;
 };
 
 vec3 face_normal(uint face) {
@@ -102,9 +107,23 @@ uvec2 retracted_at_corner(uint global_corner, uvec2 apexes) {
 	return sel_vertex_count + 3 * (global_corner / 3) + pair;
 }
 
-// Boundary verts are pinned for the post-bake displacement pass
-void anchor(uint vert) {
+// Boundary verts are pinned - the wall row anchors them while the surface lifts
+void mark_boundary(uint vert) {
 	atomicOr(vertex_flags[vert], FLAG_BOUNDARY);
+}
+
+// Winding order matters here, so take the edge unsorted
+void record_boundary(uint face, uint corner, uvec2 edge) {
+	uint slot = atomicAdd(boundary_count, 1);
+
+	if (slot >= max_boundary_edges) return;
+
+	boundary_edges[slot] = edge_at(sel_faces[face], corner);
+
+	atomicMax(dispatch_boundary.x, 1 + slot / BOUNDARY_WORKGROUP_SIZE);
+
+	mark_boundary(edge.x);
+	mark_boundary(edge.y);
 }
 
 // The pair is recorded once, by the lower lane. False means the edge is too flat to bevel
@@ -114,9 +133,9 @@ bool match_twin(uint self, uint twin, uvec2 edge) {
 	if (!is_creased(face, twin / 3)) return false; // Flat enough to leave alone
 	if (twin < self) return true; // The other lane records it
 
-	uint slot = atomicAdd(shared_count, 1);
+	uint slot = atomicAdd(shared_edge_count, 1);
 
-	if (slot >= max_shared_edges) return true; // Non-manifold input overflowed the buffer
+	if (slot >= max_shared_edges) return true; // Buffer overflowed
 
 	shared_edges[slot].faces = uvec2(face, twin / 3);
 	shared_edges[slot].apexes = edge;
@@ -150,18 +169,16 @@ void main() {
 	for (uint twin = 0; twin < sel_face_count * 3; twin++) {
 		if (twin == self || edge_at_corner(twin) != edge) continue;
 
-		has_twin = true;
+		has_twin = true; // Topology only - anchoring must not depend on the crease test
 		is_shared_edge = match_twin(self, twin, edge) || is_shared_edge;
 	}
 
-
 	if (is_shared_edge) {
 		// Retraction needs both edges at a corner; each is found by its own lane
-		atomicOr(shared_mask[face], 1u << corner);
+		atomicOr(face_edge_mask[face], 1u << corner);
 	}
 
 	if (!has_twin) {
-		anchor(edge.x);
-		anchor(edge.y);
+		record_boundary(face, corner, edge);
 	}
 }

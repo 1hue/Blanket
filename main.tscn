@@ -51,7 +51,7 @@ font_size = 96
 horizontal_alignment = 0
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=1815120481]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.787752, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04680276, 0, 0)
 script = ExtResource("3_h2yge")
 metadata/_custom_type_script = "uid://8ehypqim7667"
 

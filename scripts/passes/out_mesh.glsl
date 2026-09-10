@@ -1,4 +1,4 @@
-// Seed the out surface
+// Seed the out surface with the flat selection - visible as soon as this runs
 #[compute]
 #version 450
 
@@ -7,7 +7,7 @@
 
 const uint FLAG_BOUNDARY = 1;
 const uint COLOR_ORIGINAL = 0xFFE06020; // Blue
-const uint COLOR_ANCHORED = 0xFF0000FF; // Red
+const uint COLOR_BOUNDARY = 0xFF0000FF; // Red
 
 layout(local_size_x = 64) in;
 
@@ -39,13 +39,7 @@ layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 	uvec3 sel_faces[];
 };
 
-// Declared for layout match only
-layout(set = 2, binding = 0, std430) restrict buffer SharedMaskBuffer {
-	uint shared_mask[];
-};
-
-// Bit 0 set = vert lies on the selection boundary
-layout(set = 2, binding = 1, std430) restrict buffer VertexFlagBuffer {
+layout(set = 2, binding = 0, std430) restrict buffer VertexFlagBuffer {
 	uint vertex_flags[];
 };
 
@@ -53,29 +47,30 @@ void write_color(uint vert, uint color) {
 	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
 }
 
-// Custom0 is RGBA_FLOAT, so w is the 4th word
-void write_custom_w(uint vert, float value) {
-	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = floatBitsToUint(value);
+// Custom0.w = 1 freezes the vert against the displacement pass
+void write_freeze(uint vert, float frozen) {
+	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = floatBitsToUint(frozen);
 }
 
-// The selection occupies the first sel_vertex_count slots of the new surface
+// Marked verts still move - only the wall row the boundary pass adds is frozen
 void write_vertex(uint vert) {
-	bool anchored = (vertex_flags[vert] & FLAG_BOUNDARY) != 0;
+	bool marked = (vertex_flags[vert] & FLAG_BOUNDARY) != 0;
 
 	out_positions[vert] = sel_positions[vert];
-	write_custom_w(vert, float(anchored));
-	write_color(vert, anchored ? COLOR_ANCHORED : COLOR_ORIGINAL);
+	write_freeze(vert, 0.0);
+	write_color(vert, marked ? COLOR_BOUNDARY : COLOR_ORIGINAL);
 }
 
 void main() {
 	uint idx = gl_GlobalInvocationID.x;
 
+	// Verts and faces are separate ranges, so a lane may do one, both or neither
 	if (idx < sel_vertex_count) {
 		write_vertex(idx);
 	}
 
+	// Flat copy - bevel_shrink repoints these onto the retracted verts
 	if (idx < sel_face_count) {
-		// Flat copy - bevel_shrink repoints these onto the retracted verts
 		out_faces[idx] = u16vec3(sel_faces[idx]);
 	}
 }

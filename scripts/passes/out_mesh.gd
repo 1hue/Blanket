@@ -9,13 +9,15 @@ func _pre() -> void:
 
 
 func allocate() -> void:
-	var selected_faces := read_counter(sets.selected_index_buffer)
-	var selected_verts := read_counter(sets.selected_vertex_buffer)
-	# The shader keeps incrementing past the cap, so the raw count can overrun
-	var shared_edges := mini(read_counter(sets.shared_edge_buffer), params.max_shared_edges)
+	var verts := read_counter(sets.selected_vertex_buffer)
+	var faces := read_counter(sets.selected_index_buffer)
+	var shared := mini(read_counter(sets.shared_edge_buffer), params.max_shared_edges)
+	var boundary := mini(read_counter(sets.boundary_buffer), params.max_boundary_edges)
 
-	params.out_vertex_count = selected_verts + selected_faces * 3 + shared_edges * params.edge_vertex_count
-	params.out_index_count = (selected_faces + shared_edges * params.edge_face_count) * 3
+	params.wall_vertex_base = verts + faces * 3 + shared * params.edge_vertex_count
+	params.wall_face_base = faces + shared * params.edge_face_count
+	params.out_vertex_count = params.wall_vertex_base + boundary * 2
+	params.out_index_count = (params.wall_face_base + boundary * 2) * 3
 
 	surface.allocate(
 		params.out_vertex_count,
@@ -75,6 +77,6 @@ func compute() -> void:
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 1)
-	rd.compute_list_bind_uniform_set(compute_list, sets.shared_mask, 2)
-	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, 36)
+	rd.compute_list_bind_uniform_set(compute_list, sets.vertex_flag, 2)
+	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, 3 * 12)
 	rd.compute_list_end()

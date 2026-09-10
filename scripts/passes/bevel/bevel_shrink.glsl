@@ -42,20 +42,15 @@ layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 };
 
 // Bit c set = edge c of this face is shared. Retraction reads only this.
-layout(set = 2, binding = 0, std430) restrict buffer SharedMaskBuffer {
-	uint shared_mask[];
-};
-
-// out_mesh owns the boundary flags - retracted verts are never anchored
-layout(set = 2, binding = 1, std430) restrict buffer VertexFlagBuffer {
-	uint vertex_flags[]; // unused
+layout(set = 2, binding = 0, std430) restrict buffer FaceEdgeMaskBuffer {
+	uint face_edge_mask[];
 };
 
 void write_color(uint vert, uint color) {
 	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
 }
 
-void write_custom_w(uint vert, float value) {
+void write_freeze(uint vert, float value) {
 	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = floatBitsToUint(value);
 }
 
@@ -139,7 +134,7 @@ void main() {
 	uint corner = gl_GlobalInvocationID.y;
 	if (face_idx >= sel_face_count) return;
 
-	uint mask = shared_mask[face_idx];
+	uint mask = face_edge_mask[face_idx];
 	uvec3 face = sel_faces[face_idx];
 
 	if (corner == 0) {
@@ -158,6 +153,6 @@ void main() {
 	uint slot = retracted_at(face_idx, corner);
 
 	out_positions[slot] = inset_corner(face, mask, corner, min(bevel_width, max_width(face)));
-	write_custom_w(slot, 0.0);
+	write_freeze(slot, 0.0);
 	write_color(slot, COLOR_RETRACTED);
 }

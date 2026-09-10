@@ -49,7 +49,7 @@ layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 };
 
 layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
-	uint shared_count;
+	uint shared_edge_count;
 	SharedEdge shared_edges[];
 };
 
@@ -196,7 +196,7 @@ void build_strip(uint face_base) {
 void main() {
 	uint idx = gl_GlobalInvocationID.x;
 
-	if (idx >= shared_count) return;
+	if (idx >= shared_edge_count) return;
 
 	edge = shared_edges[idx];
 

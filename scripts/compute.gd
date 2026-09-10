@@ -38,6 +38,7 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		OutMeshPass.new(mesh, surface, params, sets),
 		BevelShrinkPass.new(mesh, surface, params, sets),
 		BevelFillPass.new(mesh, surface, params, sets),
+		BoundaryPass.new(mesh, surface, params, sets),
 		#SmoothSumPass.new(mesh, surface, params, sets),
 		#SmoothWritePass.new(mesh, surface, params, sets),
 		#NormalsSumPass.new(mesh, surface, params, sets),
@@ -209,8 +210,8 @@ func debug_out_mesh() -> void:
 func debug() -> void:
 	debug_faces_multipass()
 	debug_shared_edges()
-	dump_shared_mask(sets.shared_mask_buffer)
-	dump_vertex_flags(sets.boundary_flag_buffer)
+	dump_shared_mask(sets.face_edge_mask_buffer)
+	dump_vertex_flags(sets.vertex_flag_buffer)
 	debug_out_mesh()
 	#print_rich("[color=goldenrod]faces_buffer.faces[] int16: ", ComputeUtil.to_int16_array(faces_buffer.slice(8)), "[/color]")
 	#var table := rd.buffer_get_data(uniforms.faces_table_buffer)
