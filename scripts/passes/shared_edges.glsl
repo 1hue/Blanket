@@ -47,6 +47,7 @@ layout(set = 2, binding = 0, std430) restrict buffer SharedMaskBuffer {
 	uint shared_mask[];
 };
 
+// Bit 0 set = vert lies on the selection boundary, so it must not move
 layout(set = 2, binding = 1, std430) restrict buffer VertexFlagBuffer {
 	uint vertex_flags[];
 };
@@ -101,10 +102,30 @@ uvec2 retracted_at_corner(uint global_corner, uvec2 apexes) {
 	return sel_vertex_count + 3 * (global_corner / 3) + pair;
 }
 
-// w = 1 marks vert as sticky
+// Boundary verts are pinned for the post-bake displacement pass
 void anchor(uint vert) {
 	atomicOr(vertex_flags[vert], FLAG_BOUNDARY);
-// 	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = 1;
+}
+
+// The pair is recorded once, by the lower lane. False means the edge is too flat to bevel
+bool match_twin(uint self, uint twin, uvec2 edge) {
+	uint face = self / 3;
+
+	if (!is_creased(face, twin / 3)) return false; // Flat enough to leave alone
+	if (twin < self) return true; // The other lane records it
+
+	uint slot = atomicAdd(shared_count, 1);
+
+	if (slot >= max_shared_edges) return true; // Non-manifold input overflowed the buffer
+
+	shared_edges[slot].faces = uvec2(face, twin / 3);
+	shared_edges[slot].apexes = edge;
+	shared_edges[slot].retracted[0] = retracted_at_corner(self, edge);
+	shared_edges[slot].retracted[1] = retracted_at_corner(twin, edge);
+
+	atomicMax(dispatch_fill.x, 1 + slot / FILL_WORKGROUP_SIZE);
+
+	return true;
 }
 
 void main() {
@@ -114,8 +135,8 @@ void main() {
 	// Uniform across the dispatch, so one invocation seeds it for everyone
 	if (face == 0 && corner == 0) {
 		uint lanes = max(sel_vertex_count, sel_face_count);
-		atomicMax(dispatch_out_mesh.x, (lanes + OUT_MESH_WORKGROUP_SIZE - 1) / OUT_MESH_WORKGROUP_SIZE);
 
+		atomicMax(dispatch_out_mesh.x, (lanes + OUT_MESH_WORKGROUP_SIZE - 1) / OUT_MESH_WORKGROUP_SIZE);
 		atomicMax(dispatch_fill.x, (sel_face_count + FILL_WORKGROUP_SIZE - 1) / FILL_WORKGROUP_SIZE);
 	}
 
@@ -124,31 +145,22 @@ void main() {
 	uint self = face * 3 + corner;
 	uvec2 edge = edge_at_corner(self);
 	bool has_twin = false;
+	bool is_shared_edge = false;
 
 	for (uint twin = 0; twin < sel_face_count * 3; twin++) {
 		if (twin == self || edge_at_corner(twin) != edge) continue;
-		//if (!is_creased(face, twin / 3)) continue; // Flat enough to leave alone
 
 		has_twin = true;
-
-		if (twin < self) continue;
-
-		uint slot = atomicAdd(shared_count, 1);
-
-		if (slot >= max_shared_edges) break; // Non-manifold input overflowed the buffer
-
-		shared_edges[slot].faces = uvec2(face, twin / 3);
-		shared_edges[slot].apexes = edge;
-		shared_edges[slot].retracted[0] = retracted_at_corner(self, edge);
-		shared_edges[slot].retracted[1] = retracted_at_corner(twin, edge);
-
-		atomicMax(dispatch_fill.x, 1 + slot / FILL_WORKGROUP_SIZE);
+		is_shared_edge = match_twin(self, twin, edge) || is_shared_edge;
 	}
 
-	if (has_twin) {
+
+	if (is_shared_edge) {
 		// Retraction needs both edges at a corner; each is found by its own lane
-		atomicOr(shared_mask[face], 1 << corner);
-	} else {
+		atomicOr(shared_mask[face], 1u << corner);
+	}
+
+	if (!has_twin) {
 		anchor(edge.x);
 		anchor(edge.y);
 	}

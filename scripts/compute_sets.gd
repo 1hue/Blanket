@@ -22,10 +22,10 @@ var faces_table_buffer: RID
 #region Bevel
 var shared_edge: RID
 var shared_edge_buffer: RID
-var bevel_out: RID
-var shared_mask_buffer: RID
 var shared_mask: RID
-var corner_edge_buffer: RID
+var shared_mask_buffer: RID
+var boundary_flag_buffer: RID
+var debug_buffer: RID
 #endregion
 
 var normals_sum: RID

@@ -50,7 +50,7 @@ var bevel_segments := DEFAULT_BEVEL_SEGMENTS
 var bevel_arcs := DEFAULT_BEVEL_ARCS
 var smooth_strength := DEFAULT_SMOOTH_STRENGTH
 var max_shared_edges: int:
-	get: return in_face_count * 3 / 2
+	get: return in_face_count * 3
 var arc_steps: int:
 	get: return bevel_segments * 2
 var arc_count: int:

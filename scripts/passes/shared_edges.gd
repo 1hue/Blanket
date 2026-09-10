@@ -50,6 +50,7 @@ func init_shared_mask_buffer() -> void:
 
 	sets.shared_mask_buffer = shared_mask_buffer
 	sets.shared_mask = shared_mask_set
+	sets.boundary_flag_buffer = boundary_flag_buffer
 
 
 func pack_params() -> PackedByteArray:

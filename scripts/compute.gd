@@ -36,8 +36,8 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		FacesWritePass.new(mesh, surface, params, sets),
 		SharedEdgesPass.new(mesh, surface, params, sets),
 		OutMeshPass.new(mesh, surface, params, sets),
-		#BevelShrinkPass.new(mesh, surface, params, sets),
-		#BevelFillPass.new(mesh, surface, params, sets),
+		BevelShrinkPass.new(mesh, surface, params, sets),
+		BevelFillPass.new(mesh, surface, params, sets),
 		#SmoothSumPass.new(mesh, surface, params, sets),
 		#SmoothWritePass.new(mesh, surface, params, sets),
 		#NormalsSumPass.new(mesh, surface, params, sets),
@@ -59,12 +59,39 @@ func update() -> void:
 
 
 #region Debug
+func dump_shared_mask(buffer: RID, name := "shared_mask") -> void:
+	var bytes := rd.buffer_get_data(buffer)
+	var words := bytes.to_int32_array()
+	var labels: Array[String] = []
+
+	for i in mini(words.size(), params.in_face_count):
+		labels.append("%d:%s%s%s" % [
+			i,
+			"a" if words[i] & 1 else ".",
+			"b" if words[i] & 2 else ".",
+			"c" if words[i] & 4 else ".",
+		])
+
+	print_rich("[color=orchid]%s[%d]: " % [name, labels.size()], " ".join(labels), "[/color]")
+
+
+func dump_vertex_flags(buffer: RID, name := "vertex_flags") -> void:
+	var bytes := rd.buffer_get_data(buffer)
+	var words := bytes.to_int32_array()
+	var anchored: Array[int] = []
+
+	for i in words.size():
+		if words[i] & 1:
+			anchored.append(i)
+
+	print_rich("[color=orchid]%s[anchored=%d]: " % [name, anchored.size()], anchored, "[/color]")
+
 func debug_shared_edges() -> void:
 	var shared_edges := rd.buffer_get_data(sets.shared_edge_buffer)
 	var shared_edge_count := shared_edges.decode_u32(0)
 	var shared_edges_struct: Array[Array] = []
 
-	const SHARED_EDGE_OFFSET := 16
+	const SHARED_EDGE_OFFSET := 4
 
 	for i in shared_edge_count:
 		var at := SHARED_EDGE_OFFSET + i * SharedEdgesPass.STRUCT_STRIDE
@@ -147,10 +174,24 @@ func debug_faces_multipass() -> void:
 	dump_vec3(sets.selected_vertex_buffer, "selected_vertex_buffer", true)
 
 
+func dump_edge_debug() -> void:
+	var bytes := rd.buffer_get_data(sets.debug_buffer)
+	var words := bytes.to_int32_array()
+
+	for i in params.in_face_count * 3:
+		var at := i * 4
+		if words[at + 3] == 0:
+			continue
+		print_rich("[color=orchid]f%d c%d: twin=%d creased=%d shared=%d" % [
+			i / 3, i % 3, words[at], words[at + 1], words[at + 2]
+		])
+
+
 func debug_out_mesh() -> void:
 	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
 	var attr_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(mesh_rid, surface.idx)
+
 	prints(
 		"params.in_face_count:", params.in_face_count,
 		"params.bevel_arcs:", params.bevel_arcs,
@@ -167,6 +208,9 @@ func debug_out_mesh() -> void:
 
 func debug() -> void:
 	debug_faces_multipass()
+	debug_shared_edges()
+	dump_shared_mask(sets.shared_mask_buffer)
+	dump_vertex_flags(sets.boundary_flag_buffer)
 	debug_out_mesh()
 	#print_rich("[color=goldenrod]faces_buffer.faces[] int16: ", ComputeUtil.to_int16_array(faces_buffer.slice(8)), "[/color]")
 	#var table := rd.buffer_get_data(uniforms.faces_table_buffer)
