@@ -39,14 +39,14 @@ void write_color(uint vert, uint color) {
 }
 
 // Custom0.w = 1 freezes the vert against the displacement pass
-void write_freeze(uint vert, float frozen) {
-	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = floatBitsToUint(frozen);
+void freeze(uint vert) {
+	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = floatBitsToUint(1.0);
 }
 
 // The wall row starts coincident with the surface and only separates once it lifts
 void write_wall_vert(uint slot, uint source) {
 	out_positions[slot] = out_positions[source];
-	write_freeze(slot, 1.0);
+	freeze(slot);
 	write_color(slot, COLOR_WALL);
 }
 

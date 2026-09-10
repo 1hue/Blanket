@@ -47,17 +47,18 @@ void write_color(uint vert, uint color) {
 	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
 }
 
-// Custom0.w = 1 freezes the vert against the displacement pass
-void write_freeze(uint vert, float frozen) {
-	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = floatBitsToUint(frozen);
-}
-
 // Marked verts still move - only the wall row the boundary pass adds is frozen
 void write_vertex(uint vert) {
 	bool marked = (vertex_flags[vert] & FLAG_BOUNDARY) != 0;
+	uint at = (out_custom_offset + vert * out_attribute_stride) / 4;
+	vec3 position = sel_positions[vert];
 
-	out_positions[vert] = sel_positions[vert];
-	write_freeze(vert, 0.0);
+	out_positions[vert] = position;
+	out_attributes[at] = floatBitsToUint(position.x);
+	out_attributes[at + 1] = floatBitsToUint(position.y);
+	out_attributes[at + 2] = floatBitsToUint(position.z);
+// 	out_attributes[at + 3] = vertex_flags[vert];
+
 	write_color(vert, marked ? COLOR_BOUNDARY : COLOR_ORIGINAL);
 }
 

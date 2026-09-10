@@ -46,14 +46,6 @@ layout(set = 2, binding = 0, std430) restrict buffer FaceEdgeMaskBuffer {
 	uint face_edge_mask[];
 };
 
-void write_color(uint vert, uint color) {
-	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
-}
-
-void write_freeze(uint vert, float value) {
-	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = floatBitsToUint(value);
-}
-
 // Edge c runs from corner c to corner c+1, so corner c sits on edges c and c-1
 uint next_corner(uint corner) {
 	return (corner + 1) % 3;
@@ -129,6 +121,21 @@ vec3 inset_corner(uvec3 face, uint mask, uint corner, float width) {
 	return apex + p.x * ex + p.y * ey;
 }
 
+void write_color(uint vert, uint color) {
+	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
+}
+
+void write_vertex(uint vert, vec3 position) {
+	uint at = (out_custom_offset + vert * out_attribute_stride) / 4;
+
+	out_positions[vert] = position;
+	out_attributes[at] = floatBitsToUint(position.x);
+	out_attributes[at + 1] = floatBitsToUint(position.y);
+	out_attributes[at + 2] = floatBitsToUint(position.z);
+
+	write_color(vert, COLOR_RETRACTED);
+}
+
 void main() {
 	uint face_idx = gl_GlobalInvocationID.x;
 	uint corner = gl_GlobalInvocationID.y;
@@ -151,8 +158,7 @@ void main() {
 
 	// A retracted vert is new geometry, so it carries no boundary flag
 	uint slot = retracted_at(face_idx, corner);
+	vec3 position = inset_corner(face, mask, corner, min(bevel_width, max_width(face)));
 
-	out_positions[slot] = inset_corner(face, mask, corner, min(bevel_width, max_width(face)));
-	write_freeze(slot, 0.0);
-	write_color(slot, COLOR_RETRACTED);
+	write_vertex(slot, position);
 }

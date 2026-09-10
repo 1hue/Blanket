@@ -59,23 +59,17 @@ uint arc_count;
 uint ring_base;
 uint arc_base;
 
-void copy_custom(uint from, uint to) {
-	uint source = (out_custom_offset + from * out_attribute_stride) / 4;
-	uint target = (out_custom_offset + to * out_attribute_stride) / 4;
-
-	out_attributes[target] = out_attributes[source];
-	out_attributes[target + 1] = out_attributes[source + 1];
-	out_attributes[target + 2] = out_attributes[source + 2];
-	out_attributes[target + 3] = out_attributes[source + 3];
-}
-
 void write_color(uint vert, uint color) {
 	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
 }
 
-void write_vertex(uint vert, vec3 position, uint inherit_from) {
+void write_vertex(uint vert, vec3 position) {
+	uint at = (out_custom_offset + vert * out_attribute_stride) / 4;
+
 	out_positions[vert] = position;
-	copy_custom(inherit_from, vert);
+	out_attributes[at] = floatBitsToUint(position.x);
+	out_attributes[at + 1] = floatBitsToUint(position.y);
+	out_attributes[at + 2] = floatBitsToUint(position.z);
 }
 
 void write_triangle(uint face, uvec3 verts, bool reverse) {
@@ -152,7 +146,7 @@ void build_fan(uint end, uint face_base) {
 			// The arc's ends are shrink's verts, already written
 			if (ring == arcs && (step == 0 || step == arc_steps)) continue;
 
-			write_vertex(vert, mix(apex, arc_point(anchors, step), t), apex_vert);
+			write_vertex(vert, mix(apex, arc_point(anchors, step), t));
 			write_color(vert, ring == arcs ? COLOR_ARC : COLOR_RING);
 		}
 	}
