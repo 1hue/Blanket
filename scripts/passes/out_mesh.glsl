@@ -57,7 +57,6 @@ void write_vertex(uint vert) {
 	out_attributes[at] = floatBitsToUint(position.x);
 	out_attributes[at + 1] = floatBitsToUint(position.y);
 	out_attributes[at + 2] = floatBitsToUint(position.z);
-// 	out_attributes[at + 3] = vertex_flags[vert];
 
 	write_color(vert, marked ? COLOR_BOUNDARY : COLOR_ORIGINAL);
 }
