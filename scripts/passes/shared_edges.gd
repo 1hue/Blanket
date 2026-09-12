@@ -4,7 +4,6 @@ class_name SharedEdgesPass
 const WORKGROUP_SIZE = 64
 const SIZE_PARAMS = 12
 const SHARED_EDGE_STRIDE = 32
-const BOUNDARY_EDGE_STRIDE = 16
 const STRUCT_STRIDE = 32
 
 var shared_edge_set: RID
@@ -38,7 +37,7 @@ func init_shared_edge_buffer() -> void:
 	shared_edge_buffer = rd.storage_buffer_create(shared_edge_buffer_size)
 
 	shared_edge_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([shared_edge_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		ComputeUtil.create_uniform([shared_edge_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
 	], SurfaceShaders.shared_edges.shader, 1)
 
 	sets.shared_edge_buffer = shared_edge_buffer
@@ -51,7 +50,7 @@ func init_face_edge_mask_buffer() -> void:
 	face_edge_mask_buffer = rd.storage_buffer_create(face_edge_mask_buffer_size)
 
 	face_edge_mask_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([face_edge_mask_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		ComputeUtil.create_uniform([face_edge_mask_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
 	], SurfaceShaders.shared_edges.shader, 2)
 
 	sets.face_edge_mask_buffer = face_edge_mask_buffer
@@ -64,7 +63,7 @@ func init_vertex_flag_buffer() -> void:
 	vertex_flag_buffer = rd.storage_buffer_create(vertex_flag_buffer_size)
 
 	vertex_flag_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([vertex_flag_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		ComputeUtil.create_uniform([vertex_flag_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
 	], SurfaceShaders.shared_edges.shader, 3)
 
 	sets.vertex_flag_buffer = vertex_flag_buffer
@@ -73,7 +72,7 @@ func init_vertex_flag_buffer() -> void:
 
 func init_boundary_buffer() -> void:
 	# boundary_count, then one wound edge per unpaired corner
-	boundary_buffer_size = align_buffer(4 + params.max_boundary_edges * BOUNDARY_EDGE_STRIDE)
+	boundary_buffer_size = align_buffer(4 + params.max_boundary_edges * BoundaryResolvePass.BOUNDARY_EDGE_STRIDE)
 	boundary_buffer = rd.storage_buffer_create(boundary_buffer_size)
 
 	boundary_set = rd.uniform_set_create([
@@ -107,7 +106,7 @@ func compute() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, vertex_flag_set, 3)
 	rd.compute_list_bind_uniform_set(compute_list, boundary_set, 4)
 	rd.compute_list_bind_uniform_set(compute_list, sets.dispatch, 5)
-	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, 2 * 12)
+	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, ComputeSets.Dispatch.SHARED_EDGES)
 	rd.compute_list_end()
 
 

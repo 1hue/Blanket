@@ -16,7 +16,6 @@ func _pre() -> void:
 ## The out mesh only exists after OutMeshPass, so the buffer can't be sized in _pre
 func init_buffer() -> void:
 	var size := align_buffer(params.out_vertex_count * 12)
-	prints(params.out_vertex_count)
 
 	if buffer.is_valid() and size == buffer_size:
 		return

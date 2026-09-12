@@ -10,8 +10,8 @@ func _pre() -> void:
 
 func pack_params() -> PackedByteArray:
 	push_constant.encode_float(0, params.bevel_width)
-	push_constant.encode_u32(4, params.bevel_segments)
-	push_constant.encode_u32(8, params.bevel_arcs)
+	push_constant.encode_u32(4, params.bevel_steps)
+	push_constant.encode_u32(8, params.bevel_rings)
 	push_constant.encode_u32(12, params.out_color_offset)
 	push_constant.encode_u32(16, params.out_custom_offset)
 	push_constant.encode_u32(20, params.out_attribute_stride)
@@ -26,5 +26,5 @@ func compute() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 1)
 	rd.compute_list_bind_uniform_set(compute_list, sets.shared_edge, 2)
-	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, 60)
+	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, ComputeSets.Dispatch.BEVEL_FILL)
 	rd.compute_list_end()

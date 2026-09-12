@@ -38,7 +38,8 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		OutMeshPass.new(mesh, surface, params, sets),
 		BevelShrinkPass.new(mesh, surface, params, sets),
 		BevelFillPass.new(mesh, surface, params, sets),
-		BoundaryPass.new(mesh, surface, params, sets),
+		BoundaryResolvePass.new(mesh, surface, params, sets),
+		BoundaryWritePass.new(mesh, surface, params, sets),
 		OffsetPass.new(mesh, surface, params, sets),
 		NormalsSumPass.new(mesh, surface, params, sets),
 		NormalsWritePass.new(mesh, surface, params, sets),
@@ -203,8 +204,6 @@ func debug_out_mesh() -> void:
 
 	prints(
 		"params.in_face_count:", params.in_face_count,
-		"params.bevel_arcs:", params.bevel_arcs,
-		"params.bevel_segments:", params.bevel_segments,
 		"params.out_index_count:", params.out_index_count,
 		"params.out_vertex_count:", params.out_vertex_count,
 		"params.out_index_stride", params.out_index_stride,
@@ -214,47 +213,52 @@ func debug_out_mesh() -> void:
 	dump_vec3(vertex_buffer, "vertex_buffer")
 	#dump_attributes(attr_buffer, "attr_buffer")
 
+
 func dump_boundary() -> void:
 	var bytes := rd.buffer_get_data(sets.boundary_buffer)
 	var count := bytes.decode_u32(0)
-
-	const STRIDE := 16
+	var stride := BoundaryResolvePass.BOUNDARY_EDGE_STRIDE
 
 	for i in count:
-		var at := 4 + i * STRIDE
+		var at := 4 + i * stride
 		var x := bytes.decode_u32(at)
 		var y := bytes.decode_u32(at + 4)
 		var face := bytes.decode_u32(at + 8)
 		var corner := bytes.decode_u32(at + 12)
-		var mask := rd.buffer_get_data(sets.face_edge_mask_buffer, face * 4, 4).decode_u32(0)
-		var prev := (corner + 2) % 3
-		var retracts: bool = (mask & (1 << prev)) != 0
-		var top: int = params.selected_vertex_count + 3 * face + corner if retracts else x
+		var top: Array[String] = []
 
-		print_rich("[color=orchid]b%d: edge=(%d,%d) f%d c%d mask=%d prev=%d top_x=%d%s" % [
-			i, x, y, face, corner, mask, prev, top, " (retracted)" if retracts else ""
+		for ring in params.bevel_rings + 1:
+			var ring_at := at + 16 + ring * 8
+			top.append("(%d,%d)" % [bytes.decode_u32(ring_at), bytes.decode_u32(ring_at + 4)])
+
+		print_rich("[color=orchid]b%d: edge=(%d,%d) f%d c%d top=%s" % [
+			i, x, y, face, corner, " ".join(top)
 		])
 
 
 func dump_wall(name := "wall") -> void:
-	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
-	var verts := rd.buffer_get_data(vertex_buffer)
 	var faces := rd.buffer_get_data(index_buffer)
 	var boundary := rd.buffer_get_data(sets.boundary_buffer).decode_u32(0)
+	var per_edge: int = params.wall_faces_per_edge
 
-	print_rich("[color=orchid]%s: rim_base=%d arc_base=%d face_base=%d boundary=%d" % [
-		name, params.wall_rim_base, params.wall_arc_base, params.wall_face_base, boundary
+	print_rich("[color=orchid]%s: rim_base=%d grid_base=%d face_base=%d boundary=%d cols=%d rows=%d" % [
+		name, params.wall_rim_base, params.wall_grid_base, params.wall_face_base,
+		boundary, params.wall_cols, params.wall_rows
 	])
 
 	for i in boundary:
-		for f in BoundaryPass.FACES:
-			var face := params.wall_face_base + i * BoundaryPass.FACES + f
+		for f in per_edge:
+			var face := params.wall_face_base + i * per_edge + f
 			var at := face * 6
 			var tri := Vector3i(faces.decode_u16(at), faces.decode_u16(at + 2), faces.decode_u16(at + 4))
 			var degenerate := tri.x == tri.y or tri.x == tri.z or tri.y == tri.z
+			var row := f / 2 / (params.wall_cols - 1)
+			var col := f / 2 % (params.wall_cols - 1)
 
-			print_rich("[color=orchid]  b%d f%d: %s%s" % [i, f, tri, " DEGENERATE" if degenerate else ""])
+			print_rich("[color=orchid]  b%d r%d c%d %s: %s%s" % [
+				i, row, col, "a" if f % 2 == 0 else "b", tri, " DEGENERATE" if degenerate else ""
+			])
 
 
 func dump_vert(index: int, name := "vert") -> void:
@@ -268,10 +272,6 @@ func dump_vert(index: int, name := "vert") -> void:
 
 func debug() -> void:
 	debug_faces_multipass()
-	debug_shared_edges()
-	dump_shared_mask(sets.face_edge_mask_buffer)
-	dump_vertex_flags(sets.vertex_flag_buffer)
 	dump_boundary()
 	dump_wall()
-	debug_out_mesh()
 #endregion

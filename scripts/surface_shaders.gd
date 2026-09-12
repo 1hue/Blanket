@@ -34,7 +34,8 @@ var shared_edges: ShaderPipeline
 var out_mesh: ShaderPipeline
 var bevel_shrink: ShaderPipeline
 var bevel_fill: ShaderPipeline
-var boundary: ShaderPipeline
+var boundary_resolve: ShaderPipeline
+var boundary_write: ShaderPipeline
 var offset: ShaderPipeline
 var normals_sum: ShaderPipeline
 var normals_write: ShaderPipeline
@@ -56,7 +57,8 @@ func _init() -> void:
 	out_mesh = ShaderPipeline.new("res://scripts/passes/out_mesh.glsl")
 	bevel_shrink = ShaderPipeline.new("res://scripts/passes/bevel/bevel_shrink.glsl")
 	bevel_fill = ShaderPipeline.new("res://scripts/passes/bevel/bevel_fill.glsl")
-	boundary = ShaderPipeline.new("res://scripts/passes/boundary.glsl")
+	boundary_resolve = ShaderPipeline.new("res://scripts/passes/boundary/boundary_resolve.glsl")
+	boundary_write = ShaderPipeline.new("res://scripts/passes/boundary/boundary_write.glsl")
 	offset = ShaderPipeline.new("res://scripts/passes/offset.glsl")
 	normals_sum = ShaderPipeline.new("res://scripts/passes/normals/normals_sum.glsl")
 	normals_write = ShaderPipeline.new("res://scripts/passes/normals/normals_write.glsl")

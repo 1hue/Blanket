@@ -27,9 +27,10 @@ struct SharedEdge {
 };
 
 struct BoundaryEdge {
-	uvec2 verts; // Face winding order - the wall hangs off this direction
+	uvec2 verts;
 	uint face;
-	uint corner; // Which of the face's edges this is
+	uint corner;
+	uvec2 top[4];
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer SelectedVertexBuffer {

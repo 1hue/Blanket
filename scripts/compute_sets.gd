@@ -1,6 +1,17 @@
 extends RefCounted
 class_name ComputeSets
 
+## dispatch_buffer offsets of each uvec3(X,Y,Z)
+enum Dispatch {
+	FACES_DEDUPE = 0 * 12,
+	FACES_WRITE = 1 * 12,
+	SHARED_EDGES = 2 * 12,
+	OUT_MESH = 3 * 12,
+	BEVEL_SHRINK = 4 * 12,
+	BEVEL_FILL = 5 * 12,
+	BOUNDARY = 6 * 12,
+}
+
 # TODO Clean up vars
 var rd: RenderingDevice
 var surface: ComputeSurface
@@ -60,7 +71,7 @@ func init_in_mesh_set() -> void:
 
 
 func init_indirect_dispatch() -> void:
-	dispatch_buffer = dispatch_buffer_create(7)
+	dispatch_buffer = dispatch_buffer_create(Dispatch.BOUNDARY / 12 + 1)
 	dispatch = rd.uniform_set_create([
 		ComputeUtil.create_uniform([dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], SurfaceShaders.faces_select.shader, 2)

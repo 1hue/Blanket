@@ -78,6 +78,7 @@ transform = Transform3D(0.88264245, -0.47004497, 0, 0.47004497, 0.88264245, 0, 0
 
 [node name="SurfaceCover" type="Node" parent="basic/Dome" index="0" unique_id=810101255]
 script = ExtResource("7_5vw27")
+debug_normals = true
 metadata/_custom_type_script = "uid://dtnblg1g7ceap"
 
 [node name="Three" parent="basic" index="2" unique_id=347521391]

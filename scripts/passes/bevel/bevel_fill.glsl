@@ -1,4 +1,4 @@
-// Bridge each shared edge with a fan at both apexes and a strip between their arcs.
+// Bridge each shared edge with a fan at both apexes and a strip between their rims
 #[compute]
 #version 450
 
@@ -7,14 +7,14 @@
 
 const uint COLOR_APEX = 0xFF3030E0; // Red
 const uint COLOR_RING = 0xFFE08030; // Blue
-const uint COLOR_ARC = 0xFF30E030; // Green
+const uint COLOR_OUTER = 0xFF30E030; // Green
 
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
 	float bevel_width; // Must match bevel_shrink.glsl
-	uint segments; // Per side of the crease
-	uint arcs; // Rings from apex out to the arc
+	uint steps; // Subdivisions along each ring, per side of the crease
+	uint rings; // Rings from the apex out to the retracted verts
 	uint out_color_offset;
 	uint out_custom_offset;
 	uint out_attribute_stride;
@@ -54,10 +54,10 @@ layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 };
 
 SharedEdge edge;
-uint arc_steps;
-uint arc_count;
-uint ring_base;
-uint arc_base;
+uint ring_steps; // Segments across a ring - both sides of the crease
+uint ring_count; // Verts across a ring, ends included
+uint inner_base; // Rings 1..rings-1, every vert new
+uint outer_base; // Ring `rings`, minus the two retracted ends
 
 void write_color(uint vert, uint color) {
 	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
@@ -78,10 +78,10 @@ void write_triangle(uint face, uvec3 verts, bool reverse) {
 }
 
 // Anchors: retracted on one face, crease, retracted on the other
-vec3 arc_point(mat3 anchors, vec3 apex, uint step) {
-	vec3 p = step > segments
-	? mix(anchors[1], anchors[2], float(step - segments) / float(segments))
-	: mix(anchors[0], anchors[1], float(step) / float(segments));
+vec3 ring_point(mat3 anchors, vec3 apex, uint step) {
+	vec3 p = step > steps
+	? mix(anchors[1], anchors[2], float(step - steps) / float(steps))
+	: mix(anchors[0], anchors[1], float(step) / float(steps));
 
 	// The straight mix cuts inside the circle - push it back out
 	float radius = distance(anchors[0], apex);
@@ -91,19 +91,19 @@ vec3 arc_point(mat3 anchors, vec3 apex, uint step) {
 	return reach < 1e-9 ? p : apex + spoke * (radius / reach);
 }
 
-// Retracted is per face, in apex order - the arc at one apex crosses from one face's vert to the other's
-uvec2 arc_ends(uint end) {
+// Retracted is per face, in apex order - the ring at one apex crosses from one face's vert to the other's
+uvec2 ring_ends(uint end) {
 	return uvec2(edge.retracted[0][end], edge.retracted[1][end]);
 }
 
-mat3 arc_anchors(uint end) {
-	uvec2 pair = arc_ends(end);
+mat3 ring_anchors(uint end) {
+	uvec2 pair = ring_ends(end);
 
 	vec3 apex = out_positions[edge.apexes[end]];
 	vec3 along = out_positions[edge.apexes[1 - end]];
 
 	// The ends set the radius - the crease must sit at the same distance or
-	// the arc bulges in the middle
+	// the ring bulges in the middle
 	float radius = 0.5 * (distance(out_positions[pair.x], apex) + distance(out_positions[pair.y], apex));
 	float t = clamp(radius / max(distance(apex, along), 1e-9), 0.0, 0.5);
 	vec3 crease = mix(apex, along, t);
@@ -111,20 +111,20 @@ mat3 arc_anchors(uint end) {
 	return mat3(out_positions[pair.x], crease, out_positions[pair.y]);
 }
 
-// Ring 0 is the apex, ring `arcs` is the arc, whose ends are the retracted verts
+// Ring 0 is the apex, ring `rings` is the outermost, whose ends bevel_shrink already wrote
 uint fan_vert(uint end, uint ring, uint step) {
 	if (ring == 0) return edge.apexes[end];
 
-	uvec2 pair = arc_ends(end);
+	if (ring == rings) {
+		uvec2 pair = ring_ends(end);
 
-	if (ring == arcs) {
 		if (step == 0) return pair.x;
-		if (step == arc_steps) return pair.y;
+		if (step == ring_steps) return pair.y;
 
-		return arc_base + end * (arc_count - 2) + step - 1;
+		return outer_base + end * (ring_count - 2) + step - 1;
 	}
 
-	return ring_base + (end * (arcs - 1) + ring - 1) * arc_count + step;
+	return inner_base + (end * (rings - 1) + ring - 1) * ring_count + step;
 }
 
 void build_quad(uint face, uint inner_a, uint inner_b, uint outer_b, uint outer_a, bool flip, bool reverse) {
@@ -141,56 +141,57 @@ void build_quad(uint face, uint inner_a, uint inner_b, uint outer_b, uint outer_
 void build_fan(uint end, uint face_base) {
 	uint apex_vert = edge.apexes[end];
 	vec3 apex = out_positions[apex_vert];
-	mat3 anchors = arc_anchors(end);
+	mat3 anchors = ring_anchors(end);
 	bool reverse = end == 1; // The two apexes sit at opposite ends of the edge
 
 	write_color(apex_vert, COLOR_APEX);
 
-	for (uint ring = 1; ring <= arcs; ring++) {
-		float t = float(ring) / float(arcs);
+	for (uint ring = 1; ring <= rings; ring++) {
+		float t = float(ring) / float(rings);
 
-		for (uint step = 0; step <= arc_steps; step++) {
+		for (uint step = 0; step <= ring_steps; step++) {
 			uint vert = fan_vert(end, ring, step);
 
-			// The arc's ends are shrink's verts, already written
-			if (ring == arcs && (step == 0 || step == arc_steps)) continue;
-			write_vertex(vert, mix(apex, arc_point(anchors, apex, step), t));
-			write_color(vert, ring == arcs ? COLOR_ARC : COLOR_RING);
+			// The outer ring's ends are shrink's verts, already written
+			if (ring == rings && (step == 0 || step == ring_steps)) continue;
+
+			write_vertex(vert, mix(apex, ring_point(anchors, apex, step), t));
+			write_color(vert, ring == rings ? COLOR_OUTER : COLOR_RING);
 		}
 	}
 
-	for (uint step = 0; step < arc_steps; step++) {
+	for (uint step = 0; step < ring_steps; step++) {
 		uvec3 tip = uvec3(fan_vert(end, 0, 0), fan_vert(end, 1, step + 1), fan_vert(end, 1, step));
 		write_triangle(face_base + step, tip, reverse);
 	}
 
-	for (uint ring = 1; ring < arcs; ring++) {
-		uint band = face_base + arc_steps + (ring - 1) * arc_steps * 2;
+	for (uint ring = 1; ring < rings; ring++) {
+		uint band = face_base + ring_steps + (ring - 1) * ring_steps * 2;
 
-		for (uint step = 0; step < arc_steps; step++) {
+		for (uint step = 0; step < ring_steps; step++) {
 			build_quad(
 				band + step * 2,
-				fan_vert(end, ring, step),
-				fan_vert(end, ring, step + 1),
-				fan_vert(end, ring + 1, step + 1),
-				fan_vert(end, ring + 1, step),
-				(ring + step) % 2 == 1, // Alternate the diagonal
-				reverse
+			  fan_vert(end, ring, step),
+					   fan_vert(end, ring, step + 1),
+					   fan_vert(end, ring + 1, step + 1),
+					   fan_vert(end, ring + 1, step),
+					   (ring + step) % 2 == 1, // Alternate the diagonal
+					   reverse
 			);
 		}
 	}
 }
 
 void build_strip(uint face_base) {
-	for (uint step = 0; step < arc_steps; step++) {
+	for (uint step = 0; step < ring_steps; step++) {
 		build_quad(
 			face_base + step * 2,
-			fan_vert(0, arcs, step),
-			fan_vert(0, arcs, step + 1),
-			fan_vert(1, arcs, step + 1),
-			fan_vert(1, arcs, step),
-			step % 2 == 1, // Alternate so neither side collects every extra edge
-			false
+			 fan_vert(0, rings, step),
+				   fan_vert(0, rings, step + 1),
+				   fan_vert(1, rings, step + 1),
+				   fan_vert(1, rings, step),
+				   step % 2 == 1, // Alternate so neither side collects every extra edge
+			 false
 		);
 	}
 }
@@ -205,15 +206,15 @@ void main() {
 	// (0, 0) is zero-init = degenerate edge
 	if (edge.apexes.x == edge.apexes.y) return;
 
-	arc_steps = segments * 2;
-	arc_count = arc_steps + 1;
+	ring_steps = steps * 2;
+	ring_count = ring_steps + 1;
 
-	uint fan_verts = (arcs - 1) * arc_count + arc_count - 2;
-	uint fan_faces = arc_steps + (arcs - 1) * arc_steps * 2;
+	uint fan_verts = (rings - 1) * ring_count + ring_count - 2;
+	uint fan_faces = ring_steps + (rings - 1) * ring_steps * 2;
 
-	ring_base = sel_vertex_count + sel_face_count * 3 + idx * fan_verts * 2;
-	arc_base = ring_base + (arcs - 1) * arc_count * 2;
-	uint face_base = sel_face_count + idx * (fan_faces * 2 + arc_steps * 2);
+	inner_base = sel_vertex_count + sel_face_count * 3 + idx * fan_verts * 2;
+	outer_base = inner_base + (rings - 1) * ring_count * 2;
+	uint face_base = sel_face_count + idx * (fan_faces * 2 + ring_steps * 2);
 
 	build_fan(0, face_base);
 	build_fan(1, face_base + fan_faces);

@@ -9,20 +9,16 @@ func _pre() -> void:
 
 
 func allocate() -> void:
-	params.selected_vertex_count = read_counter(sets.selected_vertex_buffer)
+	var verts := read_counter(sets.selected_vertex_buffer)
 	var faces := read_counter(sets.selected_index_buffer)
 	var shared := mini(read_counter(sets.shared_edge_buffer), params.max_shared_edges)
 	var boundary := mini(read_counter(sets.boundary_buffer), params.max_boundary_edges)
 
-	# Rim row is shared between adjacent walls; each wall owns its own fan verts
-	var wall_arc_verts := boundary * BoundaryPass.ARC_VERTS
-	var wall_faces := boundary * BoundaryPass.FACES
-
-	params.wall_rim_base = params.selected_vertex_count + faces * 3 + shared * params.edge_vertex_count
-	params.wall_arc_base = params.wall_rim_base + params.selected_vertex_count
+	params.wall_rim_base = verts + faces * 3 + shared * params.edge_vertex_count
+	params.wall_grid_base = params.wall_rim_base + verts * params.wall_side_verts_per_vert
 	params.wall_face_base = faces + shared * params.edge_face_count
-	params.out_vertex_count = params.wall_arc_base + wall_arc_verts
-	params.out_index_count = (params.wall_face_base + wall_faces) * 3
+	params.out_vertex_count = params.wall_grid_base + boundary * params.wall_verts_per_edge
+	params.out_index_count = (params.wall_face_base + boundary * params.wall_faces_per_edge) * 3
 
 	surface.allocate(
 		params.out_vertex_count,
@@ -83,5 +79,5 @@ func compute() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 1)
 	rd.compute_list_bind_uniform_set(compute_list, sets.vertex_flag, 2)
-	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, 3 * 12)
+	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, ComputeSets.Dispatch.OUT_MESH)
 	rd.compute_list_end()

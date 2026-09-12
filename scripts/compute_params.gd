@@ -6,8 +6,8 @@ signal changed
 const DEFAULT_DEPTH = 0.5
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
 const DEFAULT_BEVEL_WIDTH = 0.2
-const DEFAULT_BEVEL_SEGMENTS = 1
-const DEFAULT_BEVEL_ARCS = 1
+const DEFAULT_BEVEL_STEPS = 1
+const DEFAULT_BEVEL_RINGS = 1
 const DEFAULT_SMOOTH_STRENGTH = 0.5
 const DEFAULT_MIN_CREASE_DEGREES = 15.0
 
@@ -44,37 +44,52 @@ var out_face_stride: int:
 
 #region Bevel
 var bevel_width := DEFAULT_BEVEL_WIDTH
-## Strips on each side of a crease.
-var bevel_segments := DEFAULT_BEVEL_SEGMENTS
-## Wedge segments or rings around each corner vert.
-var bevel_arcs := DEFAULT_BEVEL_ARCS
+## Subdivisions along each ring, per side of the crease.
+var bevel_steps := DEFAULT_BEVEL_STEPS
+## Rings from each apex out to the retracted verts.
+var bevel_rings := DEFAULT_BEVEL_RINGS
 var smooth_strength := DEFAULT_SMOOTH_STRENGTH
 var max_shared_edges: int:
 	get: return in_face_count * 3
 var max_boundary_edges: int:
 	get: return in_face_count * 3
-var arc_steps: int:
-	get: return bevel_segments * 2
-var arc_count: int:
-	get: return arc_steps + 1
+## Segments across a ring - both sides of the crease
+var ring_steps: int:
+	get: return bevel_steps * 2
+## Verts across a ring, ends included
+var ring_count: int:
+	get: return ring_steps + 1
 var fan_vertex_count: int:
-	get: return (bevel_arcs - 1) * arc_count + arc_count - 2
+	get: return (bevel_rings - 1) * ring_count + ring_count - 2
 var fan_face_count: int:
-	get: return arc_steps + (bevel_arcs - 1) * arc_steps * 2
-## Both apex fans plus the strip bridging their arcs
+	get: return ring_steps + (bevel_rings - 1) * ring_steps * 2
+## Both apex fans plus the strip bridging their outer rings
 var edge_vertex_count: int:
 	get: return fan_vertex_count * 2
 var edge_face_count: int:
-	get: return fan_face_count * 2 + arc_steps * 2
+	get: return fan_face_count * 2 + ring_steps * 2
 #endregion
 
-#region Wall - a skirt of quads below the boundary, folded at the rim
+#region Wall - a quad grid filling each boundary edge's skirt
 var wall_rim_base: int
-var wall_arc_base: int
+var wall_grid_base: int
 var wall_face_base: int
+## Both ends' resolved columns, plus the two rim corners
+var wall_cols: int:
+	get: return 2 * bevel_rings + 2
+## The rim, the fold, then up to the surface
+var wall_rows: int:
+	get: return bevel_steps + 2
+## Per boundary edge
+var wall_faces_per_edge: int:
+	get: return (wall_cols - 1) * (wall_rows - 1) * 2
+## Side columns are shared between adjacent walls - one set per selection vert
+var wall_side_verts_per_vert: int:
+	get: return wall_rows - 1
+## Interior columns only; the sides and the top row live elsewhere
+var wall_verts_per_edge: int:
+	get: return (wall_cols - 2) * (wall_rows - 1)
 #endregion
-
-var selected_vertex_count: int
 
 ## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees
 var upright_dot := cos(deg_to_rad(DEFAULT_MAX_SLOPE_DEGREES))
