@@ -78,12 +78,17 @@ void write_triangle(uint face, uvec3 verts, bool reverse) {
 }
 
 // Anchors: retracted on one face, crease, retracted on the other
-vec3 arc_point(mat3 anchors, uint step) {
-	if (step > segments) {
-		return mix(anchors[1], anchors[2], float(step - segments) / float(segments));
-	}
+vec3 arc_point(mat3 anchors, vec3 apex, uint step) {
+	vec3 p = step > segments
+	? mix(anchors[1], anchors[2], float(step - segments) / float(segments))
+	: mix(anchors[0], anchors[1], float(step) / float(segments));
 
-	return mix(anchors[0], anchors[1], float(step) / float(segments));
+	// The straight mix cuts inside the circle - push it back out
+	float radius = distance(anchors[0], apex);
+	vec3 spoke = p - apex;
+	float reach = length(spoke);
+
+	return reach < 1e-9 ? p : apex + spoke * (radius / reach);
 }
 
 // Retracted is per face, in apex order - the arc at one apex crosses from one face's vert to the other's
@@ -94,10 +99,13 @@ uvec2 arc_ends(uint end) {
 mat3 arc_anchors(uint end) {
 	uvec2 pair = arc_ends(end);
 
-	// The crease sits on the original edge, so it lies in both faces' planes
 	vec3 apex = out_positions[edge.apexes[end]];
 	vec3 along = out_positions[edge.apexes[1 - end]];
-	float t = clamp(bevel_width / max(distance(apex, along), 1e-9), 0.0, 0.5);
+
+	// The ends set the radius - the crease must sit at the same distance or
+	// the arc bulges in the middle
+	float radius = 0.5 * (distance(out_positions[pair.x], apex) + distance(out_positions[pair.y], apex));
+	float t = clamp(radius / max(distance(apex, along), 1e-9), 0.0, 0.5);
 	vec3 crease = mix(apex, along, t);
 
 	return mat3(out_positions[pair.x], crease, out_positions[pair.y]);
@@ -146,8 +154,7 @@ void build_fan(uint end, uint face_base) {
 
 			// The arc's ends are shrink's verts, already written
 			if (ring == arcs && (step == 0 || step == arc_steps)) continue;
-
-			write_vertex(vert, mix(apex, arc_point(anchors, step), t));
+			write_vertex(vert, mix(apex, arc_point(anchors, apex, step), t));
 			write_color(vert, ring == arcs ? COLOR_ARC : COLOR_RING);
 		}
 	}
