@@ -71,8 +71,7 @@ func init_vertex_flag_buffer() -> void:
 
 
 func init_boundary_buffer() -> void:
-	# boundary_count, then one wound edge per unpaired corner
-	boundary_buffer_size = align_buffer(4 + params.max_boundary_edges * BoundaryResolvePass.BOUNDARY_EDGE_STRIDE)
+	boundary_buffer_size = align_buffer(4 + params.max_boundary_edges * params.boundary_edge_stride)
 	boundary_buffer = rd.storage_buffer_create(boundary_buffer_size)
 
 	boundary_set = rd.uniform_set_create([

@@ -5,25 +5,15 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
+#include "../common.glsl.inc"
+
+layout(constant_id = 0) const uint SEGMENTS = 1;
+layout(constant_id = 1) const uint RINGS = 1;
+
+const uint RING_STEPS = SEGMENTS * 2; // Segments across a ring, both sides of the crease
+const uint RING_COUNT = RING_STEPS + 1;
+
 layout(local_size_x = 64) in;
-
-layout(push_constant, std430) uniform PushParams {
-	uint steps; // Subdivisions along each ring, per side of the crease
-	uint rings; // Rings from the apex out to the retracted verts
-};
-
-struct SharedEdge {
-	uvec2 faces;
-	uvec2 apexes;
-	uvec2 retracted[2]; // Per face, in apex order
-};
-
-struct BoundaryEdge {
-	uvec2 verts;
-	uint face;
-	uint corner;
-	uvec2 top[4];
-};
 
 layout(set = 0, binding = 0, scalar) restrict buffer BoundaryBuffer {
 	uint boundary_count;
@@ -41,28 +31,29 @@ layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 
 layout(set = 3, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
 	uint sel_vertex_count;
+	vec3 sel_positions[]; // unused
 };
 
 layout(set = 3, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 	uint sel_face_count;
+	uvec3 sel_faces[]; // unused
 };
 
 bool is_shared(uint mask, uint edge) {
 	return (mask & (1u << edge)) != 0u;
 }
 
+// bevel_shrink gives every retracted corner its own slot, addressed by face and corner
 uint retracted_at(uint face, uint corner) {
 	return sel_vertex_count + 3 * face + corner;
 }
 
 // bevel_fill lays its fans out per shared edge - mirror its addressing exactly
 uint ring_vert(uint idx, uint end, uint side, uint ring) {
-	uint ring_steps = steps * 2;
-	uint ring_count = ring_steps + 1;
-	uint fan_verts = (rings - 1) * ring_count + ring_count - 2;
+	uint fan_verts = (RINGS - 1) * RING_COUNT + RING_COUNT - 2;
 	uint inner_base = sel_vertex_count + sel_face_count * 3 + idx * fan_verts * 2;
 
-	return inner_base + (end * (rings - 1) + ring - 1) * ring_count + side * ring_steps;
+	return inner_base + (end * (RINGS - 1) + ring - 1) * RING_COUNT + side * RING_STEPS;
 }
 
 // The inner rings sit on the segment from the apex out to the retracted vert,
@@ -70,20 +61,18 @@ uint ring_vert(uint idx, uint end, uint side, uint ring) {
 // first shared edge at this apex is as good as any
 void resolve(uint idx, uint slot, uint apex, uint retracted) {
 	boundary_edges[idx].top[0][slot] = apex;
-	boundary_edges[idx].top[rings][slot] = retracted;
+	boundary_edges[idx].top[RINGS][slot] = retracted;
 
-	if (rings < 2) return;
+	if (RINGS < 2) return;
 
 	for (uint i = 0; i < shared_edge_count; i++) {
-		SharedEdge edge = shared_edges[i];
-
 		for (uint end = 0; end < 2; end++) {
-			if (edge.apexes[end] != apex) continue;
+			if (shared_edges[i].apexes[end] != apex) continue;
 
 			// Which side of the ring runs toward our retracted vert
-			uint side = edge.retracted[0][end] == retracted ? 0u : 1u;
+			uint side = shared_edges[i].retracted[0][end] == retracted ? 0u : 1u;
 
-			for (uint ring = 1; ring < rings; ring++) {
+			for (uint ring = 1; ring < RINGS; ring++) {
 				boundary_edges[idx].top[ring][slot] = ring_vert(i, end, side, ring);
 			}
 
@@ -91,8 +80,8 @@ void resolve(uint idx, uint slot, uint apex, uint retracted) {
 		}
 	}
 
-	// No fan here - collapse the row onto the retracted vert
-	for (uint ring = 1; ring < rings; ring++) {
+	// No fan here - collapse the column onto the retracted vert
+	for (uint ring = 1; ring < RINGS; ring++) {
 		boundary_edges[idx].top[ring][slot] = retracted;
 	}
 }
@@ -102,16 +91,23 @@ void main() {
 
 	if (idx >= boundary_count) return;
 
-	BoundaryEdge boundary = boundary_edges[idx];
-	uint mask = face_edge_mask[boundary.face];
-	uint prev = (boundary.corner + 2u) % 3u;
-	uint next = (boundary.corner + 1u) % 3u;
+	uvec2 verts = boundary_edges[idx].verts;
+	uint face = boundary_edges[idx].face;
+	uint corner = boundary_edges[idx].corner;
+	uint mask = face_edge_mask[face];
+	uint prev = (corner + 2u) % 3u;
+	uint next = (corner + 1u) % 3u;
 
 	// The boundary edge is never shared, so retraction comes down to the
 	// corner's other edge. Where there is none, the column collapses
-	uint retracted_x = is_shared(mask, prev) ? retracted_at(boundary.face, boundary.corner) : boundary.verts.x;
-	uint retracted_y = is_shared(mask, next) ? retracted_at(boundary.face, next) : boundary.verts.y;
+	uint retracted_x = is_shared(mask, prev) ? retracted_at(face, corner) : verts.x;
+	uint retracted_y = is_shared(mask, next) ? retracted_at(face, next) : verts.y;
 
-	resolve(idx, 0, boundary.verts.x, retracted_x);
-	resolve(idx, 1, boundary.verts.y, retracted_y);
+	resolve(idx, 0, verts.x, retracted_x);
+	resolve(idx, 1, verts.y, retracted_y);
+
+// 	if (idx == 0 && boundary_count > 1) {
+// 		boundary_edges[1].face = RINGS;
+// 		boundary_edges[1].corner = boundary_edges[1].top.length();
+// 	}
 }

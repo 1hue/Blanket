@@ -5,10 +5,10 @@ class ShaderPipeline:
 	var pipeline: RID
 	var rd: RenderingDevice
 
-	func _init(path: String) -> void:
+	func _init(path: String, specialization_constants := []) -> void:
 		rd = RenderingServer.get_rendering_device()
 		shader = compile_shader(path)
-		pipeline = rd.compute_pipeline_create(shader)
+		pipeline = rd.compute_pipeline_create(shader, ComputeUtil.create_spec_constants(specialization_constants))
 
 	func compile_shader(p_shader_path: String) -> RID:
 		var shader_file: RDShaderFile = load(p_shader_path)
@@ -53,12 +53,24 @@ func _init() -> void:
 	faces_select = ShaderPipeline.new("res://scripts/passes/faces/faces_select.glsl")
 	faces_dedupe = ShaderPipeline.new("res://scripts/passes/faces/faces_dedupe.glsl")
 	faces_write = ShaderPipeline.new("res://scripts/passes/faces/faces_write.glsl")
-	shared_edges = ShaderPipeline.new("res://scripts/passes/shared_edges.glsl")
+	shared_edges = ShaderPipeline.new(
+		"res://scripts/passes/shared_edges.glsl",
+		[ComputeParams.BEVEL_RINGS]
+	)
 	out_mesh = ShaderPipeline.new("res://scripts/passes/out_mesh.glsl")
 	bevel_shrink = ShaderPipeline.new("res://scripts/passes/bevel/bevel_shrink.glsl")
-	bevel_fill = ShaderPipeline.new("res://scripts/passes/bevel/bevel_fill.glsl")
-	boundary_resolve = ShaderPipeline.new("res://scripts/passes/boundary/boundary_resolve.glsl")
-	boundary_write = ShaderPipeline.new("res://scripts/passes/boundary/boundary_write.glsl")
+	bevel_fill = ShaderPipeline.new(
+		"res://scripts/passes/bevel/bevel_fill.glsl",
+		[ComputeParams.BEVEL_SEGMENTS, ComputeParams.BEVEL_RINGS]
+	)
+	boundary_resolve = ShaderPipeline.new(
+		"res://scripts/passes/boundary/boundary_resolve.glsl",
+		[ComputeParams.BEVEL_SEGMENTS, ComputeParams.BEVEL_RINGS]
+	)
+	boundary_write = ShaderPipeline.new(
+		"res://scripts/passes/boundary/boundary_write.glsl",
+		[ComputeParams.BEVEL_SEGMENTS, ComputeParams.BEVEL_RINGS]
+	)
 	offset = ShaderPipeline.new("res://scripts/passes/offset.glsl")
 	normals_sum = ShaderPipeline.new("res://scripts/passes/normals/normals_sum.glsl")
 	normals_write = ShaderPipeline.new("res://scripts/passes/normals/normals_write.glsl")

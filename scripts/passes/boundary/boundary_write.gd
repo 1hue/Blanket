@@ -2,7 +2,7 @@ extends ComputePass
 class_name BoundaryWritePass
 
 const WORKGROUP_SIZE = 64
-const SIZE_PARAMS = 32
+const SIZE_PARAMS = 24
 
 
 func _pre() -> void:
@@ -13,11 +13,9 @@ func pack_params() -> PackedByteArray:
 	push_constant.encode_u32(0, params.wall_rim_base)
 	push_constant.encode_u32(4, params.wall_grid_base)
 	push_constant.encode_u32(8, params.wall_face_base)
-	push_constant.encode_u32(12, params.bevel_steps)
-	push_constant.encode_u32(16, params.bevel_rings)
-	push_constant.encode_u32(20, params.out_color_offset)
-	push_constant.encode_u32(24, params.out_custom_offset)
-	push_constant.encode_u32(28, params.out_attribute_stride)
+	push_constant.encode_u32(12, params.out_color_offset)
+	push_constant.encode_u32(16, params.out_custom_offset)
+	push_constant.encode_u32(20, params.out_attribute_stride)
 
 	return push_constant
 

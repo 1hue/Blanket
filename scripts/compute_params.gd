@@ -6,10 +6,12 @@ signal changed
 const DEFAULT_DEPTH = 0.5
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
 const DEFAULT_BEVEL_WIDTH = 0.2
-const DEFAULT_BEVEL_STEPS = 1
-const DEFAULT_BEVEL_RINGS = 1
 const DEFAULT_SMOOTH_STRENGTH = 0.5
 const DEFAULT_MIN_CREASE_DEGREES = 15.0
+## Sizes BoundaryEdge.top - a spec constant can't, the block stride won't follow
+const MAX_BEVEL = 3
+const BEVEL_SEGMENTS = 1
+const BEVEL_RINGS = 1
 
 #region Source surface
 var in_vertex_count: int
@@ -44,10 +46,6 @@ var out_face_stride: int:
 
 #region Bevel
 var bevel_width := DEFAULT_BEVEL_WIDTH
-## Subdivisions along each ring, per side of the crease.
-var bevel_steps := DEFAULT_BEVEL_STEPS
-## Rings from each apex out to the retracted verts.
-var bevel_rings := DEFAULT_BEVEL_RINGS
 var smooth_strength := DEFAULT_SMOOTH_STRENGTH
 var max_shared_edges: int:
 	get: return in_face_count * 3
@@ -55,14 +53,14 @@ var max_boundary_edges: int:
 	get: return in_face_count * 3
 ## Segments across a ring - both sides of the crease
 var ring_steps: int:
-	get: return bevel_steps * 2
+	get: return BEVEL_SEGMENTS * 2
 ## Verts across a ring, ends included
 var ring_count: int:
 	get: return ring_steps + 1
 var fan_vertex_count: int:
-	get: return (bevel_rings - 1) * ring_count + ring_count - 2
+	get: return (BEVEL_RINGS - 1) * ring_count + ring_count - 2
 var fan_face_count: int:
-	get: return ring_steps + (bevel_rings - 1) * ring_steps * 2
+	get: return ring_steps + (BEVEL_RINGS - 1) * ring_steps * 2
 ## Both apex fans plus the strip bridging their outer rings
 var edge_vertex_count: int:
 	get: return fan_vertex_count * 2
@@ -70,16 +68,24 @@ var edge_face_count: int:
 	get: return fan_face_count * 2 + ring_steps * 2
 #endregion
 
-#region Wall - a quad grid filling each boundary edge's skirt
+#region Boundary
+## Per end: the surface vert, then one per ring out to the retracted vert
+var top_verts: int:
+	get: return BEVEL_RINGS + 1
+var boundary_edge_stride: int:
+	get: return 16 + (MAX_BEVEL + 1) * 8
+#endregion
+
+#region Boundary wall
 var wall_rim_base: int
 var wall_grid_base: int
 var wall_face_base: int
 ## Both ends' resolved columns, plus the two rim corners
 var wall_cols: int:
-	get: return 2 * bevel_rings + 2
+	get: return 2 * BEVEL_RINGS + 2
 ## The rim, the fold, then up to the surface
 var wall_rows: int:
-	get: return bevel_steps + 2
+	get: return BEVEL_SEGMENTS + 2
 ## Per boundary edge
 var wall_faces_per_edge: int:
 	get: return (wall_cols - 1) * (wall_rows - 1) * 2

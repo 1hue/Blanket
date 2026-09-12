@@ -6,10 +6,9 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
-const uint OUT_MESH_WORKGROUP_SIZE = 64;
-const uint FILL_WORKGROUP_SIZE = 256;
-const uint BOUNDARY_WORKGROUP_SIZE = 64;
-const uint FLAG_BOUNDARY = 1;
+#include "common.glsl.inc"
+
+layout(constant_id = 0) const uint RINGS = 1;
 
 // X = face, Y = corner (the edge running from that corner to the next)
 layout(local_size_x = 64, local_size_y = 3) in;
@@ -18,19 +17,6 @@ layout(push_constant, std430) uniform PushParams {
 	uint max_shared_edges;
 	uint max_boundary_edges;
 	float crease_dot; // Max face-vs-face dot to still bevel
-};
-
-struct SharedEdge {
-	uvec2 faces; // Which 2 faces in index_buffer
-	uvec2 apexes; // The edge wound as faces.x sees it, so fill can orient itself
-	uvec2 retracted[2]; // Resultant edges, per face, in apex order
-};
-
-struct BoundaryEdge {
-	uvec2 verts;
-	uint face;
-	uint corner;
-	uvec2 top[4];
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
