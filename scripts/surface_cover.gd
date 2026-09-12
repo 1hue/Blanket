@@ -97,6 +97,7 @@ func draw_normal_debug(
 	normals_material.vertex_color_use_as_albedo = true
 	normals_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	normals_material.no_depth_test = true
+	normals_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
 	im.surface_begin(Mesh.PRIMITIVE_LINES, normals_material)
 	for i in vertices.size():

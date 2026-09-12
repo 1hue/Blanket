@@ -22,9 +22,11 @@ func pack_params() -> PackedByteArray:
 
 
 func compute() -> void:
+	var groups := ceili(params.out_vertex_count / float(WORKGROUP_SIZE))
+
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.offset.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 0)
-	rd.compute_list_dispatch(compute_list, ceili(params.out_vertex_count / float(WORKGROUP_SIZE)), 1, 1)
+	rd.compute_list_dispatch(compute_list, groups, 1, 1)
 	rd.compute_list_end()

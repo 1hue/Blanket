@@ -23,9 +23,6 @@ bump_strength = 10.3
 [resource]
 render_priority = 1
 next_pass = ExtResource("1_3t706")
-transparency = 1
-no_depth_test = true
-albedo_color = Color(0.8928, 0.9052, 0.93, 0.34901962)
 roughness = 0.4
 emission_enabled = true
 emission = Color(0.9776916, 0.9639762, 1, 1)

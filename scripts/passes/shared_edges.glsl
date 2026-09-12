@@ -26,6 +26,12 @@ struct SharedEdge {
 	uvec2 retracted[2]; // Resultant edges, per face, in apex order
 };
 
+struct BoundaryEdge {
+	uvec2 verts; // Face winding order - the wall hangs off this direction
+	uint face;
+	uint corner; // Which of the face's edges this is
+};
+
 layout(set = 0, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
 	uint sel_vertex_count;
 	vec3 sel_positions[];
@@ -53,7 +59,7 @@ layout(set = 3, binding = 0, std430) restrict buffer VertexFlagBuffer {
 
 layout(set = 4, binding = 0, scalar) restrict buffer BoundaryBuffer {
 	uint boundary_count;
-	uvec2 boundary_edges[]; // Face winding order - the wall needs the direction
+	BoundaryEdge boundary_edges[];
 };
 
 layout(set = 5, binding = 0, scalar) restrict buffer DispatchBuffer {
@@ -120,8 +126,10 @@ void record_boundary(uint self, uvec2 edge) {
 
 	if (slot >= max_boundary_edges) return;
 
-	// Winding decides which way the wall hangs, so store it unsorted
-	boundary_edges[slot] = wound_edge_at_corner(self);
+	// The mask isn't settled yet - boundary.glsl resolves the retracted verts later
+	boundary_edges[slot].verts = wound_edge_at_corner(self);
+	boundary_edges[slot].face = self / 3;
+	boundary_edges[slot].corner = self % 3;
 
 	atomicMax(dispatch_boundary.x, 1 + slot / BOUNDARY_WORKGROUP_SIZE);
 
@@ -133,7 +141,6 @@ void record_boundary(uint self, uvec2 edge) {
 bool match_twin(uint self, uint twin) {
 	uint face = self / 3;
 
-	if (!is_creased(face, twin / 3)) return false; // Flat enough to leave alone
 	if (twin < self) return true; // The other lane records it
 
 	uint slot = atomicAdd(shared_edge_count, 1);
@@ -174,14 +181,13 @@ void main() {
 	for (uint twin = 0; twin < sel_face_count * 3; twin++) {
 		if (twin == self || edge_at_corner(twin) != edge) continue;
 
-		has_twin = true; // Topology only - the wall must not depend on the crease test
-		is_shared_edge = match_twin(self, twin) || is_shared_edge;
+		has_twin = true;
+		match_twin(self, twin);
 	}
 
-	if (is_shared_edge) {
-		// Retraction needs both edges at a corner; each is found by its own lane
+	if (has_twin) {
 		atomicOr(face_edge_mask[face], 1u << corner);
+	} else {
+		record_boundary(self, edge);
 	}
-
-	if (!has_twin) record_boundary(self, edge);
 }

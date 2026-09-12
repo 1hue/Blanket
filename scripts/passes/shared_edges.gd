@@ -4,7 +4,7 @@ class_name SharedEdgesPass
 const WORKGROUP_SIZE = 64
 const SIZE_PARAMS = 12
 const SHARED_EDGE_STRIDE = 32
-const BOUNDARY_EDGE_STRIDE = 8
+const BOUNDARY_EDGE_STRIDE = 16
 const STRUCT_STRIDE = 32
 
 var shared_edge_set: RID

@@ -10,7 +10,6 @@ default_value_enabled = true
 default_value = 1.0
 
 [resource]
-modes/cull = 2
 flags/depth_prepass_alpha = true
 flags/unshaded = true
 flags/wireframe = true

@@ -40,10 +40,10 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		BevelFillPass.new(mesh, surface, params, sets),
 		BoundaryPass.new(mesh, surface, params, sets),
 		OffsetPass.new(mesh, surface, params, sets),
+		NormalsSumPass.new(mesh, surface, params, sets),
+		NormalsWritePass.new(mesh, surface, params, sets),
 		#SmoothSumPass.new(mesh, surface, params, sets),
 		#SmoothWritePass.new(mesh, surface, params, sets),
-		#NormalsSumPass.new(mesh, surface, params, sets),
-		#NormalsWritePass.new(mesh, surface, params, sets),
 	]
 
 
@@ -214,16 +214,64 @@ func debug_out_mesh() -> void:
 	dump_vec3(vertex_buffer, "vertex_buffer")
 	#dump_attributes(attr_buffer, "attr_buffer")
 
+func dump_boundary() -> void:
+	var bytes := rd.buffer_get_data(sets.boundary_buffer)
+	var count := bytes.decode_u32(0)
+
+	const STRIDE := 16
+
+	for i in count:
+		var at := 4 + i * STRIDE
+		var x := bytes.decode_u32(at)
+		var y := bytes.decode_u32(at + 4)
+		var face := bytes.decode_u32(at + 8)
+		var corner := bytes.decode_u32(at + 12)
+		var mask := rd.buffer_get_data(sets.face_edge_mask_buffer, face * 4, 4).decode_u32(0)
+		var prev := (corner + 2) % 3
+		var retracts: bool = (mask & (1 << prev)) != 0
+		var top: int = params.selected_vertex_count + 3 * face + corner if retracts else x
+
+		print_rich("[color=orchid]b%d: edge=(%d,%d) f%d c%d mask=%d prev=%d top_x=%d%s" % [
+			i, x, y, face, corner, mask, prev, top, " (retracted)" if retracts else ""
+		])
+
+
+func dump_wall(name := "wall") -> void:
+	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(mesh_rid, surface.idx)
+	var verts := rd.buffer_get_data(vertex_buffer)
+	var faces := rd.buffer_get_data(index_buffer)
+	var boundary := rd.buffer_get_data(sets.boundary_buffer).decode_u32(0)
+
+	print_rich("[color=orchid]%s: rim_base=%d arc_base=%d face_base=%d boundary=%d" % [
+		name, params.wall_rim_base, params.wall_arc_base, params.wall_face_base, boundary
+	])
+
+	for i in boundary:
+		for f in BoundaryPass.FACES:
+			var face := params.wall_face_base + i * BoundaryPass.FACES + f
+			var at := face * 6
+			var tri := Vector3i(faces.decode_u16(at), faces.decode_u16(at + 2), faces.decode_u16(at + 4))
+			var degenerate := tri.x == tri.y or tri.x == tri.z or tri.y == tri.z
+
+			print_rich("[color=orchid]  b%d f%d: %s%s" % [i, f, tri, " DEGENERATE" if degenerate else ""])
+
+
+func dump_vert(index: int, name := "vert") -> void:
+	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(mesh_rid, surface.idx)
+	var bytes := rd.buffer_get_data(vertex_buffer, index * 12, 12)
+
+	print_rich("[color=orchid]%s[%d]: (%f, %f, %f)" % [
+		name, index, bytes.decode_float(0), bytes.decode_float(4), bytes.decode_float(8)
+	])
+
 
 func debug() -> void:
 	debug_faces_multipass()
 	debug_shared_edges()
 	dump_shared_mask(sets.face_edge_mask_buffer)
 	dump_vertex_flags(sets.vertex_flag_buffer)
+	dump_boundary()
+	dump_wall()
 	debug_out_mesh()
-	#print_rich("[color=goldenrod]faces_buffer.faces[] int16: ", ComputeUtil.to_int16_array(faces_buffer.slice(8)), "[/color]")
-	#var table := rd.buffer_get_data(uniforms.faces_table_buffer)
-	#print_rich("[color=cadet_blue]table_buffer[", table.size() / 4, "] uint32: ", ComputeUtil.to_uint32_array(table), "[/color]")
-	#var slots := rd.buffer_get_data(uniforms.faces_slot_buffer)
-	#print_rich("[color=cadet_blue]slots_buffer[", slots.size() / 2, "] uint16: ", ComputeUtil.to_int16_array(slots), "[/color]")
 #endregion

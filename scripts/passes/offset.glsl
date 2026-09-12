@@ -1,4 +1,4 @@
-// Offset unfrozen verts along local_up, from the rest position stored in custom0
+// Offset each vert along local_up, scaled by the proportion stored in custom0
 #[compute]
 #version 450
 
@@ -27,7 +27,7 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
-// Custom0 XYZ = position, W = freeze/sticky flag
+// Custom0 XYZ = rest position, W = fraction of depth this vert travels
 vec4 read_custom(uint vert) {
 	uint at = (out_custom_offset + vert * out_attribute_stride) / 4;
 
@@ -44,9 +44,8 @@ void main() {
 
 	if (vert >= out_vertex_count) return;
 
+	// Working from rest keeps this idempotent - depth can be dragged without drift
 	vec4 custom = read_custom(vert);
 
-	if (custom.w == 0.0) return; // Immovable
-
-	out_positions[vert] = custom.xyz + local_up * depth;
+	out_positions[vert] = custom.xyz + local_up * depth * custom.w;
 }

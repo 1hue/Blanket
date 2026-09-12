@@ -3,11 +3,12 @@
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
 
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
+	vec3 local_up; // Model space, normalized - the fallback for verts nothing summed into
 	uint out_vertex_count;
 	uint out_normal_offset;
 	uint out_normal_stride;
@@ -32,6 +33,7 @@ layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {
 uint oct_encode(vec3 n) {
 	vec3 a = n / (abs(n.x) + abs(n.y) + abs(n.z));
 	vec2 e = a.z >= 0 ? a.xy : (1 - abs(a.yx)) * sign(a.xy);
+
 	return packUnorm2x16(fma(e, vec2(0.5), vec2(0.5)));
 }
 
@@ -41,9 +43,10 @@ void main() {
 	if (vert >= out_vertex_count) return;
 
 	vec3 sum = normal_sums[vert];
-	vec3 normal = dot(sum, sum) > 0 ? normalize(sum) : vec3(0, 1, 0);
+	vec3 normal = dot(sum, sum) > 0.0 ? normalize(sum) : local_up;
 
 	uint word = (out_normal_offset + vert * out_normal_stride) / 4;
+
 	out_words[word] = oct_encode(normal);
 	out_words[word + 1] = 0; // Tangent placeholder
 }

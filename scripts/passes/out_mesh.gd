@@ -9,15 +9,20 @@ func _pre() -> void:
 
 
 func allocate() -> void:
-	var verts := read_counter(sets.selected_vertex_buffer)
+	params.selected_vertex_count = read_counter(sets.selected_vertex_buffer)
 	var faces := read_counter(sets.selected_index_buffer)
 	var shared := mini(read_counter(sets.shared_edge_buffer), params.max_shared_edges)
 	var boundary := mini(read_counter(sets.boundary_buffer), params.max_boundary_edges)
 
-	params.wall_vertex_base = verts + faces * 3 + shared * params.edge_vertex_count
+	# Rim row is shared between adjacent walls; each wall owns its own fan verts
+	var wall_arc_verts := boundary * BoundaryPass.ARC_VERTS
+	var wall_faces := boundary * BoundaryPass.FACES
+
+	params.wall_rim_base = params.selected_vertex_count + faces * 3 + shared * params.edge_vertex_count
+	params.wall_arc_base = params.wall_rim_base + params.selected_vertex_count
 	params.wall_face_base = faces + shared * params.edge_face_count
-	params.out_vertex_count = params.wall_vertex_base + boundary * 2
-	params.out_index_count = (params.wall_face_base + boundary * 2) * 3
+	params.out_vertex_count = params.wall_arc_base + wall_arc_verts
+	params.out_index_count = (params.wall_face_base + wall_faces) * 3
 
 	surface.allocate(
 		params.out_vertex_count,

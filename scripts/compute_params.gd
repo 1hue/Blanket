@@ -26,7 +26,7 @@ var in_face_stride: int:
 	get: return in_index_stride * 3
 #endregion
 
-#region Generated surface - holds the selection, then everything bevel adds
+#region Generated surface
 var out_vertex_count: int
 var out_vertex_stride: int
 var out_index_count: int
@@ -68,10 +68,13 @@ var edge_face_count: int:
 	get: return fan_face_count * 2 + arc_steps * 2
 #endregion
 
-#region Wall
-var wall_vertex_base: int
+#region Wall - a skirt of quads below the boundary, folded at the rim
+var wall_rim_base: int
+var wall_arc_base: int
 var wall_face_base: int
 #endregion
+
+var selected_vertex_count: int
 
 ## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees
 var upright_dot := cos(deg_to_rad(DEFAULT_MAX_SLOPE_DEGREES))
