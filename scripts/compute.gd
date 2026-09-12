@@ -54,9 +54,18 @@ func bake() -> void:
 
 
 func update() -> void:
-	bake_passes[8].compute()
-	pass
+	var offset_pass := find_pass(OffsetPass)
 
+	if offset_pass:
+		offset_pass.compute()
+
+
+func find_pass(type: Variant) -> ComputePass:
+	for bake_pass in bake_passes:
+		if is_instance_of(bake_pass, type):
+			return bake_pass
+
+	return null
 
 #region Debug
 func dump_shared_mask(buffer: RID, name := "shared_mask") -> void:
