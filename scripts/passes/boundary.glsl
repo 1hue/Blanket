@@ -62,6 +62,7 @@ void main() {
 	write_vertex(base, out_positions[edge.x]);
 	write_vertex(base + 1, out_positions[edge.y]);
 
+	// For outward winding: top edge, then the wall row beneath it
 	uvec4 quad = uvec4(edge.y, edge.x, base, base + 1);
 	bool flip = idx % 2 == 1;
 
