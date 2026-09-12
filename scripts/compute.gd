@@ -39,11 +39,11 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		BevelShrinkPass.new(mesh, surface, params, sets),
 		BevelFillPass.new(mesh, surface, params, sets),
 		BoundaryPass.new(mesh, surface, params, sets),
+		OffsetPass.new(mesh, surface, params, sets),
 		#SmoothSumPass.new(mesh, surface, params, sets),
 		#SmoothWritePass.new(mesh, surface, params, sets),
 		#NormalsSumPass.new(mesh, surface, params, sets),
 		#NormalsWritePass.new(mesh, surface, params, sets),
-		OffsetPass.new(mesh, surface, params, sets),
 	]
 
 
@@ -54,7 +54,7 @@ func bake() -> void:
 
 
 func update() -> void:
-	#bake_passes[9].compute()
+	bake_passes[8].compute()
 	pass
 
 
