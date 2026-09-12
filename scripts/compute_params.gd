@@ -3,7 +3,7 @@ class_name ComputeParams
 
 signal changed
 
-const DEFAULT_DEPTH = 0.1
+const DEFAULT_DEPTH = 0.5
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
 const DEFAULT_BEVEL_WIDTH = 0.2
 const DEFAULT_BEVEL_SEGMENTS = 1

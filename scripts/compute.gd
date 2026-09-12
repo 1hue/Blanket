@@ -43,7 +43,7 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		#SmoothWritePass.new(mesh, surface, params, sets),
 		#NormalsSumPass.new(mesh, surface, params, sets),
 		#NormalsWritePass.new(mesh, surface, params, sets),
-		#ShapePass.new(mesh, surface, params, sets),
+		OffsetPass.new(mesh, surface, params, sets),
 	]
 
 
@@ -53,9 +53,8 @@ func bake() -> void:
 	debug()
 
 
-## TODO Reposition the added mesh surface
 func update() -> void:
-	#_compute_shape()
+	#bake_passes[9].compute()
 	pass
 
 

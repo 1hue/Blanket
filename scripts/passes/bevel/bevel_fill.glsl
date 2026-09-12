@@ -70,6 +70,7 @@ void write_vertex(uint vert, vec3 position) {
 	out_attributes[at] = floatBitsToUint(position.x);
 	out_attributes[at + 1] = floatBitsToUint(position.y);
 	out_attributes[at + 2] = floatBitsToUint(position.z);
+	out_attributes[at + 3] = floatBitsToUint(1.0); // Movable
 }
 
 void write_triangle(uint face, uvec3 verts, bool reverse) {

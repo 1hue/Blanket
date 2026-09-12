@@ -38,16 +38,16 @@ void write_color(uint vert, uint color) {
 	out_attributes[(out_color_offset + vert * out_attribute_stride) / 4] = color;
 }
 
-// Custom0.w = 1 freezes the vert against the displacement pass
-void freeze(uint vert) {
-	out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3] = floatBitsToUint(1.0);
-}
+void write_vertex(uint vert, vec3 position) {
+	uint at = (out_custom_offset + vert * out_attribute_stride) / 4;
 
-// The wall row starts coincident with the surface and only separates once it lifts
-void write_wall_vert(uint slot, uint source) {
-	out_positions[slot] = out_positions[source];
-	freeze(slot);
-	write_color(slot, COLOR_WALL);
+	out_positions[vert] = position;
+	out_attributes[at] = floatBitsToUint(position.x);
+	out_attributes[at + 1] = floatBitsToUint(position.y);
+	out_attributes[at + 2] = floatBitsToUint(position.z);
+	// Immovable, but skip writing W = 0.0 - already default
+
+	write_color(vert, COLOR_WALL);
 }
 
 void main() {
@@ -59,10 +59,13 @@ void main() {
 	uint base = wall_vertex_base + idx * 2;
 	uint face = wall_face_base + idx * 2;
 
-	write_wall_vert(base, edge.x);
-	write_wall_vert(base + 1, edge.y);
+	write_vertex(base, out_positions[edge.x]);
+	write_vertex(base + 1, out_positions[edge.y]);
 
-	// Edge runs x -> y in face winding, so the skirt hangs off that direction
-	out_faces[face] = u16vec3(edge.x, edge.y, base + 1);
-	out_faces[face + 1] = u16vec3(edge.x, base + 1, base);
+	// Alternate the diagonal so neighbouring quads converge rather than fan
+	uvec4 quad = uvec4(edge.x, edge.y, base + 1, base);
+	bool flip = idx % 2 == 1;
+
+	out_faces[face] = u16vec3(flip ? quad.xyw : quad.xyz);
+	out_faces[face + 1] = u16vec3(flip ? quad.yzw : quad.xzw);
 }
