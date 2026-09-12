@@ -14,9 +14,7 @@ layout(constant_id = 0) const uint RINGS = 1;
 layout(local_size_x = 64, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
-	uint max_shared_edges;
-	uint max_boundary_edges;
-	float crease_dot; // Max face-vs-face dot to still bevel
+	uint max_edges;
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
@@ -64,11 +62,6 @@ vec3 face_normal(uint face) {
 	return normalize(cross(p1 - p0, p2 - p0));
 }
 
-// Near-coplanar faces get no bevel - the crease isn't visible enough to be worth the geometry
-bool is_creased(uint face_a, uint face_b) {
-	return dot(face_normal(face_a), face_normal(face_b)) < crease_dot;
-}
-
 // AB = BA, so compare sorted and two corners share an edge iff their pairs match
 uvec2 sorted_edge(uvec2 edge) {
 	return uvec2(min(edge.x, edge.y), max(edge.x, edge.y));
@@ -111,7 +104,7 @@ void mark_boundary(uint vert) {
 void record_boundary(uint self, uvec2 edge) {
 	uint slot = atomicAdd(boundary_count, 1);
 
-	if (slot >= max_boundary_edges) return;
+	if (slot >= max_edges) return;
 
 	// The mask isn't settled yet - boundary.glsl resolves the retracted verts later
 	boundary_edges[slot].verts = wound_edge_at_corner(self);
@@ -132,7 +125,7 @@ bool match_twin(uint self, uint twin) {
 
 	uint slot = atomicAdd(shared_edge_count, 1);
 
-	if (slot >= max_shared_edges) return true; // Buffer overflowed
+	if (slot >= max_edges) return true; // Buffer overflowed
 
 	uvec2 apexes = wound_edge_at_corner(self);
 

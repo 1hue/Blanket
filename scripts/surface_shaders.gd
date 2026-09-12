@@ -58,7 +58,10 @@ func _init() -> void:
 		[ComputeParams.BEVEL_RINGS]
 	)
 	out_mesh = ShaderPipeline.new("res://scripts/passes/out_mesh.glsl")
-	bevel_shrink = ShaderPipeline.new("res://scripts/passes/bevel/bevel_shrink.glsl")
+	bevel_shrink = ShaderPipeline.new(
+		"res://scripts/passes/bevel/bevel_shrink.glsl",
+		[ComputeParams.BEVEL_WIDTH]
+	)
 	bevel_fill = ShaderPipeline.new(
 		"res://scripts/passes/bevel/bevel_fill.glsl",
 		[ComputeParams.BEVEL_SEGMENTS, ComputeParams.BEVEL_RINGS]

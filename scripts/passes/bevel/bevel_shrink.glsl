@@ -9,11 +9,12 @@ const float MITER_LIMIT = 2.0; // Multiples of width a sharp corner may travel
 const float MIN_SCALE = 0.05; // Smallest the face may shrink to
 const uint COLOR_RETRACTED = 0xFF1CA038; // Gasoline green
 
+layout(constant_id = 0) const float WIDTH = 0.1;
+
 // X = face, Y = corner
 layout(local_size_x = 64, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
-	float bevel_width; // Inset distance from each shared edge, model space
 	uint out_color_offset;
 	uint out_custom_offset;
 	uint out_attribute_stride;
@@ -159,7 +160,7 @@ void main() {
 
 	// A retracted vert is new geometry, so it carries no boundary flag
 	uint slot = retracted_at(face_idx, corner);
-	vec3 position = inset_corner(face, mask, corner, min(bevel_width, max_width(face)));
+	vec3 position = inset_corner(face, mask, corner, min(WIDTH, max_width(face)));
 
 	write_vertex(slot, position);
 }

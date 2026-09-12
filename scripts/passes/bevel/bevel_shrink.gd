@@ -2,7 +2,7 @@ extends ComputePass
 class_name BevelShrinkPass
 
 const WORKGROUP_SIZE = 64
-const SIZE_PARAMS = 16
+const SIZE_PARAMS = 12
 
 
 func _pre() -> void:
@@ -10,10 +10,9 @@ func _pre() -> void:
 
 
 func pack_params() -> PackedByteArray:
-	push_constant.encode_float(0, params.bevel_width)
-	push_constant.encode_u32(4, params.out_color_offset)
-	push_constant.encode_u32(8, params.out_custom_offset)
-	push_constant.encode_u32(12, params.out_attribute_stride)
+	push_constant.encode_u32(0, params.out_color_offset)
+	push_constant.encode_u32(4, params.out_custom_offset)
+	push_constant.encode_u32(8, params.out_attribute_stride)
 
 	return push_constant
 

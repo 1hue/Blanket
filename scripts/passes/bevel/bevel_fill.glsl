@@ -11,7 +11,6 @@ const uint COLOR_APEX = 0xFF3030E0; // Red
 const uint COLOR_RING = 0xFFE08030; // Blue
 const uint COLOR_OUTER = 0xFF30E030; // Green
 
-// Defaults must match ComputeParams
 layout(constant_id = 0) const uint SEGMENTS = 1;
 layout(constant_id = 1) const uint RINGS = 1;
 
@@ -21,7 +20,6 @@ const uint RING_COUNT = RING_STEPS + 1; // Verts across a ring, ends included
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
-	float bevel_width; // Must match bevel_shrink.glsl
 	uint out_color_offset;
 	uint out_custom_offset;
 	uint out_attribute_stride;

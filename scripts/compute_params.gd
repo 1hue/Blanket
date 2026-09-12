@@ -5,13 +5,11 @@ signal changed
 
 const DEFAULT_DEPTH = 0.5
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
-const DEFAULT_BEVEL_WIDTH = 0.2
 const DEFAULT_SMOOTH_STRENGTH = 0.5
-const DEFAULT_MIN_CREASE_DEGREES = 15.0
-## Sizes BoundaryEdge.top - a spec constant can't, the block stride won't follow
-const MAX_BEVEL = 3
+const MAX_BEVEL = 3 # Sizes BoundaryEdge.top - a spec constant can't, block stride won't follow
 const BEVEL_SEGMENTS = 1
 const BEVEL_RINGS = 1
+const BEVEL_WIDTH = 0.2
 
 #region Source surface
 var in_vertex_count: int
@@ -45,13 +43,9 @@ var out_face_stride: int:
 #endregion
 
 #region Bevel
-var bevel_width := DEFAULT_BEVEL_WIDTH
 var smooth_strength := DEFAULT_SMOOTH_STRENGTH
-var max_shared_edges: int:
+var max_edges: int:
 	get: return in_face_count * 3
-var max_boundary_edges: int:
-	get: return in_face_count * 3
-## Segments across a ring - both sides of the crease
 var ring_steps: int:
 	get: return BEVEL_SEGMENTS * 2
 ## Verts across a ring, ends included
@@ -66,14 +60,6 @@ var edge_vertex_count: int:
 	get: return fan_vertex_count * 2
 var edge_face_count: int:
 	get: return fan_face_count * 2 + ring_steps * 2
-#endregion
-
-#region Boundary
-## Per end: the surface vert, then one per ring out to the retracted vert
-var top_verts: int:
-	get: return BEVEL_RINGS + 1
-var boundary_edge_stride: int:
-	get: return 16 + (MAX_BEVEL + 1) * 8
 #endregion
 
 #region Boundary wall
@@ -99,15 +85,6 @@ var wall_verts_per_edge: int:
 
 ## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees
 var upright_dot := cos(deg_to_rad(DEFAULT_MAX_SLOPE_DEGREES))
-
-## Below this angle between adjacent faces, the edge is treated as flat and left unbeveled
-var crease_dot := cos(deg_to_rad(DEFAULT_MIN_CREASE_DEGREES))
-
-var min_crease_degrees := DEFAULT_MIN_CREASE_DEGREES:
-	set(value):
-		min_crease_degrees = value
-		crease_dot = cos(deg_to_rad(value))
-		changed.emit()
 
 ## World up translated to model local space, normalized
 var local_up := Vector3.UP:

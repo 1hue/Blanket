@@ -2,9 +2,10 @@ extends ComputePass
 class_name SharedEdgesPass
 
 const WORKGROUP_SIZE = 64
-const SIZE_PARAMS = 12
+const SIZE_PARAMS = 4
 const SHARED_EDGE_STRIDE = 32
 const STRUCT_STRIDE = 32
+const BOUNDARY_EDGE_STRIDE = 16 + (ComputeParams.MAX_BEVEL + 1) * 8
 
 var shared_edge_set: RID
 var shared_edge_buffer: RID
@@ -32,8 +33,7 @@ func _pre() -> void:
 
 
 func init_shared_edge_buffer() -> void:
-	# shared_edge_count, then one entry per creased pair found across the selection
-	shared_edge_buffer_size = align_buffer(4 + params.max_shared_edges * SHARED_EDGE_STRIDE)
+	shared_edge_buffer_size = align_buffer(4 + params.max_edges * SHARED_EDGE_STRIDE)
 	shared_edge_buffer = rd.storage_buffer_create(shared_edge_buffer_size)
 
 	shared_edge_set = rd.uniform_set_create([
@@ -71,7 +71,7 @@ func init_vertex_flag_buffer() -> void:
 
 
 func init_boundary_buffer() -> void:
-	boundary_buffer_size = align_buffer(4 + params.max_boundary_edges * params.boundary_edge_stride)
+	boundary_buffer_size = align_buffer(4 + params.max_edges * BOUNDARY_EDGE_STRIDE)
 	boundary_buffer = rd.storage_buffer_create(boundary_buffer_size)
 
 	boundary_set = rd.uniform_set_create([
@@ -83,9 +83,7 @@ func init_boundary_buffer() -> void:
 
 
 func pack_params() -> PackedByteArray:
-	push_constant.encode_u32(0, params.max_shared_edges)
-	push_constant.encode_u32(4, params.max_boundary_edges)
-	push_constant.encode_float(8, params.crease_dot)
+	push_constant.encode_u32(0, params.max_edges)
 
 	return push_constant
 

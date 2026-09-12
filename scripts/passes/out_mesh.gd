@@ -11,8 +11,8 @@ func _pre() -> void:
 func allocate() -> void:
 	var verts := read_counter(sets.selected_vertex_buffer)
 	var faces := read_counter(sets.selected_index_buffer)
-	var shared := mini(read_counter(sets.shared_edge_buffer), params.max_shared_edges)
-	var boundary := mini(read_counter(sets.boundary_buffer), params.max_boundary_edges)
+	var shared := mini(read_counter(sets.shared_edge_buffer), params.max_edges)
+	var boundary := mini(read_counter(sets.boundary_buffer), params.max_edges)
 
 	params.wall_rim_base = verts + faces * 3 + shared * params.edge_vertex_count
 	params.wall_grid_base = params.wall_rim_base + verts * params.wall_side_verts_per_vert
