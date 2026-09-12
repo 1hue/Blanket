@@ -1,5 +1,5 @@
 // Find every edge shared by two selected faces, store the apex verts.
-// Anchor the verts on the boundary and record its edges for the wall.
+// Mark the verts on the boundary and record its edges for the wall.
 #[compute]
 #version 450
 
@@ -22,8 +22,8 @@ layout(push_constant, std430) uniform PushParams {
 
 struct SharedEdge {
 	uvec2 faces; // Which 2 faces in index_buffer
-	uvec2 apexes; // 2 indices forming the shared edge
-	uvec2 retracted[2]; // Resultant edges, per face
+	uvec2 apexes; // The edge wound as faces.x sees it, so fill can orient itself
+	uvec2 retracted[2]; // Resultant edges, per face, in apex order
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
@@ -76,7 +76,7 @@ bool is_creased(uint face_a, uint face_b) {
 	return dot(face_normal(face_a), face_normal(face_b)) < crease_dot;
 }
 
-// AB = BA, so store sorted and two corners share an edge iff their pairs match
+// AB = BA, so compare sorted and two corners share an edge iff their pairs match
 uvec2 sorted_edge(uvec2 edge) {
 	return uvec2(min(edge.x, edge.y), max(edge.x, edge.y));
 }
@@ -89,36 +89,39 @@ uvec2 edge_at(uvec3 corners, uint corner) {
 	return corners.zx;
 }
 
-uvec2 edge_at_corner(uint global_corner) {
-	uint face = global_corner / 3;
+// Wound as this face sees it - only the twin search wants it sorted
+uvec2 wound_edge_at_corner(uint global_corner) {
+	return edge_at(sel_faces[global_corner / 3], global_corner % 3);
+}
 
-	return sorted_edge(edge_at(sel_faces[face], global_corner % 3));
+uvec2 edge_at_corner(uint global_corner) {
+	return sorted_edge(wound_edge_at_corner(global_corner));
 }
 
 // Every corner gets its own retracted vert, so the slot is just its address.
-// Returned in apex order, since apexes are sorted and corners are wound.
+// Returned in apex order, so the two faces' pairs line up for the fill strip
 uvec2 retracted_at_corner(uint global_corner, uvec2 apexes) {
-	uvec3 corners = sel_faces[global_corner / 3];
 	uint corner = global_corner % 3;
 	uvec2 pair = uvec2(corner, (corner + 1) % 3);
 
-	if (corners[corner] != apexes.x) pair = pair.yx;
+	// Two faces sharing an edge wind it opposite ways, so one of them flips
+	if (sel_faces[global_corner / 3][corner] != apexes.x) pair = pair.yx;
 
 	return sel_vertex_count + 3 * (global_corner / 3) + pair;
 }
 
-// Boundary verts are pinned - the wall row anchors them while the surface lifts
+// Marked, not frozen - the wall row is what actually stays put
 void mark_boundary(uint vert) {
 	atomicOr(vertex_flags[vert], FLAG_BOUNDARY);
 }
 
-// Winding order matters here, so take the edge unsorted
-void record_boundary(uint face, uint corner, uvec2 edge) {
+void record_boundary(uint self, uvec2 edge) {
 	uint slot = atomicAdd(boundary_count, 1);
 
 	if (slot >= max_boundary_edges) return;
 
-	boundary_edges[slot] = edge_at(sel_faces[face], corner);
+	// Winding decides which way the wall hangs, so store it unsorted
+	boundary_edges[slot] = wound_edge_at_corner(self);
 
 	atomicMax(dispatch_boundary.x, 1 + slot / BOUNDARY_WORKGROUP_SIZE);
 
@@ -127,7 +130,7 @@ void record_boundary(uint face, uint corner, uvec2 edge) {
 }
 
 // The pair is recorded once, by the lower lane. False means the edge is too flat to bevel
-bool match_twin(uint self, uint twin, uvec2 edge) {
+bool match_twin(uint self, uint twin) {
 	uint face = self / 3;
 
 	if (!is_creased(face, twin / 3)) return false; // Flat enough to leave alone
@@ -137,10 +140,12 @@ bool match_twin(uint self, uint twin, uvec2 edge) {
 
 	if (slot >= max_shared_edges) return true; // Buffer overflowed
 
+	uvec2 apexes = wound_edge_at_corner(self);
+
 	shared_edges[slot].faces = uvec2(face, twin / 3);
-	shared_edges[slot].apexes = edge;
-	shared_edges[slot].retracted[0] = retracted_at_corner(self, edge);
-	shared_edges[slot].retracted[1] = retracted_at_corner(twin, edge);
+	shared_edges[slot].apexes = apexes;
+	shared_edges[slot].retracted[0] = retracted_at_corner(self, apexes);
+	shared_edges[slot].retracted[1] = retracted_at_corner(twin, apexes);
 
 	atomicMax(dispatch_fill.x, 1 + slot / FILL_WORKGROUP_SIZE);
 
@@ -169,8 +174,8 @@ void main() {
 	for (uint twin = 0; twin < sel_face_count * 3; twin++) {
 		if (twin == self || edge_at_corner(twin) != edge) continue;
 
-		has_twin = true; // Topology only - anchoring must not depend on the crease test
-		is_shared_edge = match_twin(self, twin, edge) || is_shared_edge;
+		has_twin = true; // Topology only - the wall must not depend on the crease test
+		is_shared_edge = match_twin(self, twin) || is_shared_edge;
 	}
 
 	if (is_shared_edge) {
@@ -178,7 +183,5 @@ void main() {
 		atomicOr(face_edge_mask[face], 1u << corner);
 	}
 
-	if (!has_twin) {
-		record_boundary(face, corner, edge);
-	}
+	if (!has_twin) record_boundary(self, edge);
 }

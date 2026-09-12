@@ -62,10 +62,10 @@ void main() {
 	write_vertex(base, out_positions[edge.x]);
 	write_vertex(base + 1, out_positions[edge.y]);
 
-	// Alternate the diagonal so neighbouring quads converge rather than fan
-	uvec4 quad = uvec4(edge.x, edge.y, base + 1, base);
+	uvec4 quad = uvec4(edge.y, edge.x, base, base + 1);
 	bool flip = idx % 2 == 1;
 
+	// Alternate the diagonal so neighbouring quads converge rather than fan
 	out_faces[face] = u16vec3(flip ? quad.xyw : quad.xyz);
 	out_faces[face + 1] = u16vec3(flip ? quad.yzw : quad.xzw);
 }
