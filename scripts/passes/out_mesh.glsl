@@ -72,6 +72,6 @@ void main() {
 
 	// Flat copy - bevel_shrink repoints these onto the retracted verts
 	if (idx < sel_face_count) {
-		out_faces[idx] = u16vec3(sel_faces[idx]);
+// 		out_faces[idx] = u16vec3(sel_faces[idx]);
 	}
 }

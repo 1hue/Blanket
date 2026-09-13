@@ -1,16 +1,23 @@
 extends ComputePass
 class_name BoundaryResolvePass
 
-const WORKGROUP_SIZE = 64
+const SIZE_PARAMS = 4
 
 
 func _pre() -> void:
-	pass
+	push_constant.resize(SIZE_PARAMS)
+
+
+func pack_params() -> PackedByteArray:
+	push_constant.encode_u32(0, params.max_edges)
+
+	return push_constant
 
 
 func compute() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.boundary_resolve.pipeline)
+	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.boundary, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.face_edge_mask, 1)
 	rd.compute_list_bind_uniform_set(compute_list, sets.shared_edge, 2)

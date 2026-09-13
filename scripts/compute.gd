@@ -175,16 +175,181 @@ func dumpf(buffer: RID, name := "") -> void:
 	print_rich("[color=burlywood]%s: " % name, bytes.to_float32_array() ,"[/color]")
 
 
-func debug_out() -> void:
-	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.idx)
-	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.idx)
-	var attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(surface.mesh_rid, surface.idx)
+## Positions occupy the first block, packed normal+tangent the second
+func dump_vertices(idx: int, name := "vertices") -> void:
+	var buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, idx)
+	var bytes := rd.buffer_get_data(buffer)
+	var format := mesh.surface_get_format(idx)
+	var count := mesh.surface_get_array_len(idx)
+	var normal_offset := RenderingServer.mesh_surface_get_format_offset(format, count, Mesh.ARRAY_NORMAL)
+	var normal_stride := RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, count)
 
-	dump_vec3(vertex_buffer, "out_vertex_buffer")
+	for i in count:
+		var position := Vector3(
+			bytes.decode_float(i * 12),
+			bytes.decode_float(i * 12 + 4),
+			bytes.decode_float(i * 12 + 8)
+		)
+		var normal := ComputeUtil.read_normal(bytes, normal_offset + i * normal_stride)
+
+		print_rich("[color=%s]%s[%d]: pos=%s n=%s[/color]" % [
+			"tomato" if position == Vector3.ZERO else "goldenrod",
+			name, i, position, normal
+		])
+
+func dump_boundary(name := "boundary") -> void:
+	var bytes := rd.buffer_get_data(sets.boundary_buffer)
+	var masks := rd.buffer_get_data(sets.face_edge_mask_buffer).to_int32_array()
+	var stride := SharedEdgesPass.BOUNDARY_EDGE_STRIDE
+	var header := SharedEdgesPass.BOUNDARY_HEADER
+	var count := bytes.decode_u32(0)
+	var capacity := (bytes.size() - header) / stride
+
+	print_rich("[color=gold]%s[count=%d/%d rim_verts=%d][/color]" % [
+		name, count, capacity, bytes.decode_u32(4)
+	])
+
+	for i in mini(count, capacity):
+		var at := header + i * stride
+		var verts := Vector2i(bytes.decode_u32(at), bytes.decode_u32(at + 4))
+		var face := bytes.decode_u32(at + 8)
+		var corner := bytes.decode_u32(at + 12)
+		var mask: int = masks[face] if face < masks.size() else 0
+		var top: Array[Vector2i] = []
+
+		for arc in ComputeParams.TOP_VERTS:
+			var top_at := at + 16 + arc * 8
+			top.append(Vector2i(bytes.decode_u32(top_at), bytes.decode_u32(top_at + 4)))
+
+		# Collapsed = the column's outer end is the apex itself, so the quad pinches
+		var outer: Vector2i = top[ComputeParams.BEVEL_ARCS]
+		var pinch := "x" if outer.x == verts.x else ""
+		pinch += "y" if outer.y == verts.y else ""
+
+		print_rich("[color=%s]  %d: verts=%s face=%d corner=%d mask=%s%s%s top=%s%s[/color]" % [
+			"tomato" if pinch else "gold",
+			i, verts, face, corner,
+			"a" if mask & 1 else ".",
+			"b" if mask & 2 else ".",
+			"c" if mask & 4 else ".",
+			top,
+			" PINCH:%s" % pinch if pinch else "",
+		])
+
+func dump_normal_sums(from := 0, to := -1) -> void:
+	var bytes := rd.buffer_get_data(sets.normals_sum_buffer)
+	var sums := bytes.slice(0, params.out_vertex_count * 12).to_vector3_array()
+
+	if to < 0:
+		to = sums.size()
+
+	for i in range(from, mini(to, sums.size())):
+		var sum := sums[i]
+		var length := sum.length()
+		var block := "surf"
+
+		if i >= params.wall_grid_base:
+			block = "grid"
+		elif i >= params.wall_rim_base:
+			block = "rim"
+
+		print_rich("[color=%s]sum[%d] %s len=%.5f up=%+.3f dir=%s[/color]" % [
+			"tomato" if length < 1e-4 else "cornflower_blue",
+			i, block, length,
+			sum.normalized().dot(params.local_up) if length > 0.0 else 0.0,
+			#sum.normalized() if length > 0.0 else Vector3.ZERO,
+			sum
+		])
+
+
+func dump_vert_faces(vert: int) -> void:
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.idx)
+	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.idx)
+	var indices := rd.buffer_get_data(index_buffer)
+	var positions := rd.buffer_get_data(vertex_buffer).slice(0, params.out_vertex_count * 12).to_vector3_array()
+
+	for face in params.out_face_count:
+		var at := face * 6
+		var tri := Vector3i(indices.decode_u16(at), indices.decode_u16(at + 2), indices.decode_u16(at + 4))
+
+		if vert != tri.x and vert != tri.y and vert != tri.z:
+			continue
+
+		var a := positions[tri.x]
+		var b := positions[tri.y]
+		var c := positions[tri.z]
+		var normal := (c - a).cross(b - a)
+		var area := normal.length()
+
+		if area < 1e-12:
+			continue
+
+		normal /= area
+		var up := normal.dot(params.local_up)
+		var weight := maxf(up, 0.0) if vert < params.wall_rim_base else maxf(1.0 - absf(up), 0.0)
+
+		print_rich("[color=khaki]  face=%d %s n=%s inverse=%s up=%+.3f w=%.3f[/color]" %
+			[face, tri, normal, normal.inverse(), up, weight])
+
+func dump_wall_winding() -> void:
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.idx)
+	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.idx)
+	var indices := rd.buffer_get_data(index_buffer)
+	var positions := rd.buffer_get_data(vertex_buffer).slice(0, params.out_vertex_count * 12).to_vector3_array()
+	var boundary := rd.buffer_get_data(sets.boundary_buffer)
+	var stride := SharedEdgesPass.BOUNDARY_EDGE_STRIDE
+	var header := SharedEdgesPass.BOUNDARY_HEADER
+	var count := mini(boundary.decode_u32(0), params.max_edges)
+
+	for wall in count:
+		var at := header + wall * stride
+		var verts := Vector2i(boundary.decode_u32(at), boundary.decode_u32(at + 4))
+		var span := positions[verts.y] - positions[verts.x]
+		# Perpendicular to the rim, in the horizontal plane - the wall's normal
+		# must sit on one side of this, the same side for every wall
+		var reference := span.cross(params.local_up).normalized()
+
+
+		var base: int = params.wall_face_base + wall * ComputeParams.WALL_FACES_PER_EDGE
+		var side := 0.0
+		var found := -1
+
+		for i in ComputeParams.WALL_FACES_PER_EDGE:
+			var tri_at := (base + i) * 6
+			var tri := Vector3i(indices.decode_u16(tri_at), indices.decode_u16(tri_at + 2), indices.decode_u16(tri_at + 4))
+
+			if tri.x == tri.y or tri.x == tri.z or tri.y == tri.z:
+				continue
+
+			var a := positions[tri.x]
+			var normal := (positions[tri.z] - a).cross(positions[tri.y] - a)
+
+			if normal.length() < 1e-9:
+				continue
+
+			side = normal.normalized().dot(reference)
+			found = base + i
+			break
+
+		print_rich("[color=%s]wall %d: verts=%s face=%d side=%+.3f[/color]" % [
+			"tomato" if side < 0.0 else "plum", wall, verts, found, side
+		])
+
+func dump_faces() -> void:
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.idx)
 	dump_u16vec3(index_buffer, "out_index_buffer")
-	dumpi(attribute_buffer, "out_attribute_buffer")
 
 
 func debug() -> void:
-	debug_out()
+	prints(
+		"params.out_vertex_count", params.out_vertex_count,
+		"params.out_index_count", params.out_index_count,
+		"params.out_index_stride", params.out_index_stride,
+	)
+	dump_faces()
+	dump_vertices(1, "out_vertex")
+	dump_vert_faces(0)
+	dump_vert_faces(3)
+	dump_normal_sums()
+	#dump_normal_sums()
 #endregion

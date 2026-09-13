@@ -42,6 +42,7 @@ layout(set = 3, binding = 0, std430) restrict buffer VertexFlagBuffer {
 
 layout(set = 4, binding = 0, scalar) restrict buffer BoundaryBuffer {
 	uint boundary_count;
+	uint boundary_vert_count;
 	BoundaryEdge boundary_edges[];
 };
 
@@ -94,9 +95,14 @@ uvec2 retracted_at_corner(uint global_corner, uvec2 apexes) {
 	return sel_vertex_count + 3 * (global_corner / 3) + pair;
 }
 
-// Marked, not frozen - the wall row is what actually stays put
 void mark_boundary(uint vert) {
-	atomicOr(vertex_flags[vert], FLAG_BOUNDARY);
+	uint prev = atomicOr(vertex_flags[vert], FLAG_BOUNDARY);
+
+	if ((prev & FLAG_BOUNDARY) != 0u) return; // Someone else got here first
+
+	uint slot = atomicAdd(boundary_vert_count, 1);
+
+	atomicOr(vertex_flags[vert], (slot + 1) << FLAG_BITS);
 }
 
 void record_boundary(uint self, uvec2 edge) {

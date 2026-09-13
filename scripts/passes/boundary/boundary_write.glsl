@@ -26,6 +26,7 @@ layout(push_constant, std430) uniform PushParams {
 	uint out_color_offset;
 	uint out_custom_offset;
 	uint out_attribute_stride;
+	uint max_edges;
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
@@ -42,7 +43,12 @@ layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
 
 layout(set = 1, binding = 0, scalar) restrict buffer BoundaryBuffer {
 	uint boundary_count;
+	uint boundary_vert_count; // unused
 	BoundaryEdge boundary_edges[];
+};
+
+layout(set = 2, binding = 0, std430) restrict buffer VertexFlagBuffer {
+	uint vertex_flags[];
 };
 
 void write_vertex(uint vert, vec3 rest, float rise) {
@@ -58,18 +64,34 @@ void write_vertex(uint vert, vec3 rest, float rise) {
 }
 
 // Row 0 is the rim itself. The whole column is shared with the wall next door,
-// so neither may own it
+// so neither may own it. Columns are allocated per boundary vert, not per
+// selection vert - shared_edges stores the compact slot in the flag word
 uint side_vert(uint vert, uint row) {
-	return wall_rim_base + vert * (ROWS - 1) + row;
+	uint slot = vertex_flags[vert] >> FLAG_BITS;
+
+	return wall_rim_base + (slot - 1) * (ROWS - 1) + row;
+}
+
+// Columns 0..ARCS resolve end x, ARCS+1..COLS-1 resolve end y (outward to inward)
+bool is_pinched(uint idx, uint slot) {
+	return boundary_edges[idx].top[0][slot] == boundary_edges[idx].top[ARCS][slot];
 }
 
 // The top row is the surface's own verts, the sides are shared, and what's
-// left is this wall's to fill
+// left is this wall's to fill. A column group whose apex never retracted has
+// zero width - alias it onto its side column so the strip reads as degenerate
+// to every index-based check, not just the top quad
 uint grid_vert(uint idx, uint col, uint row) {
+	if (col <= ARCS) {
+		if (is_pinched(idx, 0)) col = 0;
+	} else if (is_pinched(idx, 1)) {
+		col = COLS - 1;
+	}
+
 	if (row + 1 == ROWS) {
 		return col < COLS / 2
-		? boundary_edges[idx].top[col][0]
-		: boundary_edges[idx].top[COLS - 1 - col][1];
+			? boundary_edges[idx].top[col][0]
+			: boundary_edges[idx].top[COLS - 1 - col][1];
 	}
 
 	if (col == 0) return side_vert(boundary_edges[idx].verts.x, row);
@@ -94,12 +116,8 @@ void write_quad(uint face, uvec4 ring, bool flip) {
 void main() {
 	uint idx = gl_GlobalInvocationID.x;
 
-	if (idx >= boundary_count) return;
+	if (idx >= min(boundary_count, max_edges)) return;
 
-// 	if (idx == 0) {
-// 		boundary_edges[0].face = RINGS;
-// 		boundary_edges[0].corner = boundary_edges[0].top.length();
-// 	}
 	vec3 rim_x = out_positions[boundary_edges[idx].verts.x];
 	vec3 rim_y = out_positions[boundary_edges[idx].verts.y];
 	vec3 span = rim_y - rim_x;

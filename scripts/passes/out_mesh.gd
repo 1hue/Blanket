@@ -13,9 +13,11 @@ func allocate() -> void:
 	var faces := read_counter(sets.selected_index_buffer)
 	var shared := mini(read_counter(sets.shared_edge_buffer), params.max_edges)
 	var boundary := mini(read_counter(sets.boundary_buffer), params.max_edges)
+	# Columns are per boundary vert - O(perimeter), not O(area) like the selection
+	var boundary_verts := mini(read_counter(sets.boundary_buffer, 4), verts)
 
 	params.wall_rim_base = verts + faces * 3 + shared * ComputeParams.EDGE_VERTS
-	params.wall_grid_base = params.wall_rim_base + verts * ComputeParams.WALL_SIDE_VERTS_PER_VERT
+	params.wall_grid_base = params.wall_rim_base + boundary_verts * ComputeParams.WALL_SIDE_VERTS_PER_VERT
 	params.wall_face_base = faces + shared * ComputeParams.EDGE_FACES
 	params.out_vertex_count = params.wall_grid_base + boundary * ComputeParams.WALL_VERTS_PER_EDGE
 	params.out_index_count = (params.wall_face_base + boundary * ComputeParams.WALL_FACES_PER_EDGE) * 3
@@ -30,8 +32,8 @@ func allocate() -> void:
 	set_out_params()
 
 
-func read_counter(buffer: RID) -> int:
-	return rd.buffer_get_data(buffer, 0, 4).decode_u32(0)
+func read_counter(buffer: RID, offset := 0) -> int:
+	return rd.buffer_get_data(buffer, offset, 4).decode_u32(0)
 
 
 func init_out_mesh_set() -> void:

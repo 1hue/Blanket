@@ -2,6 +2,7 @@ const uint OUT_MESH_WORKGROUP_SIZE = 64;
 const uint FILL_WORKGROUP_SIZE = 256;
 const uint BOUNDARY_WORKGROUP_SIZE = 64;
 const uint FLAG_BOUNDARY = 1;
+const uint FLAG_BITS = 8; // Low bits are flags, the rest is the rim column slot
 const uint MAX_BEVEL = 3;
 
 struct SharedEdge {

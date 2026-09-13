@@ -6,6 +6,8 @@
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 #extension GL_EXT_shader_atomic_float : require
 
+const float MAX_COTANGENT = 16.0; // Slivers otherwise dominate their vert's average
+
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
@@ -34,7 +36,7 @@ float cotangent(vec3 corner, vec3 a, vec3 b) {
 	vec3 u = a - corner;
 	vec3 v = b - corner;
 
-	return max(dot(u, v) / max(length(cross(u, v)), 1e-8), 0.0);
+	return clamp(dot(u, v) / max(length(cross(u, v)), 1e-8), 0.0, MAX_COTANGENT);
 }
 
 void accumulate(uint vert, vec3 position, float weight) {
@@ -62,16 +64,18 @@ void main() {
 	vec3 b = out_positions[corners.y];
 	vec3 c = out_positions[corners.z];
 
+	if (length(cross(c - a, b - a)) < 1e-12) return;
+
 	// Each edge is weighted by the cotangent at the corner facing it
 	float wc = cotangent(c, a, b);
 	float wa = cotangent(a, b, c);
 	float wb = cotangent(b, c, a);
 
 	// Each vertex gets contributions from both of its edges in this face
-	accumulate(corners.x, b, 1.0);
-	accumulate(corners.y, a, 1.0);
-	accumulate(corners.y, c, 1.0);
-	accumulate(corners.z, b, 1.0);
-	accumulate(corners.z, a, 1.0);
-	accumulate(corners.x, c, 1.0);
+	accumulate(corners.x, b, wc);
+	accumulate(corners.y, a, wc);
+	accumulate(corners.y, c, wa);
+	accumulate(corners.z, b, wa);
+	accumulate(corners.z, a, wb);
+	accumulate(corners.x, c, wb);
 }

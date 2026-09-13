@@ -15,8 +15,13 @@ const uint ARC_VERTS = SEGMENTS + 1;
 
 layout(local_size_x = 64) in;
 
+layout(push_constant, std430) uniform PushParams {
+	uint max_edges;
+};
+
 layout(set = 0, binding = 0, scalar) restrict buffer BoundaryBuffer {
 	uint boundary_count;
+	uint boundary_vert_count; // unused
 	BoundaryEdge boundary_edges[];
 };
 
@@ -85,7 +90,8 @@ void resolve(uint idx, uint slot, uint apex, uint retracted) {
 void main() {
 	uint idx = gl_GlobalInvocationID.x;
 
-	if (idx >= boundary_count) return;
+	// boundary_count counts attempts, not slots - the overflow ones were never written
+	if (idx >= min(boundary_count, max_edges)) return;
 
 	uvec2 verts = boundary_edges[idx].verts;
 	uint face = boundary_edges[idx].face;

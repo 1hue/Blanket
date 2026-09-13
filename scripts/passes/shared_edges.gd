@@ -6,6 +6,7 @@ const SIZE_PARAMS = 4
 const SHARED_EDGE_STRIDE = 32
 const STRUCT_STRIDE = 32
 const BOUNDARY_EDGE_STRIDE = 16 + (ComputeParams.MAX_BEVEL + 1) * 8
+const BOUNDARY_HEADER = 8 # boundary_count, boundary_vert_count
 
 var shared_edge_set: RID
 var shared_edge_buffer: RID
@@ -69,9 +70,8 @@ func init_vertex_flag_buffer() -> void:
 	sets.vertex_flag_buffer = vertex_flag_buffer
 	sets.vertex_flag = vertex_flag_set
 
-
 func init_boundary_buffer() -> void:
-	boundary_buffer_size = align_buffer(4 + params.max_edges * BOUNDARY_EDGE_STRIDE)
+	boundary_buffer_size = align_buffer(BOUNDARY_HEADER + params.max_edges * BOUNDARY_EDGE_STRIDE)
 	boundary_buffer = rd.storage_buffer_create(boundary_buffer_size)
 
 	boundary_set = rd.uniform_set_create([

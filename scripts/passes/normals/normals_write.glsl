@@ -30,11 +30,15 @@ layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[]; // Unused
 };
 
+vec2 oct_wrap(const in vec2 v) {
+	return (1 - abs(v.yx)) * (step(0.0, v.xy) * 2.0 - 1.0); // TODO: can use sign()?
+}
+
 uint oct_encode(vec3 n) {
 	vec3 a = n / (abs(n.x) + abs(n.y) + abs(n.z));
-	vec2 e = a.z >= 0 ? a.xy : (1 - abs(a.yx)) * sign(a.xy);
+	vec2 e = a.z >= 0 ? a.xy : oct_wrap(a.xy);
 
-	return packUnorm2x16(fma(e, vec2(0.5), vec2(0.5)));
+	return packUnorm2x16(e * 0.5 + 0.5);
 }
 
 void main() {

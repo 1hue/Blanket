@@ -1,8 +1,7 @@
 extends ComputePass
 class_name BoundaryWritePass
 
-const WORKGROUP_SIZE = 64
-const SIZE_PARAMS = 24
+const SIZE_PARAMS = 28
 
 
 func _pre() -> void:
@@ -16,6 +15,7 @@ func pack_params() -> PackedByteArray:
 	push_constant.encode_u32(12, params.out_color_offset)
 	push_constant.encode_u32(16, params.out_custom_offset)
 	push_constant.encode_u32(20, params.out_attribute_stride)
+	push_constant.encode_u32(24, params.max_edges)
 
 	return push_constant
 
@@ -26,5 +26,6 @@ func compute() -> void:
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.boundary, 1)
+	rd.compute_list_bind_uniform_set(compute_list, sets.vertex_flag, 2)
 	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, ComputeSets.Dispatch.BOUNDARY)
 	rd.compute_list_end()
