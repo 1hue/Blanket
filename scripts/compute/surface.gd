@@ -83,10 +83,10 @@ func remove() -> void:
 
 ## The mesh outlives us, so the surface has to come off when we go
 func _notification(what) -> void:
-	if what != NOTIFICATION_PREDELETE:
+	if what != NOTIFICATION_PREDELETE or not is_instance_valid(mesh):
 		return
 
-	var at := mesh.surface_find_by_name(surface_name)
+	var at := mesh.surface_find_by_name("%s_%d" % [SURFACE_NAME, source_idx]) # Can't call members at destruct
 	if at >= 0:
 		mesh.surface_remove(at)
 		mesh.emit_changed()
