@@ -1,7 +1,7 @@
 extends ComputePass
 class_name SmoothPass
 
-const ITERATIONS = 6
+const ITERATIONS = 5
 
 var sum_pass: SmoothSumPass
 var write_pass: SmoothWritePass

@@ -69,13 +69,10 @@ func _init() -> void:
 	)
 	boundary_write = ShaderPipeline.new(
 		"res://scripts/passes/boundary/boundary_write.glsl",
-		[ComputeParams.BEVEL_SEGMENTS, ComputeParams.BEVEL_ARCS]
+		[ComputeParams.WALL_SEGMENTS, ComputeParams.BEVEL_ARCS]
 	)
 	offset = ShaderPipeline.new("res://scripts/passes/offset.glsl")
 	normals_sum = ShaderPipeline.new("res://scripts/passes/normals/normals_sum.glsl")
 	normals_write = ShaderPipeline.new("res://scripts/passes/normals/normals_write.glsl")
 	smooth_sum = ShaderPipeline.new("res://scripts/passes/smooth/smooth_sum.glsl")
-	smooth_write = ShaderPipeline.new(
-		"res://scripts/passes/smooth/smooth_write.glsl",
-		[ComputeParams.SMOOTH_STRENGTH, ComputeParams.SMOOTH_WALL_STRENGTH]
-	)
+	smooth_write = ShaderPipeline.new("res://scripts/passes/smooth/smooth_write.glsl")

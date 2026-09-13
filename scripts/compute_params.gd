@@ -13,8 +13,8 @@ const MAX_BEVEL = 3
 const BEVEL_SEGMENTS = 1
 const BEVEL_ARCS = 1
 const BEVEL_WIDTH = 0.2
-const SMOOTH_STRENGTH = 0.5
-const SMOOTH_WALL_STRENGTH = 0.3
+## Vertical subdivisions
+const WALL_SEGMENTS = 1
 
 #region Bevel
 ## Segments across an arc - both sides of the crease
@@ -38,7 +38,7 @@ const BOUNDARY_EDGE_STRIDE = 16 + (MAX_BEVEL + 1) * 8
 ## Both ends' resolved columns, plus the two rim corners
 const WALL_COLS = 2 * BEVEL_ARCS + 2
 ## The rim, the fold, then up to the surface
-const WALL_ROWS = BEVEL_SEGMENTS + 2
+const WALL_ROWS = WALL_SEGMENTS + 2
 ## Per boundary edge
 const WALL_FACES_PER_EDGE = (WALL_COLS - 1) * (WALL_ROWS - 1) * 2
 ## Side columns are shared between adjacent walls - one set per selection vert

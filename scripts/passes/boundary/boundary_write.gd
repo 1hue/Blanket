@@ -1,7 +1,7 @@
 extends ComputePass
 class_name BoundaryWritePass
 
-const SIZE_PARAMS = 28
+const SIZE_PARAMS = 32
 
 
 func _pre() -> void:
@@ -16,6 +16,7 @@ func pack_params() -> PackedByteArray:
 	push_constant.encode_u32(16, params.out_custom_offset)
 	push_constant.encode_u32(20, params.out_attribute_stride)
 	push_constant.encode_u32(24, params.max_edges)
+	push_constant.encode_float(28, params.depth)
 
 	return push_constant
 

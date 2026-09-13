@@ -14,7 +14,7 @@ class_name SurfaceCover
 	set(value):
 		debug_normals_length = value
 		draw_normals()
-@export var debug_normals_color := Color.RED:
+@export var debug_normals_color := Color.ORANGE_RED:
 	set(value):
 		debug_normals_color = value
 		draw_normals()
@@ -143,23 +143,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:
 			change_depth(1)
-			get_viewport().set_input_as_handled()
+			#get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_MINUS or event.keycode == KEY_KP_SUBTRACT:
 			change_depth(-1)
-			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_BACKSPACE:
 			change_depth(0)
-			get_viewport().set_input_as_handled()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.shift_pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			change_depth(1)
-			get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			change_depth(-1)
-			get_viewport().set_input_as_handled()
 
 
 func convert_to_storage_buffer_mesh() -> void:

@@ -8,14 +8,14 @@
 
 #include "../common.glsl.inc"
 
-const uint COLOR_WALL = 0xFF20C0E0; // Amber
-const float RISE_FOLD = 0.5; // Row 1 - where the wall folds, as a fraction of depth
-
-layout(constant_id = 0) const uint BEVEL_SEGMENTS = 1;
+layout(constant_id = 0) const uint WALL_SEGMENTS = 1;
 layout(constant_id = 1) const uint ARCS = 1;
 
 const uint COLS = 2 * ARCS + 2; // Both ends' resolved columns, plus the rim corners
-const uint ROWS = BEVEL_SEGMENTS + 2; // Rim, fold, then up to the surface
+const uint ROWS = WALL_SEGMENTS + 2; // Rim, fold, then up to the surface
+const uint COLOR_WALL = 0xFF20C0E0; // Amber
+const float RISE_FOLD = 0.5; // Row 1 - where the wall folds, as a fraction of depth
+const float FOLD_GAP = 0.25; // Model units below the surface
 
 layout(local_size_x = 64) in;
 
@@ -27,6 +27,7 @@ layout(push_constant, std430) uniform PushParams {
 	uint out_custom_offset;
 	uint out_attribute_stride;
 	uint max_edges;
+	float depth;
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
@@ -100,12 +101,13 @@ uint grid_vert(uint idx, uint col, uint row) {
 	return wall_grid_base + idx * ((COLS - 2) * (ROWS - 1)) + row * (COLS - 2) + col - 1;
 }
 
-// Rows run 0 at the rim, 1 at the fold, then uniformly up to the surface
 float row_rise(uint row) {
 	if (row == 0) return 0.0;
 	if (row + 1 == ROWS) return 1.0;
 
-	return mix(RISE_FOLD, 1.0, float(row - 1) / float(ROWS - 2));
+	float fold = depth > 1e-6 ? max(1.0 - FOLD_GAP / depth, RISE_FOLD) : RISE_FOLD;
+
+	return mix(fold, 1.0, float(row - 1) / float(ROWS - 2));
 }
 
 void write_quad(uint face, uvec4 ring, bool flip) {

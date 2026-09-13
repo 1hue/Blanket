@@ -6,7 +6,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
 layout(constant_id = 0) const float SMOOTH_STRENGTH = 0.5; // 0 = unchanged, 1 = fully at the neighbour average
-layout(constant_id = 1) const float WALL_STRENGTH = 0.5; // 0 = collapses inward, 1 = stands up
+layout(constant_id = 1) const float WALL_STRENGTH = 0.4; // 0 = collapses inward, 1 = stands up
 
 layout(local_size_x = 256) in;
 
