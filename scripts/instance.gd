@@ -1,9 +1,6 @@
 extends Node
 class_name BlanketInstance
 
-## The computed surface is added after the source, so it's always index 1
-const COMPUTED_SURFACE_IDX = 1
-
 @export var material: Material = preload("res://assets/snow.tres")
 
 @export_group("Debug", "debug")
@@ -29,40 +26,38 @@ const COMPUTED_SURFACE_IDX = 1
 
 var mesh: ArrayMesh:
 	get: return mesh_instance.mesh if mesh_instance else null
-var debug_normals_mesh: MeshInstance3D: set = _set_debug_normals_mesh
+var debug_normals_mesh: MeshInstance3D: set = set_debug_normals_mesh
 var pipelines: Array[BlanketPipeline]
 
 
 func _ready() -> void:
-	_setup()
+	setup()
 
 
 ## Re-entering the tree after _exit_tree tore everything down. On first entry
 ## _ready hasn't run yet, so mesh_instance is still null and _ready does it
 func _enter_tree() -> void:
 	if is_node_ready():
-		_setup()
+		setup()
 
 
 ## Dropping the pipelines frees their RIDs through the RefCounted destructors
 func _exit_tree() -> void:
-	if mesh and mesh.changed.is_connected(_on_mesh_changed):
-		mesh.changed.disconnect(_on_mesh_changed)
+	if mesh and mesh.changed.is_connected(on_mesh_changed):
+		mesh.changed.disconnect(on_mesh_changed)
 
 	debug_normals_mesh = null
 	pipelines.clear()
 
 
-func _setup() -> void:
+func setup() -> void:
 	convert_to_storage_buffer_mesh()
 	validate()
 
-	mesh.changed.connect(_on_mesh_changed)
+	mesh.changed.connect(on_mesh_changed)
 
 	for i in mesh.get_surface_count():
-		var pipeline := BlanketPipeline.new(mesh, i, mesh_instance.global_transform)
-
-		pipelines.append(pipeline)
+		pipelines.append(BlanketPipeline.new(mesh, i, mesh_instance.global_transform))
 
 	for pipeline in pipelines:
 		pipeline.bake()
@@ -70,7 +65,7 @@ func _setup() -> void:
 	draw_normals()
 
 
-func _on_mesh_changed() -> void:
+func on_mesh_changed() -> void:
 	if material:
 		for pipeline in pipelines:
 			if pipeline.surface.idx > -1:
@@ -79,7 +74,7 @@ func _on_mesh_changed() -> void:
 	draw_normals()
 
 
-func _set_debug_normals_mesh(value: MeshInstance3D) -> void:
+func set_debug_normals_mesh(value: MeshInstance3D) -> void:
 	if debug_normals_mesh:
 		remove_child(debug_normals_mesh)
 		debug_normals_mesh.queue_free()
@@ -90,7 +85,7 @@ func _set_debug_normals_mesh(value: MeshInstance3D) -> void:
 		add_child(debug_normals_mesh)
 
 
-func draw_normals(surface_idx := COMPUTED_SURFACE_IDX) -> void:
+func draw_normals() -> void:
 	# Bootleg compute sync
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
@@ -101,25 +96,14 @@ func draw_normals(surface_idx := COMPUTED_SURFACE_IDX) -> void:
 
 	debug_normals_mesh = null
 
-	if not debug_enabled or not debug_normals_enabled or surface_idx >= mesh.get_surface_count():
+	if not debug_enabled or not debug_normals_enabled:
 		return
 
-	var arrays := mesh.surface_get_arrays(surface_idx)
-
-	debug_normals_mesh = build_normal_lines(
-		arrays[Mesh.ARRAY_VERTEX],
-		arrays[Mesh.ARRAY_NORMAL],
-		mesh_instance.global_transform,
-		debug_normals_length
-	)
+	debug_normals_mesh = build_normal_lines(mesh_instance.global_transform, debug_normals_length)
 
 
-func build_normal_lines(
-	vertices: PackedVector3Array,
-	normals: PackedVector3Array,
-	transform: Transform3D,
-	length := 0.2
-) -> MeshInstance3D:
+## Every computed surface goes into one mesh - surface.idx is where each landed
+func build_normal_lines(transform: Transform3D, length := 0.2) -> MeshInstance3D:
 	var im := ImmediateMesh.new()
 	var normals_material := ORMMaterial3D.new()
 	normals_material.vertex_color_use_as_albedo = true
@@ -128,13 +112,25 @@ func build_normal_lines(
 	normals_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
 	im.surface_begin(Mesh.PRIMITIVE_LINES, normals_material)
-	for i in vertices.size():
-		var world_pos := transform * vertices[i]
-		var world_normal := (transform.basis * normals[i]).normalized()
 
-		im.surface_set_color(debug_normals_color)
-		im.surface_add_vertex(world_pos)
-		im.surface_add_vertex(world_pos + world_normal * length)
+	for pipeline in pipelines:
+		var idx := pipeline.surface.idx
+
+		if idx < 0 or idx >= mesh.get_surface_count():
+			continue
+
+		var arrays := mesh.surface_get_arrays(idx)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+
+		for i in vertices.size():
+			var world_pos := transform * vertices[i]
+			var world_normal := (transform.basis * normals[i]).normalized()
+
+			im.surface_set_color(debug_normals_color)
+			im.surface_add_vertex(world_pos)
+			im.surface_add_vertex(world_pos + world_normal * length)
+
 	im.surface_end()
 
 	var mi := MeshInstance3D.new()
@@ -186,8 +182,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			change_depth(-1)
 
 
+## Already converted on re-entry, and rebuilding would drop the computed surfaces
 func convert_to_storage_buffer_mesh() -> void:
 	var source_mesh := mesh
+
+	if source_mesh.get_surface_count() > 0  and source_mesh.surface_get_format(0) & Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER:
+		return
+
 	var new_mesh := ArrayMesh.new()
 
 	for i in source_mesh.get_surface_count():

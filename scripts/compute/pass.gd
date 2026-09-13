@@ -8,8 +8,8 @@ var mesh_rid: RID:
 	get: return mesh.get_rid()
 var surface: BlanketSurface
 var params: BlanketParams
-var push_constant: PackedByteArray
 var sets: BlanketSets
+var push_constant: PackedByteArray
 
 
 ## Bootleg dependency injection
@@ -35,6 +35,7 @@ func free_rids(rids: Array[RID]) -> void:
 	for rid in rids:
 		if rid.is_valid():
 			rd.free_rid(rid)
+
 
 @abstract func _pre() -> void
 @abstract func compute() -> void

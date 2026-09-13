@@ -7,6 +7,8 @@ const SURFACE_FLAGS := (
 	Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
 )
 
+var surface_name: String:
+	get: return "%s_%d" % [SURFACE_NAME, source_idx]
 var mesh: ArrayMesh
 var mesh_rid: RID:
 	get: return mesh.get_rid()
@@ -64,16 +66,30 @@ func allocate(new_vertex_count: int, new_index_count: int, array_types: int = Me
 
 	idx = mesh.get_surface_count()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, SURFACE_FLAGS)
-	mesh.surface_set_name(idx, SURFACE_NAME)
+	mesh.surface_set_name(idx, surface_name)
 	mesh.custom_aabb = source_aabb()
 	mesh.emit_changed()
 
 
 func remove() -> void:
+	idx = mesh.surface_find_by_name(surface_name)
+
 	if idx >= 0:
 		mesh.surface_remove(idx)
 		mesh.emit_changed()
+
 	idx = -1
+
+
+## The mesh outlives us, so the surface has to come off when we go
+func _notification(what) -> void:
+	if what != NOTIFICATION_PREDELETE:
+		return
+
+	var at := mesh.surface_find_by_name(surface_name)
+	if at >= 0:
+		mesh.surface_remove(at)
+		mesh.emit_changed()
 
 
 func source_aabb() -> AABB:
