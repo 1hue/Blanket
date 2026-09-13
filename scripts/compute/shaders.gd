@@ -65,22 +65,17 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _init() -> void:
 	select = BlanketShader.new(
-		"res://scripts/passes/faces/select.glsl",
-		[SelectPass.WORKGROUP_SIZE, DedupePass.WORKGROUP_SIZE]
+		"res://scripts/passes/faces/select.glsl", [SelectPass.WORKGROUP_SIZE, DedupePass.WORKGROUP_SIZE]
 	)
 	dedupe = BlanketShader.new(
 		"res://scripts/passes/faces/dedupe.glsl",
-		[DedupePass.WORKGROUP_SIZE, FacesPass.WORKGROUP_SIZE]
+		[DedupePass.WORKGROUP_SIZE, FacesPass.WORKGROUP_SIZE, EdgesPass.WORKGROUP_SIZE, ShrinkPass.WORKGROUP_SIZE]
 	)
-	faces = BlanketShader.new(
-		"res://scripts/passes/faces/faces.glsl",
-		[FacesPass.WORKGROUP_SIZE]
-	)
-	edges = BlanketShader.new("res://scripts/passes/edges.glsl")
+	faces = BlanketShader.new("res://scripts/passes/faces/faces.glsl", [FacesPass.WORKGROUP_SIZE])
+	edges = BlanketShader.new("res://scripts/passes/edges.glsl", [EdgesPass.WORKGROUP_SIZE])
 	out_mesh = BlanketShader.new("res://scripts/passes/out_mesh.glsl")
 	shrink = BlanketShader.new(
-		"res://scripts/passes/bevel/shrink.glsl",
-		[BlanketParams.BEVEL_WIDTH]
+		"res://scripts/passes/bevel/shrink.glsl", [ShrinkPass.WORKGROUP_SIZE, BlanketParams.BEVEL_WIDTH]
 	)
 	fill = BlanketShader.new(
 		"res://scripts/passes/bevel/fill.glsl",

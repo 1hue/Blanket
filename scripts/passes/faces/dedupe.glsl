@@ -13,6 +13,8 @@ struct TableEntry {
 
 layout(constant_id = 0) const uint WORKGROUP_SIZE = 1;
 layout(constant_id = 1) const uint FACES_WORKGROUP_SIZE = 1;
+layout(constant_id = 2) const uint EDGES_WORKGROUP_SIZE = 1;
+layout(constant_id = 3) const uint SHRINK_WORKGROUP_SIZE = 1;
 
 layout(local_size_x_id = 0, local_size_y = 3) in; // X = face, Y = corner
 
@@ -44,8 +46,8 @@ layout(set = 2, binding = 0, scalar) restrict buffer FacesTableBuffer {
 };
 
 layout(set = 3, binding = 0, scalar) restrict buffer DispatchBuffer {
-	layout(offset = 12) uvec3 dispatch_write;
-	layout(offset = 24) uvec3 dispatch_shared;
+	layout(offset = 12) uvec3 dispatch_faces;
+	layout(offset = 24) uvec3 dispatch_edges;
 	layout(offset = 48) uvec3 dispatch_shrink;
 };
 
@@ -88,10 +90,8 @@ void main() {
 	}
 
 	if (corner == 0) {
-		uint groups = 1 + face / FACES_WORKGROUP_SIZE;
-
-		atomicMax(dispatch_write.x, groups);
-		atomicMax(dispatch_shared.x, groups);
-		atomicMax(dispatch_shrink.x, groups);
+		atomicMax(dispatch_faces.x, 1 + face / FACES_WORKGROUP_SIZE);
+		atomicMax(dispatch_edges.x, 1 + face / EDGES_WORKGROUP_SIZE);
+		atomicMax(dispatch_shrink.x, 1 + face / SHRINK_WORKGROUP_SIZE);
 	}
 }
