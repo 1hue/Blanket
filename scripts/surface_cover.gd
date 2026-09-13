@@ -1,14 +1,20 @@
 extends Node
 class_name SurfaceCover
 
+## The computed surface is added after the source, so it's always index 1
+const COMPUTED_SURFACE_IDX = 1
+
 @export var material: Material = preload("res://assets/snow.tres")
-@export var debug: Label3D
 
 @export_group("Debug", "debug")
-@export_subgroup("Normals", "debug_normals")
-@export var debug_normals := false:
+@export var debug_enabled := false:
 	set(value):
-		debug_normals = value
+		debug_enabled = value
+		draw_normals()
+@export_subgroup("Normals", "debug_normals")
+@export var debug_normals_enabled := false:
+	set(value):
+		debug_normals_enabled = value
 		draw_normals()
 @export_range(0, 2, 0.01, "or_greater", "prefer_slider") var debug_normals_length := 0.2:
 	set(value):
@@ -22,12 +28,32 @@ class_name SurfaceCover
 @onready var mesh_instance: MeshInstance3D = $".."
 
 var mesh: ArrayMesh:
-	get: return mesh_instance.mesh
+	get: return mesh_instance.mesh if mesh_instance else null
 var debug_normals_mesh: MeshInstance3D: set = _set_debug_normals_mesh
 var computes: Array[Compute]
 
 
 func _ready() -> void:
+	_setup()
+
+
+## Re-entering the tree after _exit_tree tore everything down. On first entry
+## _ready hasn't run yet, so mesh_instance is still null and _ready does it
+func _enter_tree() -> void:
+	if is_node_ready():
+		_setup()
+
+
+## Dropping the computes frees their RIDs through the RefCounted destructors
+func _exit_tree() -> void:
+	if mesh and mesh.changed.is_connected(_on_mesh_changed):
+		mesh.changed.disconnect(_on_mesh_changed)
+
+	debug_normals_mesh = null
+	computes.clear()
+
+
+func _setup() -> void:
 	convert_to_storage_buffer_mesh()
 	validate()
 
@@ -36,7 +62,6 @@ func _ready() -> void:
 	for i in mesh.get_surface_count():
 		var compute := Compute.new(mesh, i, mesh_instance.global_transform)
 
-		compute.output.connect(_on_output)
 		computes.append(compute)
 
 	for compute in computes:
@@ -54,12 +79,8 @@ func _on_mesh_changed() -> void:
 	draw_normals()
 
 
-func _exit_tree() -> void:
-	computes.clear()
-
-
 func _set_debug_normals_mesh(value: MeshInstance3D) -> void:
-	if debug_normals_mesh: # Clear previous mesh
+	if debug_normals_mesh:
 		remove_child(debug_normals_mesh)
 		debug_normals_mesh.queue_free()
 
@@ -69,28 +90,35 @@ func _set_debug_normals_mesh(value: MeshInstance3D) -> void:
 		add_child(debug_normals_mesh)
 
 
-func draw_normals(surface_idx: int = 1) -> void:
+func draw_normals(surface_idx := COMPUTED_SURFACE_IDX) -> void:
 	# Bootleg compute sync
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
 
+	# Awaited, so the node may have left the tree in the meantime
+	if not is_inside_tree() or not is_node_ready():
+		return
+
 	debug_normals_mesh = null
 
-	if not debug_normals or not mesh_instance or not is_node_ready():
+	if not debug_enabled or not debug_normals_enabled or surface_idx >= mesh.get_surface_count():
 		return
 
 	var arrays := mesh.surface_get_arrays(surface_idx)
-	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 
-	debug_normals_mesh = draw_normal_debug(vertices, normals, mesh_instance.global_transform, debug_normals_length)
+	debug_normals_mesh = build_normal_lines(
+		arrays[Mesh.ARRAY_VERTEX],
+		arrays[Mesh.ARRAY_NORMAL],
+		mesh_instance.global_transform,
+		debug_normals_length
+	)
 
 
-func draw_normal_debug(
+func build_normal_lines(
 	vertices: PackedVector3Array,
 	normals: PackedVector3Array,
 	transform: Transform3D,
-	length: float = 0.2
+	length := 0.2
 ) -> MeshInstance3D:
 	var im := ImmediateMesh.new()
 	var normals_material := ORMMaterial3D.new()
@@ -122,11 +150,6 @@ func validate() -> void:
 	assert(uses_storage_buffer, "Mesh must have the STORAGE_BUFFER flag")
 
 
-func _on_output(message: String) -> void:
-	if debug:
-		debug.text = message
-
-
 func change_depth(delta: int) -> void:
 	for compute in computes:
 		if delta == 0:
@@ -140,10 +163,12 @@ func change_depth(delta: int) -> void:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	if not debug_enabled:
+		return
+
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:
 			change_depth(1)
-			#get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_MINUS or event.keycode == KEY_KP_SUBTRACT:
 			change_depth(-1)
 		elif event.keycode == KEY_BACKSPACE:
@@ -151,6 +176,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not debug_enabled:
+		return
+
 	if event is InputEventMouseButton and event.pressed and event.shift_pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			change_depth(1)

@@ -1,9 +1,6 @@
 extends RefCounted
 class_name Compute
 
-@warning_ignore("unused_signal")
-signal output(message: String)
-
 var rd: RenderingDevice
 var params: ComputeParams
 var sets: ComputeSets
@@ -91,6 +88,7 @@ func dump_vertex_flags(buffer: RID, name := "vertex_flags") -> void:
 			anchored.append(i)
 
 	print_rich("[color=orchid]%s[anchored=%d]: " % [name, anchored.size()], anchored, "[/color]")
+
 
 func debug_shared_edges() -> void:
 	var shared_edges := rd.buffer_get_data(sets.shared_edge_buffer)
@@ -235,6 +233,7 @@ func dump_boundary(name := "boundary") -> void:
 			top,
 			" PINCH:%s" % pinch if pinch else "",
 		])
+
 
 func dump_normal_sums(from := 0, to := -1) -> void:
 	var bytes := rd.buffer_get_data(sets.normals_sum_buffer)
