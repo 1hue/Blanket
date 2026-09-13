@@ -1,4 +1,4 @@
-extends ComputePass
+extends BlanketPass
 class_name SmoothSumPass
 
 const WORKGROUP_SIZE = 256
@@ -26,8 +26,8 @@ func init_buffer() -> void:
 	buffer = rd.storage_buffer_create(buffer_size)
 
 	uniform_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
-	], SurfaceShaders.smooth_sum.shader, 0)
+		BlanketUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
+	], BlanketShaders.smooth_sum.shader, 0)
 
 	sets.smooth_sum_buffer = buffer
 	sets.smooth_sum = uniform_set
@@ -44,7 +44,7 @@ func compute() -> void:
 	rd.buffer_clear(buffer, 0, buffer_size)
 
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.smooth_sum.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.smooth_sum.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 1)

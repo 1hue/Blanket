@@ -1,6 +1,7 @@
-extends ComputePass
-class_name BevelFillPass
+extends BlanketPass
+class_name ShrinkPass
 
+const WORKGROUP_SIZE = 64
 const SIZE_PARAMS = 12
 
 
@@ -18,10 +19,10 @@ func pack_params() -> PackedByteArray:
 
 func compute() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.bevel_fill.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.shrink.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 1)
-	rd.compute_list_bind_uniform_set(compute_list, sets.shared_edge, 2)
-	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, ComputeSets.Dispatch.BEVEL_FILL)
+	rd.compute_list_bind_uniform_set(compute_list, sets.face_edge_mask, 2)
+	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, BlanketSets.Dispatch.SHRINK)
 	rd.compute_list_end()

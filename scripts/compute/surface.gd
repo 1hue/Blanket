@@ -1,7 +1,7 @@
 extends RefCounted
-class_name ComputeSurface
+class_name BlanketSurface
 
-const SURFACE_NAME = "ComputedSurface"
+const SURFACE_NAME = "BlanketSurface"
 ## CUSTOM0 stores original position + sticky flag in alpha
 const SURFACE_FLAGS := (
 	Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)

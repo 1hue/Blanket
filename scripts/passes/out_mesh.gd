@@ -1,4 +1,4 @@
-extends ComputePass
+extends BlanketPass
 class_name OutMeshPass
 
 const SIZE_PARAMS = 12
@@ -16,11 +16,11 @@ func allocate() -> void:
 	# Columns are per boundary vert - O(perimeter), not O(area) like the selection
 	var boundary_verts := mini(read_counter(sets.boundary_buffer, 4), verts)
 
-	params.wall_rim_base = verts + faces * 3 + shared * ComputeParams.EDGE_VERTS
-	params.wall_grid_base = params.wall_rim_base + boundary_verts * ComputeParams.WALL_SIDE_VERTS_PER_VERT
-	params.wall_face_base = faces + shared * ComputeParams.EDGE_FACES
-	params.out_vertex_count = params.wall_grid_base + boundary * ComputeParams.WALL_VERTS_PER_EDGE
-	params.out_index_count = (params.wall_face_base + boundary * ComputeParams.WALL_FACES_PER_EDGE) * 3
+	params.wall_rim_base = verts + faces * 3 + shared * BlanketParams.EDGE_VERTS
+	params.wall_grid_base = params.wall_rim_base + boundary_verts * BlanketParams.WALL_SIDE_VERTS_PER_VERT
+	params.wall_face_base = faces + shared * BlanketParams.EDGE_FACES
+	params.out_vertex_count = params.wall_grid_base + boundary * BlanketParams.WALL_VERTS_PER_EDGE
+	params.out_index_count = (params.wall_face_base + boundary * BlanketParams.WALL_FACES_PER_EDGE) * 3
 
 	surface.allocate(
 		params.out_vertex_count,
@@ -42,10 +42,10 @@ func init_out_mesh_set() -> void:
 	var attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(surface.mesh_rid, surface.idx)
 
 	sets.out_mesh = rd.uniform_set_create([
-		ComputeUtil.create_uniform([vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-		ComputeUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
-		ComputeUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
-	], SurfaceShaders.out_mesh.shader, 0)
+		BlanketUtil.create_uniform([vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		BlanketUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
+		BlanketUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
+	], BlanketShaders.out_mesh.shader, 0)
 
 
 func set_out_params() -> void:
@@ -76,10 +76,10 @@ func compute() -> void:
 	allocate()
 
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.out_mesh.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.out_mesh.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 1)
 	rd.compute_list_bind_uniform_set(compute_list, sets.vertex_flag, 2)
-	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, ComputeSets.Dispatch.OUT_MESH)
+	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, BlanketSets.Dispatch.OUT_MESH)
 	rd.compute_list_end()

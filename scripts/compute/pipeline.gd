@@ -1,41 +1,41 @@
 extends RefCounted
-class_name Compute
+class_name BlanketPipeline
 
 var rd: RenderingDevice
-var params: ComputeParams
-var sets: ComputeSets
-var surface: ComputeSurface
+var params: BlanketParams
+var sets: BlanketSets
+var surface: BlanketSurface
 
 var mesh: ArrayMesh
 var mesh_rid: RID:
 	get: return mesh.get_rid()
 var in_uniform_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 
-var bake_passes: Array[ComputePass]
-var update_passes: Array[ComputePass]
+var bake_passes: Array[BlanketPass]
+var update_passes: Array[BlanketPass]
 
 
 func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -> void:
 	rd = RenderingServer.get_rendering_device()
-	assert(rd != null, "No RenderingDevice - compute requires Forward+ or Mobile renderer")
-	assert(SurfaceShaders is Node, "SurfaceShaders autoload missing - check Project Settings > Autoload")
+	assert(rd != null, "No RenderingDevice - compute shaders require Forward+ or Mobile renderer")
+	assert(BlanketShaders is Node, "BlanketShaders autoload missing - check Project Settings > Autoload")
 	assert(p_mesh != null, "Mesh is null")
 	assert(surface_idx >= 0 and surface_idx < p_mesh.get_surface_count(),
 		"Surface %d out of range on %s (%d surfaces)" % [surface_idx, p_mesh, p_mesh.get_surface_count()])
 
 	mesh = p_mesh
-	surface = ComputeSurface.new(p_mesh, surface_idx)
-	sets = ComputeSets.new(surface)
-	params = ComputeParams.new(surface, global_transform)
+	surface = BlanketSurface.new(p_mesh, surface_idx)
+	sets = BlanketSets.new(surface)
+	params = BlanketParams.new(surface, global_transform)
 
 	bake_passes = [
-		FacesSelectPass.new(mesh, surface, params, sets),
-		FacesDedupePass.new(mesh, surface, params, sets),
-		FacesWritePass.new(mesh, surface, params, sets),
-		SharedEdgesPass.new(mesh, surface, params, sets),
+		SelectPass.new(mesh, surface, params, sets),
+		DedupePass.new(mesh, surface, params, sets),
+		FacesPass.new(mesh, surface, params, sets),
+		EdgesPass.new(mesh, surface, params, sets),
 		OutMeshPass.new(mesh, surface, params, sets),
-		BevelShrinkPass.new(mesh, surface, params, sets),
-		BevelFillPass.new(mesh, surface, params, sets),
+		ShrinkPass.new(mesh, surface, params, sets),
+		FillPass.new(mesh, surface, params, sets),
 		BoundaryResolvePass.new(mesh, surface, params, sets),
 		BoundaryWritePass.new(mesh, surface, params, sets),
 	]
@@ -98,7 +98,7 @@ func debug_shared_edges() -> void:
 	const SHARED_EDGE_OFFSET := 4
 
 	for i in shared_edge_count:
-		var at := SHARED_EDGE_OFFSET + i * SharedEdgesPass.STRUCT_STRIDE
+		var at := SHARED_EDGE_OFFSET + i * EdgesPass.STRUCT_STRIDE
 		shared_edges_struct.append([
 			Vector2i(shared_edges.decode_u32(at), shared_edges.decode_u32(at + 4)),
 			Vector2i(shared_edges.decode_u32(at + 8), shared_edges.decode_u32(at + 12)),
@@ -188,7 +188,7 @@ func dump_vertices(idx: int, name := "vertices") -> void:
 			bytes.decode_float(i * 12 + 4),
 			bytes.decode_float(i * 12 + 8)
 		)
-		var normal := ComputeUtil.read_normal(bytes, normal_offset + i * normal_stride)
+		var normal := BlanketUtil.read_normal(bytes, normal_offset + i * normal_stride)
 
 		print_rich("[color=%s]%s[%d]: pos=%s n=%s[/color]" % [
 			"tomato" if position == Vector3.ZERO else "goldenrod",
@@ -198,8 +198,8 @@ func dump_vertices(idx: int, name := "vertices") -> void:
 func dump_boundary(name := "boundary") -> void:
 	var bytes := rd.buffer_get_data(sets.boundary_buffer)
 	var masks := rd.buffer_get_data(sets.face_edge_mask_buffer).to_int32_array()
-	var stride := SharedEdgesPass.BOUNDARY_EDGE_STRIDE
-	var header := SharedEdgesPass.BOUNDARY_HEADER
+	var stride := EdgesPass.BOUNDARY_EDGE_STRIDE
+	var header := EdgesPass.BOUNDARY_HEADER
 	var count := bytes.decode_u32(0)
 	var capacity := (bytes.size() - header) / stride
 
@@ -215,12 +215,12 @@ func dump_boundary(name := "boundary") -> void:
 		var mask: int = masks[face] if face < masks.size() else 0
 		var top: Array[Vector2i] = []
 
-		for arc in ComputeParams.TOP_VERTS:
+		for arc in BlanketParams.TOP_VERTS:
 			var top_at := at + 16 + arc * 8
 			top.append(Vector2i(bytes.decode_u32(top_at), bytes.decode_u32(top_at + 4)))
 
 		# Collapsed = the column's outer end is the apex itself, so the quad pinches
-		var outer: Vector2i = top[ComputeParams.BEVEL_ARCS]
+		var outer: Vector2i = top[BlanketParams.BEVEL_ARCS]
 		var pinch := "x" if outer.x == verts.x else ""
 		pinch += "y" if outer.y == verts.y else ""
 

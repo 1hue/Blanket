@@ -1,5 +1,5 @@
-extends ComputePass
-class_name FacesSelectPass
+extends BlanketPass
+class_name SelectPass
 
 const WORKGROUP_SIZE = 256
 const SIZE_PARAMS = 40
@@ -25,9 +25,9 @@ func init_selected_faces_buffers() -> void:
 	selected_index_buffer = rd.storage_buffer_create(index_size)
 
 	selected_faces_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([selected_vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-		ComputeUtil.create_uniform([selected_index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
-	], SurfaceShaders.faces_select.shader, 1)
+		BlanketUtil.create_uniform([selected_vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		BlanketUtil.create_uniform([selected_index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
+	], BlanketShaders.select.shader, 1)
 
 	sets.selected_faces = selected_faces_set
 	sets.selected_index_buffer = selected_index_buffer
@@ -55,7 +55,7 @@ func compute() -> void:
 	rd.buffer_clear(selected_vertex_buffer, 0, 4)
 
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.faces_select.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.select.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selected_faces_set, 1)

@@ -1,11 +1,11 @@
-extends ComputePass
-class_name SharedEdgesPass
+extends BlanketPass
+class_name EdgesPass
 
 const WORKGROUP_SIZE = 64
 const SIZE_PARAMS = 4
 const SHARED_EDGE_STRIDE = 32
 const STRUCT_STRIDE = 32
-const BOUNDARY_EDGE_STRIDE = 16 + (ComputeParams.MAX_BEVEL + 1) * 8
+const BOUNDARY_EDGE_STRIDE = 16 + (BlanketParams.MAX_BEVEL + 1) * 8
 const BOUNDARY_HEADER = 8 # boundary_count, boundary_vert_count
 
 var shared_edge_set: RID
@@ -38,8 +38,8 @@ func init_shared_edge_buffer() -> void:
 	shared_edge_buffer = rd.storage_buffer_create(shared_edge_buffer_size)
 
 	shared_edge_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([shared_edge_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
-	], SurfaceShaders.shared_edges.shader, 1)
+		BlanketUtil.create_uniform([shared_edge_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
+	], BlanketShaders.edges.shader, 1)
 
 	sets.shared_edge_buffer = shared_edge_buffer
 	sets.shared_edge = shared_edge_set
@@ -51,8 +51,8 @@ func init_face_edge_mask_buffer() -> void:
 	face_edge_mask_buffer = rd.storage_buffer_create(face_edge_mask_buffer_size)
 
 	face_edge_mask_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([face_edge_mask_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
-	], SurfaceShaders.shared_edges.shader, 2)
+		BlanketUtil.create_uniform([face_edge_mask_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
+	], BlanketShaders.edges.shader, 2)
 
 	sets.face_edge_mask_buffer = face_edge_mask_buffer
 	sets.face_edge_mask = face_edge_mask_set
@@ -64,8 +64,8 @@ func init_vertex_flag_buffer() -> void:
 	vertex_flag_buffer = rd.storage_buffer_create(vertex_flag_buffer_size)
 
 	vertex_flag_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([vertex_flag_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
-	], SurfaceShaders.shared_edges.shader, 3)
+		BlanketUtil.create_uniform([vertex_flag_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
+	], BlanketShaders.edges.shader, 3)
 
 	sets.vertex_flag_buffer = vertex_flag_buffer
 	sets.vertex_flag = vertex_flag_set
@@ -75,8 +75,8 @@ func init_boundary_buffer() -> void:
 	boundary_buffer = rd.storage_buffer_create(boundary_buffer_size)
 
 	boundary_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([boundary_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
-	], SurfaceShaders.shared_edges.shader, 4)
+		BlanketUtil.create_uniform([boundary_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
+	], BlanketShaders.edges.shader, 4)
 
 	sets.boundary_buffer = boundary_buffer
 	sets.boundary = boundary_set
@@ -95,7 +95,7 @@ func compute() -> void:
 	rd.buffer_clear(boundary_buffer, 0, boundary_buffer_size)
 
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.shared_edges.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.edges.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 0)
 	rd.compute_list_bind_uniform_set(compute_list, shared_edge_set, 1)
@@ -103,7 +103,7 @@ func compute() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, vertex_flag_set, 3)
 	rd.compute_list_bind_uniform_set(compute_list, boundary_set, 4)
 	rd.compute_list_bind_uniform_set(compute_list, sets.dispatch, 5)
-	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, ComputeSets.Dispatch.SHARED_EDGES)
+	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, BlanketSets.Dispatch.EDGES)
 	rd.compute_list_end()
 
 

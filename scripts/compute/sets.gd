@@ -1,20 +1,20 @@
 extends RefCounted
-class_name ComputeSets
+class_name BlanketSets
 
 ## dispatch_buffer offsets of each uvec3(X,Y,Z)
 enum Dispatch {
-	FACES_DEDUPE = 0 * 12,
-	FACES_WRITE = 1 * 12,
-	SHARED_EDGES = 2 * 12,
+	DEDUPE = 0 * 12,
+	FACES = 1 * 12,
+	EDGES = 2 * 12,
 	OUT_MESH = 3 * 12,
-	BEVEL_SHRINK = 4 * 12,
-	BEVEL_FILL = 5 * 12,
+	SHRINK = 4 * 12,
+	FILL = 5 * 12,
 	BOUNDARY = 6 * 12,
 }
 
 # TODO Clean up vars
 var rd: RenderingDevice
-var surface: ComputeSurface
+var surface: BlanketSurface
 
 var in_mesh: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 var out_mesh: RID
@@ -50,7 +50,7 @@ var smooth_sum_buffer: RID
 var debug: RID
 
 
-func _init(p_surface: ComputeSurface) -> void:
+func _init(p_surface: BlanketSurface) -> void:
 	rd = RenderingServer.get_rendering_device()
 	surface = p_surface
 
@@ -64,17 +64,17 @@ func init_in_mesh_set() -> void:
 	var attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
 
 	in_mesh = rd.uniform_set_create([
-		ComputeUtil.create_uniform([vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-		ComputeUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
-		ComputeUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
-	], SurfaceShaders.faces_select.shader, 0)
+		BlanketUtil.create_uniform([vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		BlanketUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
+		BlanketUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
+	], BlanketShaders.select.shader, 0)
 
 
 func init_indirect_dispatch() -> void:
 	dispatch_buffer = dispatch_buffer_create(Dispatch.BOUNDARY / 12 + 1)
 	dispatch = rd.uniform_set_create([
-		ComputeUtil.create_uniform([dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-	], SurfaceShaders.faces_select.shader, 2)
+		BlanketUtil.create_uniform([dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+	], BlanketShaders.select.shader, 2)
 
 
 func dispatch_buffer_create(count := 1, init: PackedInt32Array = []) -> RID:

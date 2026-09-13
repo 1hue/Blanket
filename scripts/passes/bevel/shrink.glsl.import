@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://flc22srmq0uu"
+path="res://.godot/imported/shrink.glsl-3f3cd0c503ed2c4ff54a427139b3106e.res"
+
+[deps]
+
+source_file="res://scripts/passes/bevel/shrink.glsl"
+dest_files=["res://.godot/imported/shrink.glsl-3f3cd0c503ed2c4ff54a427139b3106e.res"]
+
+[params]
+

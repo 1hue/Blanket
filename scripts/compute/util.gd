@@ -1,5 +1,5 @@
 extends Node
-class_name ComputeUtil
+class_name BlanketUtil
 
 
 static func create_uniform(rids: Array[RID], type: RenderingDevice.UniformType, binding := 0) -> RDUniform:

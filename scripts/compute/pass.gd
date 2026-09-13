@@ -1,19 +1,19 @@
 @abstract
 extends RefCounted
-class_name ComputePass
+class_name BlanketPass
 
 var rd: RenderingDevice
 var mesh: ArrayMesh
 var mesh_rid: RID:
 	get: return mesh.get_rid()
-var surface: ComputeSurface
-var params: ComputeParams
+var surface: BlanketSurface
+var params: BlanketParams
 var push_constant: PackedByteArray
-var sets: ComputeSets
+var sets: BlanketSets
 
 
 ## Bootleg dependency injection
-func _init(p_mesh: ArrayMesh, p_surface: ComputeSurface, p_params: ComputeParams, p_sets: ComputeSets) -> void:
+func _init(p_mesh: ArrayMesh, p_surface: BlanketSurface, p_params: BlanketParams, p_sets: BlanketSets) -> void:
 	rd = RenderingServer.get_rendering_device()
 	mesh = p_mesh
 	surface = p_surface

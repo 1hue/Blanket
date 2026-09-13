@@ -1,5 +1,5 @@
 extends Node
-class_name SurfaceCover
+class_name BlanketInstance
 
 ## The computed surface is added after the source, so it's always index 1
 const COMPUTED_SURFACE_IDX = 1
@@ -30,7 +30,7 @@ const COMPUTED_SURFACE_IDX = 1
 var mesh: ArrayMesh:
 	get: return mesh_instance.mesh if mesh_instance else null
 var debug_normals_mesh: MeshInstance3D: set = _set_debug_normals_mesh
-var computes: Array[Compute]
+var pipelines: Array[BlanketPipeline]
 
 
 func _ready() -> void:
@@ -44,13 +44,13 @@ func _enter_tree() -> void:
 		_setup()
 
 
-## Dropping the computes frees their RIDs through the RefCounted destructors
+## Dropping the pipelines frees their RIDs through the RefCounted destructors
 func _exit_tree() -> void:
 	if mesh and mesh.changed.is_connected(_on_mesh_changed):
 		mesh.changed.disconnect(_on_mesh_changed)
 
 	debug_normals_mesh = null
-	computes.clear()
+	pipelines.clear()
 
 
 func _setup() -> void:
@@ -60,21 +60,21 @@ func _setup() -> void:
 	mesh.changed.connect(_on_mesh_changed)
 
 	for i in mesh.get_surface_count():
-		var compute := Compute.new(mesh, i, mesh_instance.global_transform)
+		var pipeline := BlanketPipeline.new(mesh, i, mesh_instance.global_transform)
 
-		computes.append(compute)
+		pipelines.append(pipeline)
 
-	for compute in computes:
-		compute.bake()
+	for pipeline in pipelines:
+		pipeline.bake()
 
 	draw_normals()
 
 
 func _on_mesh_changed() -> void:
 	if material:
-		for compute in computes:
-			if compute.surface.idx > -1:
-				mesh_instance.set_surface_override_material(compute.surface.idx, material)
+		for pipeline in pipelines:
+			if pipeline.surface.idx > -1:
+				mesh_instance.set_surface_override_material(pipeline.surface.idx, material)
 
 	draw_normals()
 
@@ -151,13 +151,13 @@ func validate() -> void:
 
 
 func change_depth(delta: int) -> void:
-	for compute in computes:
+	for pipeline in pipelines:
 		if delta == 0:
-			compute.params.depth = ComputeParams.DEFAULT_DEPTH
+			pipeline.params.depth = BlanketParams.DEFAULT_DEPTH
 		else:
-			compute.params.depth += delta
+			pipeline.params.depth += delta
 
-		compute.update()
+		pipeline.update()
 
 	draw_normals()
 

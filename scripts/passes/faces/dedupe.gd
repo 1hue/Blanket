@@ -1,5 +1,5 @@
-extends ComputePass
-class_name FacesDedupePass
+extends BlanketPass
+class_name DedupePass
 
 const SIZE_PARAMS = 4
 const EMPTY_BYTE = UINT32_MAX
@@ -31,8 +31,8 @@ func init_table_buffer() -> void:
 	table_clear.encode_u32(0, table_size)
 
 	table_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([table_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-	], SurfaceShaders.faces_dedupe.shader, 2)
+		BlanketUtil.create_uniform([table_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+	], BlanketShaders.dedupe.shader, 2)
 
 	sets.faces_table = table_set
 	sets.faces_table_buffer = table_buffer
@@ -42,12 +42,12 @@ func compute() -> void:
 	rd.buffer_update(table_buffer, 0, table_buffer_size, table_clear)
 
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.faces_dedupe.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.dedupe.pipeline)
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 1)
 	rd.compute_list_bind_uniform_set(compute_list, table_set, 2)
 	rd.compute_list_bind_uniform_set(compute_list, sets.dispatch, 3)
-	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, ComputeSets.Dispatch.FACES_DEDUPE)
+	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, BlanketSets.Dispatch.DEDUPE)
 	rd.compute_list_end()
 
 

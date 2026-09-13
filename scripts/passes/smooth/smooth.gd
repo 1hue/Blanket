@@ -1,4 +1,4 @@
-extends ComputePass
+extends BlanketPass
 class_name SmoothPass
 
 const ITERATIONS = 5

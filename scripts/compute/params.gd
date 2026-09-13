@@ -1,5 +1,5 @@
 extends RefCounted
-class_name ComputeParams
+class_name BlanketParams
 
 signal changed
 
@@ -113,7 +113,7 @@ var max_slope_degrees := DEFAULT_MAX_SLOPE_DEGREES:
 		changed.emit()
 
 
-func _init(surface: ComputeSurface, global_transform: Transform3D) -> void:
+func _init(surface: BlanketSurface, global_transform: Transform3D) -> void:
 	var mesh := surface.mesh
 	var format := mesh.surface_get_format(surface.source_idx)
 	var primitive := mesh.surface_get_primitive_type(surface.source_idx)
