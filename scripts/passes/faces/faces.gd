@@ -1,8 +1,6 @@
 extends BlanketPass
 class_name FacesPass
 
-const WORKGROUP_SIZE = 64
-
 
 func _pre() -> void:
 	pass

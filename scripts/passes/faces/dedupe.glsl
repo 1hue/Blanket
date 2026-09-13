@@ -4,6 +4,8 @@
 
 #extension GL_EXT_scalar_block_layout : require
 
+#include "../common.glsl.inc"
+
 const uint EMPTY = 0xFFFFFFFFu;
 
 struct TableEntry {
@@ -11,12 +13,7 @@ struct TableEntry {
 	uint out_vert; // Where its position lives in the scratch buffer
 };
 
-layout(constant_id = 0) const uint WORKGROUP_SIZE = 1;
-layout(constant_id = 1) const uint FACES_WORKGROUP_SIZE = 1;
-layout(constant_id = 2) const uint EDGES_WORKGROUP_SIZE = 1;
-layout(constant_id = 3) const uint SHRINK_WORKGROUP_SIZE = 1;
-
-layout(local_size_x_id = 0, local_size_y = 3) in; // X = face, Y = corner
+layout(local_size_x = DEDUPE_WORKGROUP_SIZE, local_size_y = 3) in; // X = face, Y = corner
 
 layout(set = 0, binding = 0, scalar) restrict readonly buffer InVertexBuffer {
 	vec3 in_positions[];

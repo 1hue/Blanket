@@ -10,11 +10,12 @@ out_u32 = "#define OUT_INDEX_TYPE uvec3";
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
-const uint FLAG_BOUNDARY = 1;
+#include "common.glsl.inc"
+
 const uint COLOR_ORIGINAL = 0xFFE06020; // Blue
 const uint COLOR_BOUNDARY = 0xFF0000FF; // Red
 
-layout(local_size_x = 64) in;
+layout(local_size_x = OUT_MESH_WORKGROUP_SIZE) in;
 
 layout(push_constant, std430) uniform PushParams {
 	uint out_color_offset;

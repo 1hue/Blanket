@@ -8,10 +8,8 @@
 
 #include "common.glsl.inc"
 
-layout(constant_id = 0) const uint WORKGROUP_SIZE = 1;
-
 // X = face, Y = corner (the edge running from that corner to the next)
-layout(local_size_x_id = 0, local_size_y = 3) in;
+layout(local_size_x = EDGES_WORKGROUP_SIZE, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
 	uint max_edges;

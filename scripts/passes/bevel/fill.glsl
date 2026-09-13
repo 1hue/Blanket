@@ -22,7 +22,7 @@ layout(constant_id = 1) const uint ARCS = 1; // Apex out to the retracted verts
 const uint SEGMENTS = BEVEL_SEGMENTS * 2; // An arc spans both sides of the crease
 const uint ARC_VERTS = SEGMENTS + 1; // Verts along an arc, ends included
 
-layout(local_size_x = 256) in;
+layout(local_size_x = FILL_WORKGROUP_SIZE) in;
 
 layout(push_constant, std430) uniform PushParams {
 	uint out_color_offset;

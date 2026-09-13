@@ -1,7 +1,6 @@
 extends BlanketPass
 class_name EdgesPass
 
-const WORKGROUP_SIZE = 64
 const SIZE_PARAMS = 4
 const SHARED_EDGE_STRIDE = 32
 const STRUCT_STRIDE = 32

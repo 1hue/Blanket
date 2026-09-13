@@ -1,4 +1,8 @@
+const uint DEDUPE_WORKGROUP_SIZE = 64;
+const uint FACES_WORKGROUP_SIZE = 64;
 const uint OUT_MESH_WORKGROUP_SIZE = 64;
+const uint EDGES_WORKGROUP_SIZE = 64;
+const uint SHRINK_WORKGROUP_SIZE = 64;
 const uint FILL_WORKGROUP_SIZE = 256;
 const uint BOUNDARY_WORKGROUP_SIZE = 64;
 const uint FLAG_BOUNDARY = 1;

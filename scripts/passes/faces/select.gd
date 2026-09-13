@@ -1,7 +1,6 @@
 extends BlanketPass
 class_name SelectPass
 
-const WORKGROUP_SIZE = 256
 const SIZE_PARAMS = 40
 const VERTEX_STRIDE = 12 # vec3
 const INDEX_STRIDE = 12 # uvec3 for simplicity
@@ -77,7 +76,7 @@ func compute() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selected_faces_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, sets.dispatch, 2)
-	rd.compute_list_dispatch(compute_list, workgroups(params.in_face_count, WORKGROUP_SIZE), 1, 1)
+	rd.compute_list_dispatch(compute_list, workgroups(params.in_face_count, 256), 1, 1)
 	rd.compute_list_end()
 
 

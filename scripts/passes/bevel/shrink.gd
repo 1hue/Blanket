@@ -1,7 +1,6 @@
 extends BlanketPass
 class_name ShrinkPass
 
-const WORKGROUP_SIZE = 64
 const SIZE_PARAMS = 12
 
 
