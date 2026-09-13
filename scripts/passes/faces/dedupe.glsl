@@ -5,14 +5,16 @@
 #extension GL_EXT_scalar_block_layout : require
 
 const uint EMPTY = 0xFFFFFFFFu;
-const uint WRITE_WORKGROUP_SIZE = 64;
 
 struct TableEntry {
 	uint vert; // Source vertex holding this position, EMPTY if free
 	uint out_vert; // Where its position lives in the scratch buffer
 };
 
-layout(local_size_x = 64, local_size_y = 3) in; // X = face, Y = corner
+layout(constant_id = 0) const uint WORKGROUP_SIZE = 1;
+layout(constant_id = 1) const uint FACES_WORKGROUP_SIZE = 1;
+
+layout(local_size_x_id = 0, local_size_y = 3) in; // X = face, Y = corner
 
 layout(set = 0, binding = 0, scalar) restrict readonly buffer InVertexBuffer {
 	vec3 in_positions[];
@@ -86,7 +88,7 @@ void main() {
 	}
 
 	if (corner == 0) {
-		uint groups = 1 + face / WRITE_WORKGROUP_SIZE;
+		uint groups = 1 + face / FACES_WORKGROUP_SIZE;
 
 		atomicMax(dispatch_write.x, groups);
 		atomicMax(dispatch_shared.x, groups);

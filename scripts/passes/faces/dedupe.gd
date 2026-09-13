@@ -1,6 +1,7 @@
 extends BlanketPass
 class_name DedupePass
 
+const WORKGROUP_SIZE = 64
 const SIZE_PARAMS = 4
 const EMPTY_BYTE = UINT32_MAX
 const TABLE_ENTRY_STRIDE = 8 # uvec2: vert, out_vert

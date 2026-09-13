@@ -11,7 +11,9 @@ struct TableEntry {
 	uint out_vert; // Where its position lives in the scratch buffer
 };
 
-layout(local_size_x = 64, local_size_y = 3) in; // X = face, Y = corner
+layout(constant_id = 0) const uint WORKGROUP_SIZE = 1;
+
+layout(local_size_x_id = 0, local_size_y = 3) in; // X = face, Y = corner
 
 layout(set = 0, binding = 0, scalar) restrict readonly buffer InVertexBuffer {
 	vec3 in_positions[];

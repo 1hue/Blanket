@@ -10,11 +10,11 @@ in_u32 = "#define IN_INDEX_TYPE uvec3";
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
-const uint DEDUPE_WORKGROUP_SIZE = 64;
+layout(constant_id = 0) const uint WORKGROUP_SIZE = 1;
+layout(constant_id = 1) const uint DEDUPE_WORKGROUP_SIZE = 1;
+layout(constant_id = 2) const bool DEBUG = false;
 
-layout(constant_id = 0) const bool DEBUG = false;
-
-layout(local_size_x = 256) in;
+layout(local_size_x_id = 0) in;
 
 layout(push_constant, std430) uniform PushParams {
 	vec3 local_up; // Model space, normalized

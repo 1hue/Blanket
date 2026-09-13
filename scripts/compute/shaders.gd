@@ -8,10 +8,6 @@ class BlanketShader:
 	var pipelines: Dictionary[StringName, RID]
 	var rd: RenderingDevice
 
-	#var shader: RID:
-		#get: return shaders[versions[0]]
-	#var pipeline: RID:
-		#get: return pipelines[versions[0]]
 
 	func _init(path: String, specialization_constants := []) -> void:
 		rd = RenderingServer.get_rendering_device()
@@ -68,9 +64,18 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _init() -> void:
-	select = BlanketShader.new("res://scripts/passes/faces/select.glsl")
-	dedupe = BlanketShader.new("res://scripts/passes/faces/dedupe.glsl")
-	faces = BlanketShader.new("res://scripts/passes/faces/faces.glsl")
+	select = BlanketShader.new(
+		"res://scripts/passes/faces/select.glsl",
+		[SelectPass.WORKGROUP_SIZE, DedupePass.WORKGROUP_SIZE]
+	)
+	dedupe = BlanketShader.new(
+		"res://scripts/passes/faces/dedupe.glsl",
+		[DedupePass.WORKGROUP_SIZE, FacesPass.WORKGROUP_SIZE]
+	)
+	faces = BlanketShader.new(
+		"res://scripts/passes/faces/faces.glsl",
+		[FacesPass.WORKGROUP_SIZE]
+	)
 	edges = BlanketShader.new("res://scripts/passes/edges.glsl")
 	out_mesh = BlanketShader.new("res://scripts/passes/out_mesh.glsl")
 	shrink = BlanketShader.new(

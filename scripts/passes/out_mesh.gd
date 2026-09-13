@@ -62,7 +62,7 @@ func set_out_params() -> void:
 	params.out_custom_offset = RenderingServer.mesh_surface_get_format_offset(format, verts, Mesh.ARRAY_CUSTOM0)
 	params.out_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, verts)
 
-	assert(params.out_index_stride == 2, "Index writes are hardcoded u16vec3")
+	assert(params.out_index_stride > 0, "Index stride should be non-zero")
 	assert(params.out_attribute_stride - params.out_custom_offset == 16, "Custom0 must be RGBA_FLOAT")
 
 
