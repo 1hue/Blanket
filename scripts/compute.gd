@@ -15,6 +15,7 @@ var mesh_rid: RID:
 var in_uniform_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
 
 var bake_passes: Array[ComputePass]
+var update_passes: Array[ComputePass]
 
 
 func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -> void:
@@ -40,9 +41,12 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		BevelFillPass.new(mesh, surface, params, sets),
 		BoundaryResolvePass.new(mesh, surface, params, sets),
 		BoundaryWritePass.new(mesh, surface, params, sets),
+	]
+
+	# Everything downstream of depth - rerun whenever a vert moves
+	update_passes = [
 		OffsetPass.new(mesh, surface, params, sets),
-		SmoothSumPass.new(mesh, surface, params, sets),
-		SmoothWritePass.new(mesh, surface, params, sets),
+		SmoothPass.new(mesh, surface, params, sets),
 		NormalsSumPass.new(mesh, surface, params, sets),
 		NormalsWritePass.new(mesh, surface, params, sets),
 	]
@@ -51,22 +55,15 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 func bake() -> void:
 	for bake_pass in bake_passes:
 		bake_pass.compute()
+
+	update()
 	debug()
 
 
 func update() -> void:
-	var offset_pass := find_pass(OffsetPass)
+	for update_pass in update_passes:
+		update_pass.compute()
 
-	if offset_pass:
-		offset_pass.compute()
-
-
-func find_pass(type: Variant) -> ComputePass:
-	for bake_pass in bake_passes:
-		if is_instance_of(bake_pass, type):
-			return bake_pass
-
-	return null
 
 #region Debug
 func dump_shared_mask(buffer: RID, name := "shared_mask") -> void:

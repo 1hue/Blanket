@@ -26,7 +26,7 @@ func init_buffer() -> void:
 	buffer = rd.storage_buffer_create(buffer_size)
 
 	uniform_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		ComputeUtil.create_uniform([buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
 	], SurfaceShaders.smooth_sum.shader, 0)
 
 	sets.smooth_sum_buffer = buffer
@@ -39,7 +39,6 @@ func pack_params() -> PackedByteArray:
 	return push_constant
 
 
-## Normals must be recalculated after this
 func compute() -> void:
 	init_buffer()
 	rd.buffer_clear(buffer, 0, buffer_size)

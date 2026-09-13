@@ -10,7 +10,7 @@ func _pre() -> void:
 
 
 func pack_params() -> PackedByteArray:
-	push_constant.encode_float(0, ComputeParams.SMOOTH_STRENGTH)
+	push_constant.encode_u32(0, params.wall_rim_base)
 	push_constant.encode_u32(4, params.out_vertex_count)
 	push_constant.encode_u32(8, params.out_custom_offset)
 	push_constant.encode_u32(12, params.out_attribute_stride)
@@ -18,7 +18,6 @@ func pack_params() -> PackedByteArray:
 	return push_constant
 
 
-## Rerun after anything that moves verts - offset.glsl changes every wall's tilt
 func compute() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.smooth_write.pipeline)

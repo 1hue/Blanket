@@ -14,6 +14,7 @@ const BEVEL_SEGMENTS = 1
 const BEVEL_ARCS = 1
 const BEVEL_WIDTH = 0.2
 const SMOOTH_STRENGTH = 0.5
+const SMOOTH_WALL_STRENGTH = 1.0
 
 #region Bevel
 ## Segments across an arc - both sides of the crease

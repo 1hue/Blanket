@@ -68,10 +68,10 @@ void main() {
 	float wb = cotangent(b, c, a);
 
 	// Each vertex gets contributions from both of its edges in this face
-	accumulate(corners.x, b, wc);
-	accumulate(corners.y, a, wc);
-	accumulate(corners.y, c, wa);
-	accumulate(corners.z, b, wa);
-	accumulate(corners.z, a, wb);
-	accumulate(corners.x, c, wb);
+	accumulate(corners.x, b, 1.0);
+	accumulate(corners.y, a, 1.0);
+	accumulate(corners.y, c, 1.0);
+	accumulate(corners.z, b, 1.0);
+	accumulate(corners.z, a, 1.0);
+	accumulate(corners.x, c, 1.0);
 }
