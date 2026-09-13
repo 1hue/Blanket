@@ -77,5 +77,5 @@ func _init() -> void:
 	smooth_sum = ShaderPipeline.new("res://scripts/passes/smooth/smooth_sum.glsl")
 	smooth_write = ShaderPipeline.new(
 		"res://scripts/passes/smooth/smooth_write.glsl",
-		[ComputeParams.SMOOTH_STRENGTH]
+		[ComputeParams.SMOOTH_STRENGTH, ComputeParams.SMOOTH_WALL_STRENGTH]
 	)

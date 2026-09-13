@@ -76,12 +76,12 @@ surface_material_override/0 = ExtResource("6_5vw27")
 [node name="Dome" parent="basic" index="1" unique_id=1829400861]
 transform = Transform3D(0.88264245, -0.47004497, 0, 0.47004497, 0.88264245, 0, 0, 0, 1, -3.159107, 0, 0)
 
-[node name="SurfaceCover" type="Node" parent="basic/Dome" index="0" unique_id=810101255]
-script = ExtResource("7_5vw27")
-metadata/_custom_type_script = "uid://dtnblg1g7ceap"
-
 [node name="Three" parent="basic" index="2" unique_id=347521391]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55610275, 0, 0)
+
+[node name="SurfaceCover" type="Node" parent="basic/Three" index="0" unique_id=810101255]
+script = ExtResource("7_5vw27")
+metadata/_custom_type_script = "uid://dtnblg1g7ceap"
 
 [node name="complex" parent="." unique_id=1469824708 instance=ExtResource("8_5vw27")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.3597674, 0, 0)

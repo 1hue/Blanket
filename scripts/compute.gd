@@ -43,7 +43,6 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 		BoundaryWritePass.new(mesh, surface, params, sets),
 	]
 
-	# Everything downstream of depth - rerun whenever a vert moves
 	update_passes = [
 		OffsetPass.new(mesh, surface, params, sets),
 		SmoothPass.new(mesh, surface, params, sets),
@@ -176,11 +175,16 @@ func dumpf(buffer: RID, name := "") -> void:
 	print_rich("[color=burlywood]%s: " % name, bytes.to_float32_array() ,"[/color]")
 
 
-func debug_faces_multipass() -> void:
-	dump_uvec3(sets.selected_index_buffer, "selected_index_buffer", true)
-	dump_vec3(sets.selected_vertex_buffer, "selected_vertex_buffer", true)
+func debug_out() -> void:
+	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.idx)
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.idx)
+	var attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(surface.mesh_rid, surface.idx)
+
+	dump_vec3(vertex_buffer, "out_vertex_buffer")
+	dump_u16vec3(index_buffer, "out_index_buffer")
+	dumpi(attribute_buffer, "out_attribute_buffer")
 
 
 func debug() -> void:
-	pass
+	debug_out()
 #endregion
