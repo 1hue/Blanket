@@ -9,7 +9,9 @@
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
+	vec3 local_up; // Model space, normalized
 	uint out_face_count;
+	uint wall_rim_base; // Everything past this is wall, and wants the opposite bias
 };
 
 layout(set = 0, binding = 0, std430) restrict buffer NormalSumBuffer {
@@ -28,18 +30,6 @@ layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[]; // Unused
 };
 
-void accumulate(uint vert, vec3 normal) {
-	uint base = vert * 3;
-
-	atomicAdd(normal_sums[base], normal.x);
-	atomicAdd(normal_sums[base + 1], normal.y);
-	atomicAdd(normal_sums[base + 2], normal.z);
-}
-
-bool is_degenerate(uvec3 tri) {
-	return tri.x == tri.y || tri.x == tri.z || tri.y == tri.z;
-}
-
 // Area weighting would drown the narrow bevel strips in their large neighbours,
 // softening the crease. The corner's own angle is what the vert actually sees
 float corner_angle(vec3 apex, vec3 p, vec3 q) {
@@ -50,6 +40,28 @@ float corner_angle(vec3 apex, vec3 p, vec3 q) {
 	if (lengths < 1e-18) return 0.0;
 
 	return acos(clamp(dot(to_p, to_q) / lengths, -1.0, 1.0));
+}
+
+// A rim vert borders both the surface and the wall, and averaging them sweeps a
+// gradient across whatever large face it touches. Bias each vert toward the
+// orientation it belongs to - continuous, so the crease stays soft
+float alignment(uint vert, vec3 normal) {
+	float up = dot(normal, local_up);
+
+	return vert < wall_rim_base ? max(up, 0.0) : max(1.0 - abs(up), 0.0);
+}
+
+void accumulate(uint vert, vec3 normal, float weight) {
+	uint base = vert * 3;
+	vec3 scaled = normal * (weight * alignment(vert, normal));
+
+	atomicAdd(normal_sums[base], scaled.x);
+	atomicAdd(normal_sums[base + 1], scaled.y);
+	atomicAdd(normal_sums[base + 2], scaled.z);
+}
+
+bool is_degenerate(uvec3 tri) {
+	return tri.x == tri.y || tri.x == tri.z || tri.y == tri.z;
 }
 
 void main() {
@@ -71,7 +83,7 @@ void main() {
 
 	normal /= area2;
 
-	accumulate(corners.x, normal * corner_angle(a, b, c));
-	accumulate(corners.y, normal * corner_angle(b, c, a));
-	accumulate(corners.z, normal * corner_angle(c, a, b));
+	accumulate(corners.x, normal, corner_angle(a, b, c));
+	accumulate(corners.y, normal, corner_angle(b, c, a));
+	accumulate(corners.z, normal, corner_angle(c, a, b));
 }

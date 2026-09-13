@@ -2,7 +2,7 @@ extends ComputePass
 class_name NormalsSumPass
 
 const WORKGROUP_SIZE = 256
-const SIZE_PARAMS = 4
+const SIZE_PARAMS = 20
 
 var buffer: RID
 var buffer_size: int
@@ -32,7 +32,11 @@ func init_buffer() -> void:
 
 
 func pack_params() -> PackedByteArray:
-	push_constant.encode_u32(0, params.out_face_count)
+	push_constant.encode_float(0, params.local_up.x)
+	push_constant.encode_float(4, params.local_up.y)
+	push_constant.encode_float(8, params.local_up.z)
+	push_constant.encode_u32(12, params.out_face_count)
+	push_constant.encode_u32(16, params.wall_rim_base)
 
 	return push_constant
 
