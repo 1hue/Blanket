@@ -5,6 +5,8 @@ const SIZE_PARAMS = 12
 
 
 func _pre() -> void:
+	version = &"out_u32" if params.out_index_stride == 4 else &"out_u16"
+
 	push_constant.resize(SIZE_PARAMS)
 
 
@@ -45,7 +47,7 @@ func init_out_mesh_set() -> void:
 		BlanketUtil.create_uniform([vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 		BlanketUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
 		BlanketUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
-	], BlanketShaders.out_mesh.shader, 0)
+	], BlanketShaders.out_mesh.shaders[version], 0)
 
 
 func set_out_params() -> void:
@@ -76,7 +78,7 @@ func compute() -> void:
 	allocate()
 
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.out_mesh.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.out_mesh.pipelines[version])
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 1)

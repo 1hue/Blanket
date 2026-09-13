@@ -12,8 +12,25 @@ var selected_vertex_buffer: RID
 
 
 func _pre() -> void:
+	version = &"in_u32" if params.in_index_stride == 4 else &"in_u16"
+
 	push_constant.resize(SIZE_PARAMS)
+
+	init_in_mesh_set()
 	init_selected_faces_buffers()
+
+
+
+func init_in_mesh_set() -> void:
+	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
+	var attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
+
+	sets.in_mesh = rd.uniform_set_create([
+		BlanketUtil.create_uniform([vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		BlanketUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
+		BlanketUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
+	], BlanketShaders.select.shaders[version], 0)
 
 
 func init_selected_faces_buffers() -> void:
@@ -27,7 +44,7 @@ func init_selected_faces_buffers() -> void:
 	selected_faces_set = rd.uniform_set_create([
 		BlanketUtil.create_uniform([selected_vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 		BlanketUtil.create_uniform([selected_index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
-	], BlanketShaders.select.shader, 1)
+	], BlanketShaders.select.shaders[version], 1)
 
 	sets.selected_faces = selected_faces_set
 	sets.selected_index_buffer = selected_index_buffer
@@ -55,7 +72,7 @@ func compute() -> void:
 	rd.buffer_clear(selected_vertex_buffer, 0, 4)
 
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.select.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.select.pipelines[version])
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selected_faces_set, 1)

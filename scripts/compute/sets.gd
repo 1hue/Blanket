@@ -54,27 +54,14 @@ func _init(p_surface: BlanketSurface) -> void:
 	rd = RenderingServer.get_rendering_device()
 	surface = p_surface
 
-	init_in_mesh_set()
 	init_indirect_dispatch()
-
-
-func init_in_mesh_set() -> void:
-	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
-	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
-	var attribute_buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
-
-	in_mesh = rd.uniform_set_create([
-		BlanketUtil.create_uniform([vertex_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-		BlanketUtil.create_uniform([index_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 1),
-		BlanketUtil.create_uniform([attribute_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 2),
-	], BlanketShaders.select.shader, 0)
 
 
 func init_indirect_dispatch() -> void:
 	dispatch_buffer = dispatch_buffer_create(Dispatch.BOUNDARY / 12 + 1)
 	dispatch = rd.uniform_set_create([
 		BlanketUtil.create_uniform([dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-	], BlanketShaders.select.shader, 2)
+	], BlanketShaders.select.shaders[&"in_u16"], 2)
 
 
 func dispatch_buffer_create(count := 1, init: PackedInt32Array = []) -> RID:

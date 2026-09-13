@@ -1,7 +1,6 @@
 extends Node
 class_name BlanketInstance
 
-## Joined on enter, so a Blanket above can find us without a tree walk
 const GROUP = &"blanket_instances"
 
 @export var material: Material = preload("res://assets/snow.tres")
@@ -15,6 +14,7 @@ const GROUP = &"blanket_instances"
 	set(value):
 		debug_enabled = value
 		draw_normals()
+
 @export_subgroup("Normals", "debug_normals")
 @export var debug_normals_enabled := false:
 	set(value):
@@ -41,8 +41,6 @@ func _ready() -> void:
 	setup()
 
 
-## Re-entering the tree after _exit_tree tore everything down. On first entry
-## _ready hasn't run yet, so mesh_instance is still null and _ready does it
 func _enter_tree() -> void:
 	add_to_group(GROUP)
 
@@ -50,7 +48,6 @@ func _enter_tree() -> void:
 		setup()
 
 
-## Dropping the pipelines frees their RIDs through the RefCounted destructors
 func _exit_tree() -> void:
 	remove_from_group(GROUP)
 
@@ -76,7 +73,6 @@ func setup() -> void:
 	apply_depth()
 
 
-## Pipelines don't exist until setup, so this is a no-op during configuration
 func apply_depth() -> void:
 	for pipeline in pipelines:
 		pipeline.params.depth = depth
@@ -122,7 +118,6 @@ func draw_normals() -> void:
 	debug_normals_mesh = build_normal_lines(mesh_instance.global_transform, debug_normals_length)
 
 
-## Every computed surface goes into one mesh - surface.idx is where each landed
 func build_normal_lines(transform: Transform3D, length := 0.2) -> MeshInstance3D:
 	var im := ImmediateMesh.new()
 	var normals_material := ORMMaterial3D.new()

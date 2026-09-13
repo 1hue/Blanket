@@ -14,6 +14,7 @@ var table_clear: PackedByteArray
 
 func _pre() -> void:
 	push_constant.resize(SIZE_PARAMS)
+
 	init_table_buffer()
 
 
@@ -32,7 +33,7 @@ func init_table_buffer() -> void:
 
 	table_set = rd.uniform_set_create([
 		BlanketUtil.create_uniform([table_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
-	], BlanketShaders.dedupe.shader, 2)
+	], BlanketShaders.dedupe.shaders[version], 2)
 
 	sets.faces_table = table_set
 	sets.faces_table_buffer = table_buffer
@@ -42,7 +43,7 @@ func compute() -> void:
 	rd.buffer_update(table_buffer, 0, table_buffer_size, table_clear)
 
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.dedupe.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.dedupe.pipelines[version])
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 1)
 	rd.compute_list_bind_uniform_set(compute_list, table_set, 2)

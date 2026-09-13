@@ -5,6 +5,8 @@ const SIZE_PARAMS = 12
 
 
 func _pre() -> void:
+	version = &"out_u32" if params.out_index_stride == 4 else &"out_u16"
+
 	push_constant.resize(SIZE_PARAMS)
 
 
@@ -18,7 +20,7 @@ func pack_params() -> PackedByteArray:
 
 func compute() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.fill.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.fill.pipelines[version])
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.selected_faces, 1)

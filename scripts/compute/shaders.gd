@@ -1,27 +1,45 @@
 extends Node
 
 class BlanketShader:
-	var shader: RID
-	var pipeline: RID
+	var versions: Array[StringName]
+	## Empty string in case of non-versioned shaders
+	var shaders: Dictionary[StringName, RID]
+	## Empty string in case of non-versioned shaders
+	var pipelines: Dictionary[StringName, RID]
 	var rd: RenderingDevice
+
+	#var shader: RID:
+		#get: return shaders[versions[0]]
+	#var pipeline: RID:
+		#get: return pipelines[versions[0]]
 
 	func _init(path: String, specialization_constants := []) -> void:
 		rd = RenderingServer.get_rendering_device()
-		shader = compile_shader(path)
-		pipeline = rd.compute_pipeline_create(shader, BlanketUtil.create_spec_constants(specialization_constants))
 
-	func compile_shader(p_shader_path: String) -> RID:
-		var shader_file: RDShaderFile = load(p_shader_path)
-		var shader_spirv: RDShaderSPIRV = shader_file.get_spirv()
+		var shader_file: RDShaderFile = load(path)
+		var spec_constants := BlanketUtil.create_spec_constants(specialization_constants)
 
+		versions = shader_file.get_version_list()
+
+		for version in versions:
+			var rid := compile_shader(shader_file, version)
+
+			shaders[version] = rid
+			pipelines[version] = rd.compute_pipeline_create(rid, spec_constants)
+
+	func compile_shader(shader_file: RDShaderFile, version: StringName) -> RID:
+		var shader_spirv: RDShaderSPIRV = shader_file.get_spirv(version)
 		var err = shader_spirv.get_stage_compile_error(RenderingDevice.SHADER_STAGE_COMPUTE)
 		if err: push_error(err)
+
 		return rd.shader_create_from_spirv(shader_spirv)
 
 	func _notification(what) -> void:
 		if what == NOTIFICATION_PREDELETE:
-			if shader.is_valid():
-				rd.free_rid(shader)
+			for rid in shaders.values():
+				if rid.is_valid():
+					rd.free_rid(rid)
+
 
 var rd: RenderingDevice
 var shaders: Array[RID]

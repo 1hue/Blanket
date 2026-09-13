@@ -23,7 +23,7 @@ func pack_params() -> PackedByteArray:
 ## Rerun after anything that moves verts - offset.glsl changes every wall's tilt
 func compute() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.normals_write.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.normals_write.pipelines[version])
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.normals_sum, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 1)

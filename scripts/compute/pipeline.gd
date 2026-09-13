@@ -1,16 +1,14 @@
+## Collection of compute passes per mesh surface.
 extends RefCounted
 class_name BlanketPipeline
-
-var rd: RenderingDevice
-var params: BlanketParams
-var sets: BlanketSets
-var surface: BlanketSurface
 
 var mesh: ArrayMesh
 var mesh_rid: RID:
 	get: return mesh.get_rid()
-var in_uniform_set: RID # 0 = Verts, 1 = Indices, 2 = Attributes
-
+var rd: RenderingDevice
+var params: BlanketParams
+var sets: BlanketSets
+var surface: BlanketSurface
 var bake_passes: Array[BlanketPass]
 var update_passes: Array[BlanketPass]
 
@@ -296,13 +294,21 @@ func dump_faces() -> void:
 	dump_u16vec3(index_buffer, "out_index_buffer")
 
 
+func dump_verts() -> void:
+	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.idx)
+	dump_vec3(vertex_buffer, "out_vertex_buffer")
+
+
 func debug() -> void:
 	prints(
 		"params.out_vertex_count", params.out_vertex_count,
 		"params.out_index_count", params.out_index_count,
 		"params.out_index_stride", params.out_index_stride,
 	)
+	#dump_uvec3(sets.selected_index_buffer, "selected_index_buffer", true)
+	#dump_vec3(sets.selected_vertex_buffer, "selected_vertex_buffer", true)
 	#dump_faces()
+	#dump_verts()
 	#dump_vertices(1, "out_vertex")
 	#dump_vert_faces(0)
 	#dump_vert_faces(3)

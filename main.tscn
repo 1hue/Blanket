@@ -27,12 +27,8 @@ cull_mode = 2
 [node name="Main" type="Node3D" unique_id=1983684945]
 script = ExtResource("1_ig7tw")
 
-[node name="Blanket" type="Node" parent="." unique_id=273953725]
+[node name="Blanket" type="Node" parent="." unique_id=343356244]
 script = ExtResource("2_5vw27")
-debug_enabled = null
-debug_normals_enabled = null
-debug_normals_length = null
-debug_normals_color = null
 metadata/_custom_type_script = "uid://bgvm7sqcuvpec"
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1840859551]
@@ -59,7 +55,7 @@ font_size = 96
 horizontal_alignment = 0
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=1815120481]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.9691005, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.56155, 0, 0)
 script = ExtResource("3_h2yge")
 metadata/_custom_type_script = "uid://8ehypqim7667"
 

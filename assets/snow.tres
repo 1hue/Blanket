@@ -23,7 +23,7 @@ bump_strength = 10.3
 [resource]
 render_priority = 1
 next_pass = ExtResource("1_3t706")
-albedo_color = Color(0.8556, 0.8770667, 0.92, 0.101960786)
+albedo_color = Color(0.85490197, 0.8784314, 0.92156863, 1)
 roughness = 0.85
 emission = Color(0.9776916, 0.9639762, 1, 1)
 emission_energy_multiplier = 0.05

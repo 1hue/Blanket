@@ -1,6 +1,11 @@
 // Retract each selected face from its shared edges
+#[versions]
+out_u16 = "#define OUT_INDEX_TYPE u16vec3";
+out_u32 = "#define OUT_INDEX_TYPE uvec3";
+
 #[compute]
 #version 450
+#VERSION_DEFINES
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
@@ -27,7 +32,7 @@ layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
 };
 
 layout(set = 0, binding = 1, scalar) restrict buffer OutIndexBuffer {
-	u16vec3 out_faces[];
+	OUT_INDEX_TYPE out_faces[];
 };
 
 layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
@@ -139,10 +144,12 @@ void main() {
 		uvec3 repointed = face;
 
 		for (uint i = 0; i < 3; ++i) {
-			if (is_retracted(mask, i)) repointed[i] = retracted_at(face_idx, i);
+			if (is_retracted(mask, i)) {
+				repointed[i] = retracted_at(face_idx, i);
+			}
 		}
 
-		out_faces[face_idx] = u16vec3(repointed);
+		out_faces[face_idx] = OUT_INDEX_TYPE(repointed);
 	}
 
 	if (!is_retracted(mask, corner)) return;

@@ -10,6 +10,7 @@ var surface: BlanketSurface
 var params: BlanketParams
 var sets: BlanketSets
 var push_constant: PackedByteArray
+var version := &""
 
 
 ## Bootleg dependency injection
@@ -37,5 +38,6 @@ func free_rids(rids: Array[RID]) -> void:
 			rd.free_rid(rid)
 
 
+## Equivalent to _init but saves passing a train of params
 @abstract func _pre() -> void
 @abstract func compute() -> void

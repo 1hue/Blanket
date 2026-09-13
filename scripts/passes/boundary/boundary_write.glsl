@@ -1,7 +1,12 @@
 // Fill each boundary edge's wall: a quad grid from the rim up to the surface.
 // Everything lies on the rim at rest - W is what raises it
+#[versions]
+out_u16 = "#define OUT_INDEX_TYPE u16vec3";
+out_u32 = "#define OUT_INDEX_TYPE uvec3";
+
 #[compute]
 #version 450
+#VERSION_DEFINES
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
@@ -35,7 +40,7 @@ layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
 };
 
 layout(set = 0, binding = 1, scalar) restrict buffer OutIndexBuffer {
-	u16vec3 out_faces[];
+	OUT_INDEX_TYPE out_faces[];
 };
 
 layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
@@ -111,8 +116,8 @@ float row_rise(uint row) {
 }
 
 void write_quad(uint face, uvec4 ring, bool flip) {
-	out_faces[face] = u16vec3(flip ? ring.xyw : ring.xyz);
-	out_faces[face + 1] = u16vec3(flip ? ring.yzw : ring.xzw);
+	out_faces[face] = OUT_INDEX_TYPE(flip ? ring.xyw : ring.xyz);
+	out_faces[face + 1] = OUT_INDEX_TYPE(flip ? ring.yzw : ring.xzw);
 }
 
 void main() {

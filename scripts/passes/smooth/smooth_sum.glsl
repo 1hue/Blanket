@@ -1,6 +1,11 @@
 // Sum each face's edges into its vertices' neighbour totals. Run before smooth_write.glsl.
+#[versions]
+out_u16 = "#define OUT_INDEX_TYPE u16vec3";
+out_u32 = "#define OUT_INDEX_TYPE uvec3";
+
 #[compute]
 #version 450
+#VERSION_DEFINES
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
@@ -23,7 +28,7 @@ layout(set = 1, binding = 0, scalar) restrict buffer OutVertexBuffer {
 };
 
 layout(set = 1, binding = 1, scalar) restrict buffer OutIndexBuffer {
-	u16vec3 out_faces[];
+	OUT_INDEX_TYPE out_faces[];
 };
 
 layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {

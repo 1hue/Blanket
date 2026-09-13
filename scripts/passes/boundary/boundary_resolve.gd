@@ -16,7 +16,7 @@ func pack_params() -> PackedByteArray:
 
 func compute() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.boundary_resolve.pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.boundary_resolve.pipelines[version])
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.boundary, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.face_edge_mask, 1)

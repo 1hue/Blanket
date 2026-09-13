@@ -1,6 +1,11 @@
-// Find all faces facing within upright_dot of local_up.
+// Find all faces facing up - within upright_dot of local_up
+#[versions]
+in_u16 = "#define IN_INDEX_TYPE u16vec3";
+in_u32 = "#define IN_INDEX_TYPE uvec3";
+
 #[compute]
 #version 450
+#VERSION_DEFINES
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
@@ -27,7 +32,7 @@ layout(set = 0, binding = 0, std430) restrict readonly buffer InVertexBuffer {
 };
 
 layout(set = 0, binding = 1, scalar) restrict readonly buffer InIndexBuffer {
-	u16vec3 in_faces[];
+	IN_INDEX_TYPE in_faces[];
 };
 
 layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
@@ -69,9 +74,9 @@ void main() {
 
 	if (face >= in_face_count) return;
 
-	u16vec3 corners = in_faces[face];
+	IN_INDEX_TYPE corners = in_faces[face];
 
-	if (any(greaterThanEqual(uvec3(corners), uvec3(in_vertex_count)))) return;
+	if (any(greaterThanEqual(corners, uvec3(in_vertex_count)))) return;
 
 	// Average the 3 corner normals to approximate the face normal
 	vec3 face_normal = normalize(

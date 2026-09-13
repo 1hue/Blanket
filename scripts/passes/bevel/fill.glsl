@@ -1,6 +1,11 @@
 // Bridge each shared edge with a fan at both apexes and a strip between their arcs
+#[versions]
+out_u16 = "#define OUT_INDEX_TYPE u16vec3";
+out_u32 = "#define OUT_INDEX_TYPE uvec3";
+
 #[compute]
 #version 450
+#VERSION_DEFINES
 
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
@@ -30,7 +35,7 @@ layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
 };
 
 layout(set = 0, binding = 1, scalar) restrict buffer OutIndexBuffer {
-	u16vec3 out_faces[];
+	OUT_INDEX_TYPE out_faces[];
 };
 
 layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
@@ -71,7 +76,7 @@ void write_vertex(uint vert, vec3 position) {
 }
 
 void write_triangle(uint face, uvec3 verts, bool reverse) {
-	out_faces[face] = u16vec3(reverse ? verts.xzy : verts);
+	out_faces[face] = OUT_INDEX_TYPE(reverse ? verts.xzy : verts);
 }
 
 // Anchors: retracted on one face, crease, retracted on the other
@@ -168,12 +173,12 @@ void build_fan(uint end, uint face_base) {
 		for (uint segment = 0; segment < SEGMENTS; segment++) {
 			build_quad(
 				band + segment * 2,
-			  fan_vert(end, arc, segment),
-					   fan_vert(end, arc, segment + 1),
-					   fan_vert(end, arc + 1, segment + 1),
-					   fan_vert(end, arc + 1, segment),
-					   (arc + segment) % 2 == 1, // Alternate the diagonal
-					   reverse
+				fan_vert(end, arc, segment),
+				fan_vert(end, arc, segment + 1),
+				fan_vert(end, arc + 1, segment + 1),
+				fan_vert(end, arc + 1, segment),
+				(arc + segment) % 2 == 1, // Alternate the diagonal
+				reverse
 			);
 		}
 	}
@@ -183,12 +188,12 @@ void build_strip(uint face_base) {
 	for (uint segment = 0; segment < SEGMENTS; segment++) {
 		build_quad(
 			face_base + segment * 2,
-			 fan_vert(0, ARCS, segment),
-				   fan_vert(0, ARCS, segment + 1),
-				   fan_vert(1, ARCS, segment + 1),
-				   fan_vert(1, ARCS, segment),
-				   segment % 2 == 1, // Alternate so neither side collects every extra edge
-			 false
+			fan_vert(0, ARCS, segment),
+			fan_vert(0, ARCS, segment + 1),
+			fan_vert(1, ARCS, segment + 1),
+			fan_vert(1, ARCS, segment),
+			segment % 2 == 1, // Alternate so neither side collects every extra edge
+			false
 		);
 	}
 }
