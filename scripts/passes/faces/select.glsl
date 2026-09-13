@@ -7,6 +7,8 @@
 
 const uint DEDUPE_WORKGROUP_SIZE = 64;
 
+layout(constant_id = 0) const bool DEBUG = false;
+
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
@@ -79,10 +81,11 @@ void main() {
 	bool is_upright = dot(face_normal, local_up) > upright_dot;
 	vec4 color = is_upright ? vec4(0, 1, 0, 1) : vec4(1, 0, 0, 1);
 
-	// Debug visualization on the source mesh
-	write_color(corners.x, color);
-	write_color(corners.y, color);
-	write_color(corners.z, color);
+	if (DEBUG) {
+		write_color(corners.x, color);
+		write_color(corners.y, color);
+		write_color(corners.z, color);
+	}
 
 	if (!is_upright) return;
 

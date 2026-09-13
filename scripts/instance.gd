@@ -1,7 +1,14 @@
 extends Node
 class_name BlanketInstance
 
+## Joined on enter, so a Blanket above can find us without a tree walk
+const GROUP = &"blanket_instances"
+
 @export var material: Material = preload("res://assets/snow.tres")
+@export var depth := BlanketParams.DEFAULT_DEPTH:
+	set(value):
+		depth = value
+		apply_depth()
 
 @export_group("Debug", "debug")
 @export var debug_enabled := false:
@@ -37,12 +44,16 @@ func _ready() -> void:
 ## Re-entering the tree after _exit_tree tore everything down. On first entry
 ## _ready hasn't run yet, so mesh_instance is still null and _ready does it
 func _enter_tree() -> void:
+	add_to_group(GROUP)
+
 	if is_node_ready():
 		setup()
 
 
 ## Dropping the pipelines frees their RIDs through the RefCounted destructors
 func _exit_tree() -> void:
+	remove_from_group(GROUP)
+
 	if mesh and mesh.changed.is_connected(on_mesh_changed):
 		mesh.changed.disconnect(on_mesh_changed)
 
@@ -61,6 +72,15 @@ func setup() -> void:
 
 	for pipeline in pipelines:
 		pipeline.bake()
+
+	apply_depth()
+
+
+## Pipelines don't exist until setup, so this is a no-op during configuration
+func apply_depth() -> void:
+	for pipeline in pipelines:
+		pipeline.params.depth = depth
+		pipeline.update()
 
 	draw_normals()
 
@@ -146,47 +166,12 @@ func validate() -> void:
 	assert(uses_storage_buffer, "Mesh must have the STORAGE_BUFFER flag")
 
 
-func change_depth(delta: int) -> void:
-	for pipeline in pipelines:
-		if delta == 0:
-			pipeline.params.depth = BlanketParams.DEFAULT_DEPTH
-		else:
-			pipeline.params.depth += delta
-
-		pipeline.update()
-
-	draw_normals()
-
-
-func _unhandled_key_input(event: InputEvent) -> void:
-	if not debug_enabled:
-		return
-
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:
-			change_depth(1)
-		elif event.keycode == KEY_MINUS or event.keycode == KEY_KP_SUBTRACT:
-			change_depth(-1)
-		elif event.keycode == KEY_BACKSPACE:
-			change_depth(0)
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if not debug_enabled:
-		return
-
-	if event is InputEventMouseButton and event.pressed and event.shift_pressed:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			change_depth(1)
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			change_depth(-1)
-
-
 ## Already converted on re-entry, and rebuilding would drop the computed surfaces
 func convert_to_storage_buffer_mesh() -> void:
 	var source_mesh := mesh
 
-	if source_mesh.get_surface_count() > 0  and source_mesh.surface_get_format(0) & Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER:
+	if source_mesh.get_surface_count() > 0 \
+			and source_mesh.surface_get_format(0) & Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER:
 		return
 
 	var new_mesh := ArrayMesh.new()
