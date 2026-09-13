@@ -53,10 +53,7 @@ func _init() -> void:
 	faces_select = ShaderPipeline.new("res://scripts/passes/faces/faces_select.glsl")
 	faces_dedupe = ShaderPipeline.new("res://scripts/passes/faces/faces_dedupe.glsl")
 	faces_write = ShaderPipeline.new("res://scripts/passes/faces/faces_write.glsl")
-	shared_edges = ShaderPipeline.new(
-		"res://scripts/passes/shared_edges.glsl",
-		[ComputeParams.BEVEL_RINGS]
-	)
+	shared_edges = ShaderPipeline.new("res://scripts/passes/shared_edges.glsl")
 	out_mesh = ShaderPipeline.new("res://scripts/passes/out_mesh.glsl")
 	bevel_shrink = ShaderPipeline.new(
 		"res://scripts/passes/bevel/bevel_shrink.glsl",
@@ -64,15 +61,15 @@ func _init() -> void:
 	)
 	bevel_fill = ShaderPipeline.new(
 		"res://scripts/passes/bevel/bevel_fill.glsl",
-		[ComputeParams.BEVEL_SEGMENTS, ComputeParams.BEVEL_RINGS]
+		[ComputeParams.BEVEL_SEGMENTS, ComputeParams.BEVEL_ARCS]
 	)
 	boundary_resolve = ShaderPipeline.new(
 		"res://scripts/passes/boundary/boundary_resolve.glsl",
-		[ComputeParams.BEVEL_SEGMENTS, ComputeParams.BEVEL_RINGS]
+		[ComputeParams.BEVEL_SEGMENTS, ComputeParams.BEVEL_ARCS]
 	)
 	boundary_write = ShaderPipeline.new(
 		"res://scripts/passes/boundary/boundary_write.glsl",
-		[ComputeParams.BEVEL_SEGMENTS, ComputeParams.BEVEL_RINGS]
+		[ComputeParams.BEVEL_SEGMENTS, ComputeParams.BEVEL_ARCS]
 	)
 	offset = ShaderPipeline.new("res://scripts/passes/offset.glsl")
 	normals_sum = ShaderPipeline.new("res://scripts/passes/normals/normals_sum.glsl")

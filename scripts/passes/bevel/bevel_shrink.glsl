@@ -5,6 +5,8 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
+#include "../common.glsl.inc"
+
 const float MITER_LIMIT = 2.0; // Multiples of width a sharp corner may travel
 const float MIN_SCALE = 0.05; // Smallest the face may shrink to
 const uint COLOR_RETRACTED = 0xFF1CA038; // Gasoline green
@@ -46,19 +48,6 @@ layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 layout(set = 2, binding = 0, std430) restrict buffer FaceEdgeMaskBuffer {
 	uint face_edge_mask[];
 };
-
-// Edge c runs from corner c to corner c+1, so corner c sits on edges c and c-1
-uint next_corner(uint corner) {
-	return (corner + 1) % 3;
-}
-
-uint prev_corner(uint corner) {
-	return (corner + 2) % 3;
-}
-
-bool is_shared(uint mask, uint edge) {
-	return (mask & (1 << edge)) != 0;
-}
 
 bool is_retracted(uint mask, uint corner) {
 	return is_shared(mask, corner) || is_shared(mask, prev_corner(corner));

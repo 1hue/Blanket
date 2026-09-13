@@ -16,3 +16,15 @@ struct BoundaryEdge {
 	uint corner;
 	uvec2 top[MAX_BEVEL + 1];
 };
+
+bool is_shared(uint mask, uint edge) {
+	return (mask & (1u << edge)) != 0u;
+}
+
+uint prev_corner(uint corner) {
+	return (corner + 2) % 3;
+}
+
+uint next_corner(uint corner) {
+	return (corner + 1) % 3;
+}

@@ -5,11 +5,50 @@ signal changed
 
 const DEFAULT_DEPTH = 0.5
 const DEFAULT_MAX_SLOPE_DEGREES = 65.0
-const DEFAULT_SMOOTH_STRENGTH = 0.5
-const MAX_BEVEL = 3 # Sizes BoundaryEdge.top - a spec constant can't, block stride won't follow
+const DEFAULT_MIN_CREASE_DEGREES = 15.0
+
+## Sizes BoundaryEdge.top - a spec constant can't, the block stride won't follow
+const MAX_BEVEL = 3
+## Passed to every pipeline as specialization constants, so a change needs a re-bake
 const BEVEL_SEGMENTS = 1
-const BEVEL_RINGS = 1
+const BEVEL_ARCS = 1
 const BEVEL_WIDTH = 0.2
+const SMOOTH_STRENGTH = 0.5
+
+#region Bevel
+## Segments across an arc - both sides of the crease
+const ARC_SEGMENTS = BEVEL_SEGMENTS * 2
+## Verts across an arc, ends included
+const ARC_VERTS = ARC_SEGMENTS + 1
+const FAN_VERTS = (BEVEL_ARCS - 1) * ARC_VERTS + ARC_VERTS - 2
+const FAN_FACES = ARC_SEGMENTS + (BEVEL_ARCS - 1) * ARC_SEGMENTS * 2
+## Both apex fans plus the strip bridging their outer arcs
+const EDGE_VERTS = FAN_VERTS * 2
+const EDGE_FACES = FAN_FACES * 2 + ARC_SEGMENTS * 2
+#endregion
+
+#region Boundary
+## Live length of BoundaryEdge.top - the array itself is MAX_BEVEL + 1 long
+const TOP_VERTS = BEVEL_ARCS + 1
+const BOUNDARY_EDGE_STRIDE = 16 + (MAX_BEVEL + 1) * 8
+#endregion
+
+#region Boundary wall - a quad grid filling each boundary edge's skirt
+## Both ends' resolved columns, plus the two rim corners
+const WALL_COLS = 2 * BEVEL_ARCS + 2
+## The rim, the fold, then up to the surface
+const WALL_ROWS = BEVEL_SEGMENTS + 2
+## Per boundary edge
+const WALL_FACES_PER_EDGE = (WALL_COLS - 1) * (WALL_ROWS - 1) * 2
+## Side columns are shared between adjacent walls - one set per selection vert
+const WALL_SIDE_VERTS_PER_VERT = WALL_ROWS - 1
+## Interior columns only; the sides and the top row live elsewhere
+const WALL_VERTS_PER_EDGE = (WALL_COLS - 2) * (WALL_ROWS - 1)
+
+var wall_rim_base: int
+var wall_grid_base: int
+var wall_face_base: int
+#endregion
 
 #region Source surface
 var in_vertex_count: int
@@ -22,8 +61,9 @@ var in_color_offset: int
 var in_attribute_stride: int
 var in_face_count: int:
 	get: return in_index_count / 3
-var in_face_stride: int:
-	get: return in_index_stride * 3
+## Every corner may append once, to either edge list - the only bound that can't overflow
+var max_edges: int:
+	get: return in_face_count * 3
 #endregion
 
 #region Generated surface
@@ -38,53 +78,19 @@ var out_custom_offset: int
 var out_attribute_stride: int
 var out_face_count: int:
 	get: return out_index_count / 3
-var out_face_stride: int:
-	get: return out_index_stride * 3
-#endregion
-
-#region Bevel
-var smooth_strength := DEFAULT_SMOOTH_STRENGTH
-var max_edges: int:
-	get: return in_face_count * 3
-var ring_steps: int:
-	get: return BEVEL_SEGMENTS * 2
-## Verts across a ring, ends included
-var ring_count: int:
-	get: return ring_steps + 1
-var fan_vertex_count: int:
-	get: return (BEVEL_RINGS - 1) * ring_count + ring_count - 2
-var fan_face_count: int:
-	get: return ring_steps + (BEVEL_RINGS - 1) * ring_steps * 2
-## Both apex fans plus the strip bridging their outer rings
-var edge_vertex_count: int:
-	get: return fan_vertex_count * 2
-var edge_face_count: int:
-	get: return fan_face_count * 2 + ring_steps * 2
-#endregion
-
-#region Boundary wall
-var wall_rim_base: int
-var wall_grid_base: int
-var wall_face_base: int
-## Both ends' resolved columns, plus the two rim corners
-var wall_cols: int:
-	get: return 2 * BEVEL_RINGS + 2
-## The rim, the fold, then up to the surface
-var wall_rows: int:
-	get: return BEVEL_SEGMENTS + 2
-## Per boundary edge
-var wall_faces_per_edge: int:
-	get: return (wall_cols - 1) * (wall_rows - 1) * 2
-## Side columns are shared between adjacent walls - one set per selection vert
-var wall_side_verts_per_vert: int:
-	get: return wall_rows - 1
-## Interior columns only; the sides and the top row live elsewhere
-var wall_verts_per_edge: int:
-	get: return (wall_cols - 2) * (wall_rows - 1)
 #endregion
 
 ## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees
 var upright_dot := cos(deg_to_rad(DEFAULT_MAX_SLOPE_DEGREES))
+
+## Below this angle between adjacent faces, the edge is treated as flat and left unbeveled
+var crease_dot := cos(deg_to_rad(DEFAULT_MIN_CREASE_DEGREES))
+
+var min_crease_degrees := DEFAULT_MIN_CREASE_DEGREES:
+	set(value):
+		min_crease_degrees = value
+		crease_dot = cos(deg_to_rad(value))
+		changed.emit()
 
 ## World up translated to model local space, normalized
 var local_up := Vector3.UP:
@@ -114,6 +120,8 @@ func _init(surface: ComputeSurface, global_transform: Transform3D) -> void:
 	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be triangles: %s is primitive type %s" % [mesh, primitive])
 	assert(format & Mesh.ARRAY_FORMAT_NORMAL != 0, "Mesh must have normals: %s" % mesh)
 	assert(format & Mesh.ARRAY_FORMAT_COLOR != 0, "Mesh must have vertex colors: %s" % mesh)
+	@warning_ignore("assert_always_true")
+	assert(BEVEL_ARCS <= MAX_BEVEL and BEVEL_SEGMENTS <= MAX_BEVEL, "Bevel exceeds the fixed array size")
 
 	in_vertex_count = mesh.surface_get_array_len(surface.source_idx)
 	in_vertex_stride = RenderingServer.mesh_surface_get_format_vertex_stride(format, in_vertex_count)

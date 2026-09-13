@@ -11,11 +11,11 @@
 const uint COLOR_WALL = 0xFF20C0E0; // Amber
 const float RISE_FOLD = 0.5; // Row 1 - where the wall folds, as a fraction of depth
 
-layout(constant_id = 0) const uint SEGMENTS = 1;
-layout(constant_id = 1) const uint RINGS = 1;
+layout(constant_id = 0) const uint BEVEL_SEGMENTS = 1;
+layout(constant_id = 1) const uint ARCS = 1;
 
-const uint COLS = 2 * RINGS + 2; // Both ends' resolved columns, plus the rim corners
-const uint ROWS = SEGMENTS + 2; // Rim, fold, then up to the surface
+const uint COLS = 2 * ARCS + 2; // Both ends' resolved columns, plus the rim corners
+const uint ROWS = BEVEL_SEGMENTS + 2; // Rim, fold, then up to the surface
 
 layout(local_size_x = 64) in;
 

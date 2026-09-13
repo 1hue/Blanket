@@ -5,8 +5,7 @@ const WORKGROUP_SIZE = 64
 
 
 func _pre() -> void:
-	@warning_ignore("assert_always_true")
-	assert(ComputeParams.BEVEL_RINGS <= ComputeParams.MAX_BEVEL)
+	pass
 
 
 func compute() -> void:

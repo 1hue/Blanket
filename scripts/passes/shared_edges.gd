@@ -75,7 +75,7 @@ func init_boundary_buffer() -> void:
 	boundary_buffer = rd.storage_buffer_create(boundary_buffer_size)
 
 	boundary_set = rd.uniform_set_create([
-		ComputeUtil.create_uniform([boundary_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
+		ComputeUtil.create_uniform([boundary_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER),
 	], SurfaceShaders.shared_edges.shader, 4)
 
 	sets.boundary_buffer = boundary_buffer

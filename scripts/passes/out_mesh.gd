@@ -14,11 +14,11 @@ func allocate() -> void:
 	var shared := mini(read_counter(sets.shared_edge_buffer), params.max_edges)
 	var boundary := mini(read_counter(sets.boundary_buffer), params.max_edges)
 
-	params.wall_rim_base = verts + faces * 3 + shared * params.edge_vertex_count
-	params.wall_grid_base = params.wall_rim_base + verts * params.wall_side_verts_per_vert
-	params.wall_face_base = faces + shared * params.edge_face_count
-	params.out_vertex_count = params.wall_grid_base + boundary * params.wall_verts_per_edge
-	params.out_index_count = (params.wall_face_base + boundary * params.wall_faces_per_edge) * 3
+	params.wall_rim_base = verts + faces * 3 + shared * ComputeParams.EDGE_VERTS
+	params.wall_grid_base = params.wall_rim_base + verts * ComputeParams.WALL_SIDE_VERTS_PER_VERT
+	params.wall_face_base = faces + shared * ComputeParams.EDGE_FACES
+	params.out_vertex_count = params.wall_grid_base + boundary * ComputeParams.WALL_VERTS_PER_EDGE
+	params.out_index_count = (params.wall_face_base + boundary * ComputeParams.WALL_FACES_PER_EDGE) * 3
 
 	surface.allocate(
 		params.out_vertex_count,
