@@ -20,12 +20,10 @@ func pack_params() -> PackedByteArray:
 
 ## Rerun after anything that moves verts - offset.glsl changes every wall's tilt
 func compute() -> void:
-	var groups := ceili(params.out_vertex_count / float(WORKGROUP_SIZE))
-
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.smooth_write.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, sets.smooth_sum, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 1)
-	rd.compute_list_dispatch(compute_list, groups, 1, 1)
+	rd.compute_list_dispatch(compute_list, workgroups(params.out_vertex_count, WORKGROUP_SIZE), 1, 1)
 	rd.compute_list_end()

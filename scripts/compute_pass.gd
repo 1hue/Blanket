@@ -27,6 +27,10 @@ func align_buffer(size: int) -> int:
 	return snappedi(size + 1, 4)
 
 
+func workgroups(count: int, workgroup_axis_size: int) -> int:
+	return ceili(count / float(workgroup_axis_size))
+
+
 func free_rids(rids: Array[RID]) -> void:
 	for rid in rids:
 		if rid.is_valid():

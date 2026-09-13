@@ -60,7 +60,7 @@ func compute() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, sets.in_mesh, 0)
 	rd.compute_list_bind_uniform_set(compute_list, selected_faces_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, sets.dispatch, 2)
-	rd.compute_list_dispatch(compute_list, ceili(params.in_face_count / float(WORKGROUP_SIZE)), 1, 1)
+	rd.compute_list_dispatch(compute_list, workgroups(params.in_face_count, WORKGROUP_SIZE), 1, 1)
 	rd.compute_list_end()
 
 

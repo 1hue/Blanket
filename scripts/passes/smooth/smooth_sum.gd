@@ -44,14 +44,12 @@ func compute() -> void:
 	init_buffer()
 	rd.buffer_clear(buffer, 0, buffer_size)
 
-	var groups := ceili(params.out_face_count / float(WORKGROUP_SIZE))
-
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, SurfaceShaders.smooth_sum.pipeline)
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 1)
-	rd.compute_list_dispatch(compute_list, groups, 1, 1)
+	rd.compute_list_dispatch(compute_list, workgroups(params.out_face_count, WORKGROUP_SIZE), 1, 1)
 	rd.compute_list_end()
 
 

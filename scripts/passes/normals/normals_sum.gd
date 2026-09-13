@@ -53,7 +53,7 @@ func compute() -> void:
 	rd.compute_list_set_push_constant(compute_list, pack_params(), SIZE_PARAMS)
 	rd.compute_list_bind_uniform_set(compute_list, uniform_set, 0)
 	rd.compute_list_bind_uniform_set(compute_list, sets.out_mesh, 1)
-	rd.compute_list_dispatch(compute_list, ceili(params.out_face_count / float(WORKGROUP_SIZE)), 1, 1)
+	rd.compute_list_dispatch(compute_list, workgroups(params.out_face_count, WORKGROUP_SIZE), 1, 1)
 	rd.compute_list_end()
 
 
