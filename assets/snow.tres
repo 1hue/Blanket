@@ -9,7 +9,7 @@ frequency = 0.0076
 noise = SubResource("FastNoiseLite_lquwl")
 seamless = true
 as_normal_map = true
-bump_strength = 11.5
+bump_strength = 12.0
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_3t706"]
 frequency = 1.0
@@ -23,9 +23,8 @@ bump_strength = 10.3
 [resource]
 render_priority = 1
 next_pass = ExtResource("1_3t706")
-albedo_color = Color(1, 1, 1, 0.09803922)
-roughness = 0.4
-emission_enabled = true
+albedo_color = Color(0.86, 0.88, 0.92, 1)
+roughness = 0.85
 emission = Color(0.9776916, 0.9639762, 1, 1)
 emission_energy_multiplier = 0.05
 normal_enabled = true
@@ -38,5 +37,5 @@ subsurf_scatter_strength = 0.4
 detail_enabled = true
 detail_blend_mode = 3
 detail_normal = SubResource("NoiseTexture2D_1bvp3")
-uv1_scale = Vector3(5.745, 5.745, 5.745)
+uv1_triplanar = true
 grow_amount = 0.012
