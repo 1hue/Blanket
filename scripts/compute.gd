@@ -291,49 +291,6 @@ func dump_vert_faces(vert: int) -> void:
 		print_rich("[color=khaki]  face=%d %s n=%s inverse=%s up=%+.3f w=%.3f[/color]" %
 			[face, tri, normal, normal.inverse(), up, weight])
 
-func dump_wall_winding() -> void:
-	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.idx)
-	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.idx)
-	var indices := rd.buffer_get_data(index_buffer)
-	var positions := rd.buffer_get_data(vertex_buffer).slice(0, params.out_vertex_count * 12).to_vector3_array()
-	var boundary := rd.buffer_get_data(sets.boundary_buffer)
-	var stride := SharedEdgesPass.BOUNDARY_EDGE_STRIDE
-	var header := SharedEdgesPass.BOUNDARY_HEADER
-	var count := mini(boundary.decode_u32(0), params.max_edges)
-
-	for wall in count:
-		var at := header + wall * stride
-		var verts := Vector2i(boundary.decode_u32(at), boundary.decode_u32(at + 4))
-		var span := positions[verts.y] - positions[verts.x]
-		# Perpendicular to the rim, in the horizontal plane - the wall's normal
-		# must sit on one side of this, the same side for every wall
-		var reference := span.cross(params.local_up).normalized()
-
-
-		var base: int = params.wall_face_base + wall * ComputeParams.WALL_FACES_PER_EDGE
-		var side := 0.0
-		var found := -1
-
-		for i in ComputeParams.WALL_FACES_PER_EDGE:
-			var tri_at := (base + i) * 6
-			var tri := Vector3i(indices.decode_u16(tri_at), indices.decode_u16(tri_at + 2), indices.decode_u16(tri_at + 4))
-
-			if tri.x == tri.y or tri.x == tri.z or tri.y == tri.z:
-				continue
-
-			var a := positions[tri.x]
-			var normal := (positions[tri.z] - a).cross(positions[tri.y] - a)
-
-			if normal.length() < 1e-9:
-				continue
-
-			side = normal.normalized().dot(reference)
-			found = base + i
-			break
-
-		print_rich("[color=%s]wall %d: verts=%s face=%d side=%+.3f[/color]" % [
-			"tomato" if side < 0.0 else "plum", wall, verts, found, side
-		])
 
 func dump_faces() -> void:
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.idx)
@@ -346,10 +303,10 @@ func debug() -> void:
 		"params.out_index_count", params.out_index_count,
 		"params.out_index_stride", params.out_index_stride,
 	)
-	dump_faces()
-	dump_vertices(1, "out_vertex")
-	dump_vert_faces(0)
-	dump_vert_faces(3)
-	dump_normal_sums()
+	#dump_faces()
+	#dump_vertices(1, "out_vertex")
+	#dump_vert_faces(0)
+	#dump_vert_faces(3)
+	#dump_normal_sums()
 	#dump_normal_sums()
 #endregion
