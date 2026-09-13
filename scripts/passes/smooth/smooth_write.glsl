@@ -10,7 +10,7 @@ layout(local_size_x = 256) in;
 layout(push_constant, std430) uniform PushParams {
 	float strength; // 0 = unchanged, 1 = fully at the neighbour average
 	uint out_vertex_count;
-	uint out_marker_offset;
+	uint out_custom_offset;
 	uint out_attribute_stride;
 };
 
@@ -30,18 +30,19 @@ layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[];
 };
 
-float read_marker(uint vert) {
-	uint word = (out_marker_offset + vert * out_attribute_stride) / 4;
-	return uintBitsToFloat(out_attributes[word]);
+// Custom0 W is the fraction of depth this vert travels - 0 means immovable
+bool immovable(uint vert) {
+	return uintBitsToFloat(out_attributes[(out_custom_offset + vert * out_attribute_stride) / 4 + 3]) == 0.0;
 }
 
 void main() {
 	uint vert = gl_GlobalInvocationID.x;
 
-	if (vert >= out_vertex_count) return; // TODO: length() on out_faces possible instead of push constant?
-// 	if (read_marker(vert) == 0) return; // Static verts pull their neighbours but don't move
-	if (sums[vert].w == 0) return; // Isolated vertex, nothing to average toward
+	if (vert >= out_vertex_count) return;
+	if (immovable(vert)) return; // Pinned verts pull their neighbours but don't move
+	if (sums[vert].w <= 0.0) return; // Nothing to average toward
 
 	vec3 average = sums[vert].xyz / sums[vert].w;
+
 	out_positions[vert] = mix(out_positions[vert], average, strength);
 }

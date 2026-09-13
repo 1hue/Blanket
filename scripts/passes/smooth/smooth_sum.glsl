@@ -3,10 +3,14 @@
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
 #extension GL_EXT_shader_atomic_float : require
 
 layout(local_size_x = 256) in;
+
+layout(push_constant, std430) uniform PushParams {
+	uint out_face_count;
+};
 
 layout(set = 0, binding = 0, std430) restrict buffer SmoothSumBuffer {
 	float sums[]; // 4 floats per vertex: x, y, z, count
@@ -24,11 +28,13 @@ layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[]; // Unused
 };
 
-// Cotangent of the angle at `corner`, opposite the edge being weighted
+// Cotangent of the angle at `corner`, opposite the edge being weighted.
+// Clamped - an obtuse corner gives a negative weight, which inverts the average
 float cotangent(vec3 corner, vec3 a, vec3 b) {
 	vec3 u = a - corner;
 	vec3 v = b - corner;
-	return dot(u, v) / max(length(cross(u, v)), 1e-8);
+
+	return max(dot(u, v) / max(length(cross(u, v)), 1e-8), 0.0);
 }
 
 void accumulate(uint vert, vec3 position, float weight) {
@@ -46,9 +52,9 @@ bool is_degen(uvec3 tri) {
 void main() {
 	uint face = gl_GlobalInvocationID.x;
 
-	if (face >= out_faces.length()) return;
+	if (face >= out_face_count) return;
 
-	u16vec3 corners = out_faces[face];
+	uvec3 corners = uvec3(out_faces[face]);
 
 	if (is_degen(corners)) return;
 

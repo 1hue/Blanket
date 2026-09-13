@@ -74,5 +74,5 @@ func _init() -> void:
 	offset = ShaderPipeline.new("res://scripts/passes/offset.glsl")
 	normals_sum = ShaderPipeline.new("res://scripts/passes/normals/normals_sum.glsl")
 	normals_write = ShaderPipeline.new("res://scripts/passes/normals/normals_write.glsl")
-	#smooth_sum = ShaderPipeline.new("res://scripts/passes/smooth/smooth_sum.glsl")
-	#smooth_write = ShaderPipeline.new("res://scripts/passes/smooth/smooth_write.glsl")
+	smooth_sum = ShaderPipeline.new("res://scripts/passes/smooth/smooth_sum.glsl")
+	smooth_write = ShaderPipeline.new("res://scripts/passes/smooth/smooth_write.glsl")

@@ -20,6 +20,8 @@ func init_buffer() -> void:
 	if buffer.is_valid() and size == buffer_size:
 		return
 
+	free_rids([uniform_set, buffer])
+
 	buffer_size = size
 	buffer = rd.storage_buffer_create(buffer_size)
 

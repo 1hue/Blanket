@@ -27,5 +27,10 @@ func align_buffer(size: int) -> int:
 	return snappedi(size + 1, 4)
 
 
+func free_rids(rids: Array[RID]) -> void:
+	for rid in rids:
+		if rid.is_valid():
+			rd.free_rid(rid)
+
 @abstract func _pre() -> void
 @abstract func compute() -> void
