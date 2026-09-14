@@ -29,6 +29,7 @@ script = ExtResource("1_ig7tw")
 
 [node name="Blanket" type="Node" parent="." unique_id=343356244]
 script = ExtResource("2_5vw27")
+depth = 1.05
 metadata/_custom_type_script = "uid://bgvm7sqcuvpec"
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1840859551]

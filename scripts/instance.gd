@@ -9,16 +9,24 @@ class_name BlanketInstance
 const GROUP = &"blanket_instances"
 
 @export var material: Material = preload("res://assets/snow.tres")
+
 @export_range(0, 3, 0.05, "or_greater") var depth := BlanketParams.DEFAULT_DEPTH:
 	set(value):
 		depth = value
-		apply_depth()
+		set_process(not is_equal_approx(depth, applied_depth))
+
+## How quickly the layer settles toward [member depth]
+@export_range(0.1, 20.0, 0.1, "or_greater") var settle_rate := 6.0
+
+const SETTLE_EPSILON = 0.0001
+
+var applied_depth := BlanketParams.DEFAULT_DEPTH
 
 @export_group("Debug", "debug")
 @export var debug_enabled := false:
 	set(value):
 		debug_enabled = value
-		draw_normals()
+		draw_normals.call_deferred()
 
 @export_subgroup("Normals", "debug_normals")
 @export var debug_normals_enabled := false:
@@ -44,6 +52,25 @@ var pipelines: Array[BlanketPipeline]
 
 func _ready() -> void:
 	setup()
+
+
+## Framerate-independent exponential ease - lerp alone would tie the curve to framerate
+func _process(delta: float) -> void:
+	applied_depth = lerp(applied_depth, depth, 1.0 - exp(-settle_rate * delta))
+
+	if absf(depth - applied_depth) < SETTLE_EPSILON:
+		applied_depth = depth
+		set_process(false)
+
+	apply_depth()
+
+
+func apply_depth() -> void:
+	for pipeline in pipelines:
+		pipeline.params.depth = applied_depth
+		pipeline.update()
+
+	draw_normals.call_deferred()
 
 
 ## Tree re-entry after a teardown. First time through, _ready hasn't run and mesh_instance is still null
@@ -80,14 +107,6 @@ func setup() -> void:
 	apply_depth()
 
 
-func apply_depth() -> void:
-	for pipeline in pipelines:
-		pipeline.params.depth = depth
-		pipeline.update()
-
-	draw_normals()
-
-
 func on_mesh_changed() -> void:
 	if material:
 		for pipeline in pipelines:
@@ -109,10 +128,6 @@ func set_debug_normals_mesh(value: MeshInstance3D) -> void:
 
 
 func draw_normals() -> void:
-	# Bootleg compute sync
-	await RenderingServer.frame_post_draw
-	await RenderingServer.frame_post_draw
-
 	# Two frames gone - we may have left the tree
 	if not is_inside_tree() or not is_node_ready():
 		return

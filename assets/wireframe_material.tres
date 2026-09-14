@@ -5,4 +5,4 @@
 [resource]
 render_priority = 1
 shader = ExtResource("1_t662b")
-shader_parameter/Transparency = 1.0
+shader_parameter/Transparency = 0.0
