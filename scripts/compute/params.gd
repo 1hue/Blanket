@@ -79,6 +79,8 @@ var out_custom_offset: int
 var out_attribute_stride: int
 var out_face_count: int:
 	get: return out_index_count / 3
+var is_out_mesh_empty: bool:
+	get: return out_vertex_count == 0
 #endregion
 
 ## How steeply a face may tilt from local_up and still qualify - derived from max_slope_degrees

@@ -9,7 +9,8 @@ var rd: RenderingDevice
 var params: BlanketParams
 var sets: BlanketSets
 var surface: BlanketSurface
-var bake_passes: Array[BlanketPass]
+var select_passes: Array[BlanketPass]
+var build_passes: Array[BlanketPass]
 var update_passes: Array[BlanketPass]
 
 
@@ -26,12 +27,15 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	sets = BlanketSets.new(surface)
 	params = BlanketParams.new(surface, global_transform)
 
-	bake_passes = [
+	select_passes = [
 		SelectPass.new(mesh, surface, params, sets),
 		DedupePass.new(mesh, surface, params, sets),
 		FacesPass.new(mesh, surface, params, sets),
 		EdgesPass.new(mesh, surface, params, sets),
 		OutMeshPass.new(mesh, surface, params, sets),
+	]
+
+	build_passes = [
 		ShrinkPass.new(mesh, surface, params, sets),
 		FillPass.new(mesh, surface, params, sets),
 		BoundaryResolvePass.new(mesh, surface, params, sets),
@@ -47,14 +51,22 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 
 
 func bake() -> void:
-	for bake_pass in bake_passes:
-		bake_pass.compute()
+	for select_pass in select_passes:
+		select_pass.compute()
+
+	if params.is_out_mesh_empty:
+		return
+
+	for build_pass in build_passes:
+		build_pass.compute()
 
 	update()
-	debug()
 
 
 func update() -> void:
+	if params.is_out_mesh_empty:
+		return
+
 	for update_pass in update_passes:
 		update_pass.compute()
 

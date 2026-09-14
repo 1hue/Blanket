@@ -11,11 +11,13 @@ func _pre() -> void:
 
 
 func allocate() -> void:
+	params.out_vertex_count = 0
+	params.out_index_count = 0
+
 	var verts := read_counter(sets.selected_vertex_buffer)
 	var faces := read_counter(sets.selected_index_buffer)
 	var shared := mini(read_counter(sets.shared_edge_buffer), params.max_edges)
 	var boundary := mini(read_counter(sets.boundary_buffer), params.max_edges)
-	# Columns are per boundary vert - O(perimeter), not O(area) like the selection
 	var boundary_verts := mini(read_counter(sets.boundary_buffer, 4), verts)
 
 	params.wall_rim_base = verts + faces * 3 + shared * BlanketParams.EDGE_VERTS
@@ -23,6 +25,20 @@ func allocate() -> void:
 	params.wall_face_base = faces + shared * BlanketParams.EDGE_FACES
 	params.out_vertex_count = params.wall_grid_base + boundary * BlanketParams.WALL_VERTS_PER_EDGE
 	params.out_index_count = (params.wall_face_base + boundary * BlanketParams.WALL_FACES_PER_EDGE) * 3
+	prints("counters", verts, faces, shared, boundary, boundary_verts, params.local_up)
+	prints("consts", BlanketParams.EDGE_VERTS, BlanketParams.WALL_SIDE_VERTS_PER_VERT,
+		BlanketParams.WALL_VERTS_PER_EDGE, BlanketParams.WALL_COLS, BlanketParams.WALL_ROWS)
+	prints("bases", params.wall_rim_base, params.wall_grid_base, params.out_vertex_count,
+		params.out_index_count)
+
+	if params.out_vertex_count == 0 or params.out_index_count == 0:
+		surface.remove()
+		return
+
+	if fits_existing_surface():
+		prints("fits_existing_surface")
+		clear_buffers()
+		return
 
 	surface.allocate(
 		params.out_vertex_count,
@@ -32,6 +48,22 @@ func allocate() -> void:
 
 	init_out_mesh_set()
 	set_out_params()
+
+
+func fits_existing_surface() -> bool:
+	return (
+		surface.idx >= 0
+		and surface.vertex_count == params.out_vertex_count
+		and surface.index_count == params.out_index_count
+	)
+
+
+func clear_buffers() -> void:
+	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.idx)
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.idx)
+
+	rd.buffer_clear(vertex_buffer, 0, params.out_vertex_count * params.out_vertex_stride)
+	rd.buffer_clear(index_buffer, 0, params.out_index_count * params.out_index_stride)
 
 
 func read_counter(buffer: RID, offset := 0) -> int:
@@ -62,7 +94,7 @@ func set_out_params() -> void:
 	params.out_custom_offset = RenderingServer.mesh_surface_get_format_offset(format, verts, Mesh.ARRAY_CUSTOM0)
 	params.out_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, verts)
 
-	assert(params.out_index_stride > 0, "Index stride should be non-zero")
+	#assert(params.out_index_stride > 0, "Index stride should be non-zero")
 	assert(params.out_attribute_stride - params.out_custom_offset == 16, "Custom0 must be RGBA_FLOAT")
 
 
@@ -76,6 +108,9 @@ func pack_params() -> PackedByteArray:
 
 func compute() -> void:
 	allocate()
+
+	if params.is_out_mesh_empty:
+		return
 
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, BlanketShaders.out_mesh.pipelines[version])

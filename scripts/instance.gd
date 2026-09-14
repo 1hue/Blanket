@@ -3,24 +3,26 @@
 ## Add this under a [MeshInstance3D] and it grows a layer of cover over every surface facing upward.
 ## [Blanket] adds these across a whole scene - place one by hand when a mesh needs its own depth or material.
 @icon("res://assets/blanket_instance.svg")
-extends Node
+extends Node3D
 class_name BlanketInstance
 
 const GROUP = &"blanket_instances"
+const EPSILON = 0.0001
 
 @export var material: Material = preload("res://assets/snow.tres")
-
 @export_range(0, 3, 0.05, "or_greater") var depth := BlanketParams.DEFAULT_DEPTH:
 	set(value):
 		depth = value
-		set_process(not is_equal_approx(depth, applied_depth))
-
+		update_processing()
 ## How quickly the layer settles toward [member depth]
 @export_range(0.1, 20.0, 0.1, "or_greater") var settle_rate := 6.0
-
-const SETTLE_EPSILON = 0.0001
-
-var applied_depth := BlanketParams.DEFAULT_DEPTH
+## Rotating or scaling a mesh moves which faces point up, so the selection needs rebuilding
+@export var rebake_on_transform := true:
+	set(value):
+		rebake_on_transform = value
+		prev_basis = current_basis()
+## Quiet time before a rebake - dragging a rotation handle would otherwise rebake every frame
+@export_range(0.0, 1.0, 0.01, "or_greater") var rebake_delay := 0.2
 
 @export_group("Debug", "debug")
 @export var debug_enabled := false:
@@ -32,15 +34,15 @@ var applied_depth := BlanketParams.DEFAULT_DEPTH
 @export var debug_normals_enabled := false:
 	set(value):
 		debug_normals_enabled = value
-		draw_normals()
+		draw_normals.call_deferred()
 @export_range(0, 2, 0.01, "or_greater", "prefer_slider") var debug_normals_length := 0.2:
 	set(value):
 		debug_normals_length = value
-		draw_normals()
+		draw_normals.call_deferred()
 @export var debug_normals_color := Color.ORANGE_RED:
 	set(value):
 		debug_normals_color = value
-		draw_normals()
+		draw_normals.call_deferred()
 
 @onready var mesh_instance: MeshInstance3D = $".."
 
@@ -48,29 +50,15 @@ var mesh: ArrayMesh:
 	get: return mesh_instance.mesh if mesh_instance else null
 var debug_normals_mesh: MeshInstance3D: set = set_debug_normals_mesh
 var pipelines: Array[BlanketPipeline]
+var current_depth := BlanketParams.DEFAULT_DEPTH
+var prev_basis: Basis
+var rebake_countdown := 0.0
 
 
 func _ready() -> void:
+	visible = false
+	set_notify_transform(true)
 	setup()
-
-
-## Framerate-independent exponential ease - lerp alone would tie the curve to framerate
-func _process(delta: float) -> void:
-	applied_depth = lerp(applied_depth, depth, 1.0 - exp(-settle_rate * delta))
-
-	if absf(depth - applied_depth) < SETTLE_EPSILON:
-		applied_depth = depth
-		set_process(false)
-
-	apply_depth()
-
-
-func apply_depth() -> void:
-	for pipeline in pipelines:
-		pipeline.params.depth = applied_depth
-		pipeline.update()
-
-	draw_normals.call_deferred()
 
 
 ## Tree re-entry after a teardown. First time through, _ready hasn't run and mesh_instance is still null
@@ -92,6 +80,27 @@ func _exit_tree() -> void:
 	pipelines.clear()
 
 
+## Fires on our own global transform, parent movement included. Translation leaves local_up
+## alone, so the basis still needs checking
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_TRANSFORM_CHANGED or not rebake_on_transform:
+		return
+
+	var next_basis := current_basis()
+
+	if next_basis.is_equal_approx(prev_basis):
+		return
+
+	prev_basis = next_basis
+	rebake_countdown = rebake_delay
+	set_process(true)
+
+
+func _process(delta: float) -> void:
+	settle_depth(delta)
+	tick_rebake(delta)
+
+
 func setup() -> void:
 	convert_to_storage_buffer_mesh()
 	validate()
@@ -104,7 +113,58 @@ func setup() -> void:
 	for pipeline in pipelines:
 		pipeline.bake()
 
+	prev_basis = current_basis()
 	apply_depth()
+
+
+## Framerate-independent exponential ease - lerp alone would tie the curve to framerate
+func settle_depth(delta: float) -> void:
+	if is_equal_approx(current_depth, depth):
+		return
+
+	current_depth = lerp(current_depth, depth, 1.0 - exp(-settle_rate * delta))
+
+	if absf(depth - current_depth) < EPSILON:
+		current_depth = depth
+		update_processing()
+
+	apply_depth()
+
+
+func tick_rebake(delta: float) -> void:
+	if rebake_countdown <= 0.0:
+		return
+
+	rebake_countdown -= delta
+
+	if rebake_countdown <= 0.0:
+		rebake()
+		update_processing()
+
+
+func apply_depth() -> void:
+	for pipeline in pipelines:
+		pipeline.params.depth = current_depth
+		pipeline.update()
+
+	draw_normals.call_deferred()
+
+
+func rebake() -> void:
+	for pipeline in pipelines:
+		pipeline.params.local_up = mesh_instance.global_transform.basis.inverse() * Vector3.UP
+		pipeline.params.depth = current_depth
+		pipeline.bake()
+
+	draw_normals.call_deferred()
+
+
+func current_basis() -> Basis:
+	return global_transform.basis if is_inside_tree() else Basis()
+
+
+func update_processing() -> void:
+	set_process(rebake_countdown > 0.0 or not is_equal_approx(depth, current_depth))
 
 
 func on_mesh_changed() -> void:
@@ -113,7 +173,7 @@ func on_mesh_changed() -> void:
 			if pipeline.surface.idx > -1:
 				mesh_instance.set_surface_override_material(pipeline.surface.idx, material)
 
-	draw_normals()
+	draw_normals.call_deferred()
 
 
 func set_debug_normals_mesh(value: MeshInstance3D) -> void:
@@ -128,7 +188,6 @@ func set_debug_normals_mesh(value: MeshInstance3D) -> void:
 
 
 func draw_normals() -> void:
-	# Two frames gone - we may have left the tree
 	if not is_inside_tree() or not is_node_ready():
 		return
 

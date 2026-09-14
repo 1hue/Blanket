@@ -22,7 +22,8 @@ var vertex_count: int:
 	get: return mesh.surface_get_array_len(idx) if idx >= 0 else 0
 var vertex_stride: int:
 	get: return RenderingServer.mesh_surface_get_format_vertex_stride(format, vertex_count) if idx >= 0 else 0
-
+var index_count: int:
+	get: return mesh.surface_get_array_index_len(idx) if idx >= 0 else 0
 
 func _init(p_mesh: ArrayMesh, p_source_idx: int) -> void:
 	mesh = p_mesh
@@ -63,6 +64,10 @@ func allocate(new_vertex_count: int, new_index_count: int, array_types: int = Me
 		var colors := PackedColorArray()
 		colors.resize(new_vertex_count)
 		arrays[Mesh.ARRAY_COLOR] = colors
+
+	for i in Mesh.ARRAY_MAX:
+		if arrays[i] != null and arrays[i].is_empty():
+			prints("empty array", i)
 
 	idx = mesh.get_surface_count()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, SURFACE_FLAGS)
