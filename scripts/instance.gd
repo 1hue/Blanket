@@ -8,6 +8,7 @@ class_name BlanketInstance
 
 const GROUP = &"blanket_instances"
 const EPSILON = 0.0001
+const MIN_REBAKE_DELAY = 0.01
 
 @export var material: Material = preload("res://assets/snow.tres")
 @export_range(0, 3, 0.05, "or_greater") var depth := BlanketParams.DEFAULT_DEPTH:
@@ -21,8 +22,10 @@ const EPSILON = 0.0001
 	set(value):
 		rebake_on_transform = value
 		prev_basis = current_basis()
-## Quiet time before a rebake - dragging a rotation handle would otherwise rebake every frame
-@export_range(0.0, 1.0, 0.01, "or_greater") var rebake_delay := 0.2
+## Quiet time before a rebake - dragging the slider spams updates
+@export_range(MIN_REBAKE_DELAY, 1.0, 0.01, "or_greater") var rebake_delay := 0.2:
+	set(value):
+		rebake_delay = maxf(value, MIN_REBAKE_DELAY)
 
 @export_group("Debug", "debug")
 @export var debug_enabled := false:
@@ -92,6 +95,11 @@ func _notification(what: int) -> void:
 		return
 
 	prev_basis = next_basis
+
+	if rebake_delay <= 0.0:
+		rebake()
+		return
+
 	rebake_countdown = rebake_delay
 	set_process(true)
 
@@ -170,8 +178,10 @@ func update_processing() -> void:
 func on_mesh_changed() -> void:
 	if material:
 		for pipeline in pipelines:
-			if pipeline.surface.idx > -1:
-				mesh_instance.set_surface_override_material(pipeline.surface.idx, material)
+			var idx := pipeline.surface.idx
+
+			if idx > -1 and idx < mesh_instance.get_surface_override_material_count():
+				mesh_instance.set_surface_override_material(idx, material)
 
 	draw_normals.call_deferred()
 

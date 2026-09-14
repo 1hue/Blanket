@@ -77,13 +77,13 @@ func allocate(new_vertex_count: int, new_index_count: int, array_types: int = Me
 
 
 func remove() -> void:
-	idx = mesh.surface_find_by_name(surface_name)
-
-	if idx >= 0:
-		mesh.surface_remove(idx)
-		mesh.emit_changed()
+	var at := mesh.surface_find_by_name(surface_name)
 
 	idx = -1
+
+	if at >= 0:
+		mesh.surface_remove(at)
+		mesh.emit_changed()
 
 
 ## The mesh outlives us, so the surface has to come off when we go
