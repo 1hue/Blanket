@@ -35,8 +35,6 @@ layout(set = 1, binding = 2, std430) restrict buffer OutAttributeBuffer {
 	uint out_attributes[]; // Unused
 };
 
-// Cotangent of the angle at `corner`, opposite the edge being weighted.
-// Clamped - an obtuse corner gives a negative weight, which inverts the average
 float cotangent(vec3 corner, vec3 a, vec3 b) {
 	vec3 u = a - corner;
 	vec3 v = b - corner;
