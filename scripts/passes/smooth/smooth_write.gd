@@ -3,6 +3,8 @@ class_name SmoothWritePass
 
 const WORKGROUP_SIZE = 256
 const SIZE_PARAMS = 16
+const SMOOTH_STRENGTH = 0.5
+const WALL_STRENGTH = 0.3
 
 
 func _pre() -> void:

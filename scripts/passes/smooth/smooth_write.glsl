@@ -4,13 +4,13 @@
 
 #extension GL_EXT_scalar_block_layout : require
 
-layout(constant_id = 0) const float SMOOTH_STRENGTH = 0.5; // 0 = unchanged, 1 = fully at the neighbour average
-layout(constant_id = 1) const float WALL_STRENGTH = 0.3; // 0 = collapses inward, 1 = stands up
+layout(constant_id = 0) const float SMOOTH_STRENGTH = 0.5; // 0 = unchanged, 1 = at neighbour average
+layout(constant_id = 1) const float WALL_STRENGTH = 0.3; // 0 = collapse inward, 1 = stand up
 
 layout(local_size_x = 256) in;
 
 layout(push_constant, std430) uniform PushParams {
-	uint wall_rim_base; // Everything past this is wall
+	uint wall_rim_base;
 	uint out_vertex_count;
 	uint out_custom_offset;
 	uint out_attribute_stride;
@@ -44,11 +44,11 @@ void main() {
 	if (sums[vert].w < 1e-6) return; // No neighbours, or their weights cancelled out
 
 	float smoothing = vert < wall_rim_base ? SMOOTH_STRENGTH : SMOOTH_STRENGTH * (1.0 - WALL_STRENGTH);
-	float strength = movable(vert) * smoothing;
+	float scaled = movable(vert) * smoothing;
 
-	if (strength < 1e-6) return;
+	if (abs(scaled) < 1e-6) return;
 
 	vec3 average = sums[vert].xyz / sums[vert].w;
 
-	out_positions[vert] = mix(out_positions[vert], average, strength);
+	out_positions[vert] = mix(out_positions[vert], average, scaled);
 }

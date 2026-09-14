@@ -85,4 +85,7 @@ func _init() -> void:
 	normals_sum = BlanketShader.new("res://scripts/passes/normals/normals_sum.glsl")
 	normals_write = BlanketShader.new("res://scripts/passes/normals/normals_write.glsl")
 	smooth_sum = BlanketShader.new("res://scripts/passes/smooth/smooth_sum.glsl")
-	smooth_write = BlanketShader.new("res://scripts/passes/smooth/smooth_write.glsl")
+	smooth_write = BlanketShader.new(
+		"res://scripts/passes/smooth/smooth_write.glsl",
+		[SmoothWritePass.SMOOTH_STRENGTH, SmoothWritePass.WALL_STRENGTH]
+	)

@@ -11,6 +11,7 @@ out_u32 = "#define OUT_INDEX_TYPE uvec3";
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 #extension GL_EXT_shader_atomic_float : require
 
+const float MIN_COTANGENT = 0.05; // A starved apex never moves - it's the one vert that needs to
 const float MAX_COTANGENT = 16.0; // Slivers otherwise dominate their vert's average
 
 layout(local_size_x = 256) in;
@@ -39,7 +40,7 @@ float cotangent(vec3 corner, vec3 a, vec3 b) {
 	vec3 u = a - corner;
 	vec3 v = b - corner;
 
-	return clamp(dot(u, v) / max(length(cross(u, v)), 1e-8), 0.0, MAX_COTANGENT);
+	return clamp(dot(u, v) / max(length(cross(u, v)), 1e-8), MIN_COTANGENT, MAX_COTANGENT);
 }
 
 void accumulate(uint vert, vec3 position, float weight) {
