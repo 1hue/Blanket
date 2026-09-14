@@ -9,7 +9,7 @@ class_name BlanketInstance
 const GROUP = &"blanket_instances"
 
 @export var material: Material = preload("res://assets/snow.tres")
-@export var depth := BlanketParams.DEFAULT_DEPTH:
+@export_range(0, 3, 0.05, "or_greater") var depth := BlanketParams.DEFAULT_DEPTH:
 	set(value):
 		depth = value
 		apply_depth()

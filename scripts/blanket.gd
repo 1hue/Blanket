@@ -9,7 +9,7 @@ class_name Blanket
 ## Meshes in this group are skipped, as are those under a parent in it
 @export var exclude_group: StringName = &"blanket_exclude"
 @export var material: Material = preload("res://assets/snow.tres")
-@export var depth := BlanketParams.DEFAULT_DEPTH:
+@export_range(0, 3, 0.05, "or_greater") var depth := BlanketParams.DEFAULT_DEPTH:
 	set(value):
 		depth = value
 		push_depth()
