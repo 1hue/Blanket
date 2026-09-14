@@ -70,7 +70,7 @@ transform = Transform3D(0.84392923, -0.53645444, -1.4332123e-08, 0.49513632, 0.7
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9979534, 0, 0)
 
 [node name="Crease" parent="basic" index="0" unique_id=1000518245]
-transform = Transform3D(0.8211492, 0.5707136, 0, -0.5707136, 0.8211492, 0, 0, 0, 1, 3.5290718, 0, 0)
+transform = Transform3D(0.97514933, -0.2215485, 0, 0.2215485, 0.97514933, 0, 0, 0, 1, 3.5290718, 0, 0)
 surface_material_override/0 = ExtResource("6_5vw27")
 
 [node name="BlanketInstance" type="Node3D" parent="basic/Crease" index="0" unique_id=1209570820]
