@@ -1,3 +1,8 @@
+## Covers one mesh
+##
+## Add this under a [MeshInstance3D] and it grows a layer of cover over every surface facing upward.
+## [Blanket] adds these across a whole scene - place one by hand when a mesh needs its own depth or material.
+@icon("res://assets/blanket_instance.svg")
 extends Node
 class_name BlanketInstance
 
@@ -41,6 +46,7 @@ func _ready() -> void:
 	setup()
 
 
+## Tree re-entry after a teardown. First time through, _ready hasn't run and mesh_instance is still null
 func _enter_tree() -> void:
 	add_to_group(GROUP)
 
@@ -48,6 +54,7 @@ func _enter_tree() -> void:
 		setup()
 
 
+## Dropping the pipelines frees their RIDs through the RefCounted destructors
 func _exit_tree() -> void:
 	remove_from_group(GROUP)
 
@@ -106,7 +113,7 @@ func draw_normals() -> void:
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
 
-	# Awaited, so the node may have left the tree in the meantime
+	# Two frames gone - we may have left the tree
 	if not is_inside_tree() or not is_node_ready():
 		return
 
@@ -118,6 +125,7 @@ func draw_normals() -> void:
 	debug_normals_mesh = build_normal_lines(mesh_instance.global_transform, debug_normals_length)
 
 
+## Every computed surface into one mesh - surface.idx is where each landed
 func build_normal_lines(transform: Transform3D, length := 0.2) -> MeshInstance3D:
 	var im := ImmediateMesh.new()
 	var normals_material := ORMMaterial3D.new()
@@ -161,7 +169,7 @@ func validate() -> void:
 	assert(uses_storage_buffer, "Mesh must have the STORAGE_BUFFER flag")
 
 
-## Already converted on re-entry, and rebuilding would drop the computed surfaces
+## Already converted on re-entry - rebuilding would drop the computed surfaces
 func convert_to_storage_buffer_mesh() -> void:
 	var source_mesh := mesh
 

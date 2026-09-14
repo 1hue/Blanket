@@ -1,6 +1,8 @@
-## Scene-wide dispatcher
+## Covers every mesh in a scene
 ##
-## Walks the tree once at [code]_ready[/code] and inserts a [BlanketInstance] under every eligible [MeshInstance3D].
+## Drop this in once and it finds the meshes around it, adding a [BlanketInstance] to each one.
+## Meshes you want left alone go in [member exclude_group] - this can also be any intermediate parent.
+@icon("res://assets/blanket.svg")
 extends Node
 class_name Blanket
 
@@ -11,6 +13,13 @@ class_name Blanket
 	set(value):
 		depth = value
 		push_depth()
+## Off stops new insertions and broadcasts. Existing instances stay put
+@export var enabled := true:
+	set(value):
+		enabled = value
+
+		if enabled:
+			cover_siblings()
 
 @export_group("Debug", "debug")
 @export var debug_enabled := true
@@ -21,6 +30,14 @@ class_name Blanket
 
 
 func _ready() -> void:
+	cover_siblings()
+
+
+## Idempotent - is_eligible skips anything already covered
+func cover_siblings() -> void:
+	if not enabled or not is_inside_tree():
+		return
+
 	var parent := get_parent()
 
 	if parent == null:
@@ -33,7 +50,6 @@ func _ready() -> void:
 	push_depth()
 
 
-## Excluded tree branches are skipped whole - any parent can exclude everything it owns
 func cover(node: Node) -> void:
 	if node.is_in_group(exclude_group):
 		return
@@ -45,7 +61,7 @@ func cover(node: Node) -> void:
 		cover(child)
 
 
-## A manually placed instance is left alone, config and all
+## A hand-placed instance keeps its own settings. Leave it be
 func is_eligible(mesh_instance: MeshInstance3D) -> bool:
 	if mesh_instance.mesh == null:
 		return false
@@ -57,7 +73,7 @@ func is_eligible(mesh_instance: MeshInstance3D) -> bool:
 	return true
 
 
-## Exports are applied before add_child, so they land before _ready bakes
+## Settings land before add_child - in place by the time _ready bakes
 func add_instance(mesh_instance: MeshInstance3D) -> void:
 	var instance := BlanketInstance.new()
 
@@ -72,10 +88,9 @@ func add_instance(mesh_instance: MeshInstance3D) -> void:
 	mesh_instance.add_child(instance)
 
 
-## The group spans the whole scene, so filter to what our parent owns - this
-## also picks up manually placed instances, which never went through add_instance
+## The group spans the whole scene. Filter to what our parent owns - hand-placed instances included
 func push_depth() -> void:
-	if not is_inside_tree():
+	if not enabled or not is_inside_tree():
 		return
 
 	var parent := get_parent()
