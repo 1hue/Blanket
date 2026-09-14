@@ -3,7 +3,6 @@
 #version 450
 
 #extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_shader_explicit_arithmetic_types : require
 
 layout(local_size_x = 256) in;
 
@@ -20,7 +19,7 @@ layout(set = 0, binding = 0, scalar) restrict buffer OutVertexBuffer {
 };
 
 layout(set = 0, binding = 1, scalar) restrict buffer OutIndexBuffer {
-	u16vec3 out_faces[]; // unused
+	uint out_faces[]; // unused
 };
 
 layout(set = 0, binding = 2, std430) restrict buffer OutAttributeBuffer {
