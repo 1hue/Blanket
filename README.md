@@ -5,11 +5,11 @@ Procedural mesh surface cover for Godot 4.
 Can be used to generate a blanket snow, a mound of dirt, a pile of autumn leaves.
 
 ## Features
-- One node per scene covers all meshes
-  - Alternatively, individual mesh targetting
-- Slope threshold / upward facing angle
 - Smooth animated height/depth
+- Slope threshold / upward facing angle
 - Rotate or scale a mesh and the cover rebuilds itself
+- One node per scene to cover all meshes
+- Individual mesh targetting
 - Exclusion by group
 - Advanced snow shader included
 
