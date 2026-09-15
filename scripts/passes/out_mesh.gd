@@ -61,9 +61,12 @@ func fits_existing_surface() -> bool:
 func clear_buffers() -> void:
 	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.idx)
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.idx)
+	var vertex_size := params.out_vertex_count * params.out_vertex_stride
+	var index_size := params.out_index_count * params.out_index_stride
 
-	rd.buffer_clear(vertex_buffer, 0, params.out_vertex_count * params.out_vertex_stride)
-	rd.buffer_clear(index_buffer, 0, params.out_index_count * params.out_index_stride)
+	# Multiple of 4 only, round down - padding tail irrelevant
+	rd.buffer_clear(vertex_buffer, 0, vertex_size - vertex_size % 4)
+	rd.buffer_clear(index_buffer, 0, index_size - index_size % 4)
 
 
 func read_counter(buffer: RID, offset := 0) -> int:

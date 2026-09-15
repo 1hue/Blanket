@@ -6,26 +6,35 @@
 extends Node3D
 class_name BlanketInstance
 
+## Joined on enter, so a Blanket above can find us without a tree walk
 const GROUP = &"blanket_instances"
 const EPSILON = 0.0001
-const MIN_REBAKE_DELAY = 0.01
+const MIN_REBAKE_DELAY = 0.03
 
 @export var material: Material = preload("res://assets/snow.tres")
 @export_range(0, 3, 0.05, "or_greater") var depth := BlanketParams.DEFAULT_DEPTH:
 	set(value):
 		depth = value
-		update_processing()
+		set_process(not is_equal_approx(depth, current_depth))
 ## How quickly the layer settles toward [member depth]
 @export_range(0.1, 20.0, 0.1, "or_greater") var settle_rate := 6.0
+## How far a face may tilt from up and still get covered. 90 includes vertical walls
+@export_range(0.0, 90.0, 1.0) var max_slope_degrees := BlanketParams.DEFAULT_MAX_SLOPE_DEGREES:
+	set(value):
+		max_slope_degrees = value
+		queue_rebake()
 ## Rotating or scaling a mesh moves which faces point up, so the selection needs rebuilding
 @export var rebake_on_transform := true:
 	set(value):
 		rebake_on_transform = value
 		prev_basis = current_basis()
-## Quiet time before a rebake - dragging the slider spams updates
-@export_range(MIN_REBAKE_DELAY, 1.0, 0.01, "or_greater") var rebake_delay := 0.2:
+## Quiet time before a rebake - dragging a rotation handle would otherwise rebake every frame
+@export_range(0.03, 1.0, 0.01, "or_greater") var rebake_delay := 0.2:
 	set(value):
 		rebake_delay = maxf(value, MIN_REBAKE_DELAY)
+
+		if rebake_timer:
+			rebake_timer.wait_time = rebake_delay
 
 @export_group("Debug", "debug")
 @export var debug_enabled := false:
@@ -55,12 +64,19 @@ var debug_normals_mesh: MeshInstance3D: set = set_debug_normals_mesh
 var pipelines: Array[BlanketPipeline]
 var current_depth := BlanketParams.DEFAULT_DEPTH
 var prev_basis: Basis
-var rebake_countdown := 0.0
+var rebake_timer: Timer
 
 
 func _ready() -> void:
 	visible = false
 	set_notify_transform(true)
+
+	rebake_timer = Timer.new()
+	rebake_timer.one_shot = true
+	rebake_timer.wait_time = rebake_delay
+	rebake_timer.timeout.connect(rebake)
+	add_child(rebake_timer)
+
 	setup()
 
 
@@ -95,18 +111,21 @@ func _notification(what: int) -> void:
 		return
 
 	prev_basis = next_basis
+	queue_rebake()
 
-	if rebake_delay <= 0.0:
-		rebake()
+
+## Framerate-independent exponential ease - lerp alone would tie the curve to framerate
+func _process(delta: float) -> void:
+	if is_equal_approx(current_depth, depth):
+		set_process(false)
 		return
 
-	rebake_countdown = rebake_delay
-	set_process(true)
+	current_depth = lerp(current_depth, depth, 1.0 - exp(-settle_rate * delta))
 
+	if absf(depth - current_depth) < EPSILON:
+		current_depth = depth
 
-func _process(delta: float) -> void:
-	settle_depth(delta)
-	tick_rebake(delta)
+	apply_depth()
 
 
 func setup() -> void:
@@ -116,7 +135,10 @@ func setup() -> void:
 	mesh.changed.connect(on_mesh_changed)
 
 	for i in mesh.get_surface_count():
-		pipelines.append(BlanketPipeline.new(mesh, i, mesh_instance.global_transform))
+		var pipeline := BlanketPipeline.new(mesh, i, mesh_instance.global_transform)
+
+		pipeline.params.max_slope_degrees = max_slope_degrees
+		pipelines.append(pipeline)
 
 	for pipeline in pipelines:
 		pipeline.bake()
@@ -125,29 +147,9 @@ func setup() -> void:
 	apply_depth()
 
 
-## Framerate-independent exponential ease - lerp alone would tie the curve to framerate
-func settle_depth(delta: float) -> void:
-	if is_equal_approx(current_depth, depth):
-		return
-
-	current_depth = lerp(current_depth, depth, 1.0 - exp(-settle_rate * delta))
-
-	if absf(depth - current_depth) < EPSILON:
-		current_depth = depth
-		update_processing()
-
-	apply_depth()
-
-
-func tick_rebake(delta: float) -> void:
-	if rebake_countdown <= 0.0:
-		return
-
-	rebake_countdown -= delta
-
-	if rebake_countdown <= 0.0:
-		rebake()
-		update_processing()
+func queue_rebake() -> void:
+	if rebake_timer:
+		rebake_timer.start()
 
 
 func apply_depth() -> void:
@@ -161,6 +163,7 @@ func apply_depth() -> void:
 func rebake() -> void:
 	for pipeline in pipelines:
 		pipeline.params.local_up = mesh_instance.global_transform.basis.inverse() * Vector3.UP
+		pipeline.params.max_slope_degrees = max_slope_degrees
 		pipeline.params.depth = current_depth
 		pipeline.bake()
 
@@ -169,10 +172,6 @@ func rebake() -> void:
 
 func current_basis() -> Basis:
 	return global_transform.basis if is_inside_tree() else Basis()
-
-
-func update_processing() -> void:
-	set_process(rebake_countdown > 0.0 or not is_equal_approx(depth, current_depth))
 
 
 func on_mesh_changed() -> void:
@@ -210,7 +209,7 @@ func draw_normals() -> void:
 
 
 ## Every computed surface into one mesh - surface.idx is where each landed
-func build_normal_lines(transform: Transform3D, length := 0.2) -> MeshInstance3D:
+func build_normal_lines(p_transform: Transform3D, length := 0.2) -> MeshInstance3D:
 	var im := ImmediateMesh.new()
 	var normals_material := ORMMaterial3D.new()
 	normals_material.vertex_color_use_as_albedo = true
@@ -231,8 +230,8 @@ func build_normal_lines(transform: Transform3D, length := 0.2) -> MeshInstance3D
 		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 
 		for i in vertices.size():
-			var world_pos := transform * vertices[i]
-			var world_normal := (transform.basis * normals[i]).normalized()
+			var world_pos := p_transform * vertices[i]
+			var world_normal := (p_transform.basis * normals[i]).normalized()
 
 			im.surface_set_color(debug_normals_color)
 			im.surface_add_vertex(world_pos)
