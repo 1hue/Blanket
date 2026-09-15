@@ -8,7 +8,52 @@
 [ext_resource type="PackedScene" uid="uid://bkhwwpnlnilpo" path="res://assets/basic.blend" id="5_7mycd"]
 [ext_resource type="Material" uid="uid://bt3h2rh0fwcs8" path="res://assets/wireframe_backgound_material.tres" id="6_5vw27"]
 [ext_resource type="PackedScene" uid="uid://rur1jbhne453" path="res://assets/complex.blend" id="8_5vw27"]
-[ext_resource type="Material" uid="uid://bq4fsw1x303w" path="res://assets/snow.tres" id="8_kek77"]
+[ext_resource type="Shader" uid="uid://dvu41m2pyrr71" path="res://assets/snow.gdshader" id="8_kek77"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_kek77"]
+noise_type = 2
+frequency = 0.0179
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_3t706"]
+width = 256
+height = 256
+noise = SubResource("FastNoiseLite_kek77")
+seamless = true
+as_normal_map = true
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_4c57u"]
+noise_type = 0
+frequency = 1.0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_k35jy"]
+width = 256
+height = 256
+noise = SubResource("FastNoiseLite_4c57u")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4c57u"]
+render_priority = 0
+shader = ExtResource("8_kek77")
+shader_parameter/albedo = Color(0.85490197, 0.8784314, 0.92156863, 1)
+shader_parameter/roughness = 0.85
+shader_parameter/specular = 0.5
+shader_parameter/metallic = 0.0
+shader_parameter/rim = 0.07
+shader_parameter/rim_tint = 0.5
+shader_parameter/sss_strength = 0.4
+shader_parameter/normal_coarse = SubResource("NoiseTexture2D_3t706")
+shader_parameter/normal_fine = SubResource("NoiseTexture2D_k35jy")
+shader_parameter/normal_scale = 0.2
+shader_parameter/fine_weight = 0.4
+shader_parameter/coarse_scale = Vector3(0.2, 0.2, 0.2)
+shader_parameter/fine_scale = Vector3(4, 4, 4)
+shader_parameter/sparkle_scale = 40.0
+shader_parameter/sparkle_size = 0.12
+shader_parameter/sparkle_threshold = 0.0
+shader_parameter/sparkle_amount = 6.0
+shader_parameter/sparkle_tint = 0.5499999877064
+shader_parameter/sparkle_fade_start = 1.00000004424012
+shader_parameter/sparkle_fade_end = 6.0000002375
+shader_parameter/blend_sharpness = 1.0
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_7dm0k"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -20,13 +65,17 @@ sky_material = SubResource("ProceduralSkyMaterial_7dm0k")
 [sub_resource type="Environment" id="Environment_0xm2m"]
 background_mode = 2
 sky = SubResource("Sky_ig7tw")
-glow_enabled = true
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ja0xq"]
 cull_mode = 2
 
 [node name="Main" type="Node3D" unique_id=1983684945]
 script = ExtResource("1_ig7tw")
+
+[node name="Blanket" type="Node" parent="." unique_id=964429215]
+script = ExtResource("2_5vw27")
+material = SubResource("ShaderMaterial_4c57u")
+metadata/_custom_type_script = "uid://bgvm7sqcuvpec"
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1840859551]
 environment = SubResource("Environment_0xm2m")
@@ -52,7 +101,7 @@ font_size = 96
 horizontal_alignment = 0
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=1815120481]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.560858, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.490794, 0, 0)
 script = ExtResource("3_h2yge")
 metadata/_custom_type_script = "uid://8ehypqim7667"
 
@@ -81,15 +130,12 @@ transform = Transform3D(0.88264245, -0.47004497, 0, 0.47004497, 0.88264245, 0, 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55610275, 0, 0)
 
 [node name="complex" parent="." unique_id=1469824708 instance=ExtResource("8_5vw27")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.3597674, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0, 0)
 
 [node name="Cube" parent="complex" index="0" unique_id=1414175170]
-transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, -2.566297, 0, 0)
-surface_material_override/0 = ExtResource("8_kek77")
-
-[node name="Blanket" type="Node" parent="." unique_id=964429215]
-script = ExtResource("2_5vw27")
-metadata/_custom_type_script = "uid://bgvm7sqcuvpec"
+transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 0, 0)
+surface_material_override/0 = SubResource("ShaderMaterial_4c57u")
+metadata/_edit_lock_ = true
 
 [editable path="cube"]
 [editable path="basic"]
