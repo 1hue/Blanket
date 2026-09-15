@@ -27,7 +27,7 @@ class_name Blanket
 
 ## Meshes in this group are skipped, as are those under a parent in it
 @export var exclude_group: StringName = &"blanket_exclude"
-@export var material: Material = preload("res://assets/snow.tres")
+@export var material: ShaderMaterial = BlanketInstance.DEFAULT_MATERIAL
 
 @export_group("Debug", "debug")
 @export var debug_enabled := true

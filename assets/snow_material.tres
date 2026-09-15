@@ -1,0 +1,61 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://c4utq0wycv6aq"]
+
+[ext_resource type="Shader" uid="uid://c7ncuad0q68ff" path="res://assets/snow_sun_sparkle.gdshader" id="1_gj1j0"]
+[ext_resource type="Shader" uid="uid://dvu41m2pyrr71" path="res://assets/snow.gdshader" id="2_yhayf"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_efxa6"]
+render_priority = 0
+shader = ExtResource("1_gj1j0")
+shader_parameter/sparkle_size = 0.1999999955296
+shader_parameter/crystal_spread = 0.30999999307088
+shader_parameter/zone_threshold = 0.90999997965968
+shader_parameter/sun_threshold = 0.92999997921264
+shader_parameter/sun_amount = 16.0
+shader_parameter/sun_tint = 0.6
+shader_parameter/sparkle_fade_start = 1.0
+shader_parameter/sparkle_fade_end = 7.000000285
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_kek77"]
+noise_type = 2
+frequency = 0.0179
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_3t706"]
+width = 256
+height = 256
+noise = SubResource("FastNoiseLite_kek77")
+seamless = true
+as_normal_map = true
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_4c57u"]
+noise_type = 0
+frequency = 1.0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_k35jy"]
+width = 256
+height = 256
+noise = SubResource("FastNoiseLite_4c57u")
+
+[resource]
+render_priority = 1
+next_pass = SubResource("ShaderMaterial_efxa6")
+shader = ExtResource("2_yhayf")
+shader_parameter/albedo = Color(0.85490197, 0.8784314, 0.92156863, 1)
+shader_parameter/roughness = 0.85
+shader_parameter/specular = 0.5
+shader_parameter/metallic = 0.0
+shader_parameter/rim = 0.07
+shader_parameter/rim_tint = 0.5
+shader_parameter/sss_strength = 0.4
+shader_parameter/normal_coarse = SubResource("NoiseTexture2D_3t706")
+shader_parameter/normal_fine = SubResource("NoiseTexture2D_k35jy")
+shader_parameter/normal_scale = 0.2
+shader_parameter/fine_weight = 0.4
+shader_parameter/coarse_scale = Vector3(0.2, 0.2, 0.2)
+shader_parameter/fine_scale = Vector3(4, 4, 4)
+shader_parameter/sparkle_size = 0.12
+shader_parameter/sparkle_threshold = 0.88
+shader_parameter/sparkle_amount = 8.00000038
+shader_parameter/sparkle_tint = 0.5999999865888
+shader_parameter/sparkle_fade_start = 1.00000004424012
+shader_parameter/sparkle_fade_end = 4.0
+shader_parameter/blend_sharpness = 1.0
