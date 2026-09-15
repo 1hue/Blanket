@@ -23,7 +23,7 @@ Upward faces are identified, extruded and bevelled through a handful of compute 
 
 The resultant generated mesh is inserted as an additional surface on the same mesh.
 
-Depth animates at runtime cheaply without a rebake.
+Depth can be animated at runtime cheaply without a rebake.
 
 No changes to meshes are ever persisted.
 
@@ -36,7 +36,7 @@ No changes to meshes are ever persisted.
 
 ## Usage
 
-Add a `Blanket` node as a sibling of whatever you want covered. It handles the rest.
+Add a `Blanket` node as a sibling of whatever you want covered. Likewise, place directly under scene root like you would `WorldEnvironment` if you want everything covered.
 
 To skip a mesh, assign it the `blanket_exclude` group. In case of imported meshes, any parent with this group works too.
 
