@@ -23,7 +23,7 @@ Upward faces are identified, extruded and bevelled through a handful of compute 
 
 The resultant generated mesh is inserted as an additional surface on the same mesh.
 
-Depth/height is animatable and cheap to change at runtime.
+Depth animates at runtime cheaply without a rebake.
 
 No changes to meshes are ever persisted.
 
