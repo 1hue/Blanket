@@ -26,3 +26,5 @@
 *.gltf.import export-ignore
 *.obj export-ignore
 *.obj.import export-ignore
+*.mtl export-ignore
+*.mtl.import export-ignore
