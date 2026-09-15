@@ -69,7 +69,7 @@ vec3 hash33(vec3 cell) {
 	return fract((h.xxy + h.yxx) * h.zyx);
 }
 
-// Nearest crystal in a 3x3x3 neighbourhood, with its own random orientation
+// Nearest crystal in a 2x2x2 neighbourhood, with its own random orientation
 void nearest_crystal(vec3 pos, out float dist, out vec3 seed) {
 	vec3 cell = floor(pos);
 	vec3 local = fract(pos);
