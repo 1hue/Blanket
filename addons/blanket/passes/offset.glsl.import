@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://b5jxoy8p2htfs"
+path="res://.godot/imported/offset.glsl-c6e8abf34d30c49988e01cdbfe049d69.res"
+
+[deps]
+
+source_file="res://addons/blanket/passes/offset.glsl"
+dest_files=["res://.godot/imported/offset.glsl-c6e8abf34d30c49988e01cdbfe049d69.res"]
+
+[params]
+

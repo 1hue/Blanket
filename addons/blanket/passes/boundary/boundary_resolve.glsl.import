@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://bdb34648yepfo"
+path="res://.godot/imported/boundary_resolve.glsl-c8d0002b12cb73ecf9c585da815a4701.res"
+
+[deps]
+
+source_file="res://addons/blanket/passes/boundary/boundary_resolve.glsl"
+dest_files=["res://.godot/imported/boundary_resolve.glsl-c8d0002b12cb73ecf9c585da815a4701.res"]
+
+[params]
+

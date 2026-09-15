@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://d3a18borrl4as"
+path="res://.godot/imported/dedupe.glsl-5628aca0f83dbfc89d113aff1ca0cad0.res"
+
+[deps]
+
+source_file="res://addons/blanket/passes/faces/dedupe.glsl"
+dest_files=["res://.godot/imported/dedupe.glsl-5628aca0f83dbfc89d113aff1ca0cad0.res"]
+
+[params]
+

@@ -1,8 +1,0 @@
-[gd_resource type="ShaderMaterial" format=3 uid="uid://bxuibjflhfy5l"]
-
-[ext_resource type="Shader" uid="uid://c32g3nff78grb" path="res://assets/wireframe_shader.tres" id="1_t662b"]
-
-[resource]
-render_priority = 1
-shader = ExtResource("1_t662b")
-shader_parameter/Transparency = 1.0

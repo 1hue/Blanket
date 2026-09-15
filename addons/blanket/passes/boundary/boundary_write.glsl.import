@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://bifayvl6sm00h"
+path="res://.godot/imported/boundary_write.glsl-9639209ac56e8a1af1350f867e3166e2.res"
+
+[deps]
+
+source_file="res://addons/blanket/passes/boundary/boundary_write.glsl"
+dest_files=["res://.godot/imported/boundary_write.glsl-9639209ac56e8a1af1350f867e3166e2.res"]
+
+[params]
+

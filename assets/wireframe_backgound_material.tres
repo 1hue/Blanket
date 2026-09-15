@@ -1,8 +1,0 @@
-[gd_resource type="ShaderMaterial" format=3 uid="uid://bt3h2rh0fwcs8"]
-
-[ext_resource type="Shader" uid="uid://b71ckuctsq5us" path="res://assets/wireframe_background_shader.tres" id="1_frm4f"]
-
-[resource]
-render_priority = 0
-shader = ExtResource("1_frm4f")
-shader_parameter/Transparency = 1.0

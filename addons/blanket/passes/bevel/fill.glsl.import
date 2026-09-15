@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://emwxtd006bae"
+path="res://.godot/imported/fill.glsl-5cc56068eb634bf6b9c53696343791ba.res"
+
+[deps]
+
+source_file="res://addons/blanket/passes/bevel/fill.glsl"
+dest_files=["res://.godot/imported/fill.glsl-5cc56068eb634bf6b9c53696343791ba.res"]
+
+[params]
+
