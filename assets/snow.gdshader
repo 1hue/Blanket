@@ -25,11 +25,11 @@ uniform vec3 fine_scale = vec3(4.0);
 group_uniforms sparkle;
 uniform float sparkle_scale : hint_range(1.0, 200.0, 0.5) = 40.0;
 uniform float sparkle_size : hint_range(0.0, 0.5, 0.01) = 0.12;
-uniform float sparkle_threshold : hint_range(0.0, 1.0, 0.01) = 0.8;
+uniform float sparkle_threshold : hint_range(0.0, 1.0, 0.01) = 0.92;
 uniform float sparkle_amount : hint_range(0.0, 20.0) = 6.0;
 uniform float sparkle_tint : hint_range(0.0, 1.0, 0.01) = 0.55;
 uniform float sparkle_fade_start : hint_range(0.1, 10.0) = 1.0;
-uniform float sparkle_fade_end : hint_range(1.0, 10.0) = 6.0;
+uniform float sparkle_fade_end : hint_range(1.0, 10.0) = 4.0;
 
 group_uniforms triplanar;
 uniform float blend_sharpness : hint_range(0.0, 150.0, 0.001) = 1.0;
