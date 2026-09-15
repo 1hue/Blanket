@@ -2,7 +2,6 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_schlick_ggx;
 
 const float GRAZING_FADE_BOOST = 4.0; // Wider alignment band at grazing angles
-const float HUE_VARIANCE = 3.0; // How much crystals differ from each other
 const float HUE_SHIFT = 2.0; // How fast colour turns as you rotate
 const float SPARKLE_FADE = 0.15; // Alignment band width
 
@@ -83,7 +82,8 @@ void nearest_crystal(vec3 pos, out float dist, out vec3 seed) {
 			for (int x = -1; x <= 1; x++) {
 				vec3 offset = vec3(float(x), float(y), float(z));
 				vec3 point = hash33(cell + offset);
-				float d = length(offset + point - local);
+				vec3 delta = offset + point - local;
+				float d = dot(delta, delta);
 
 				if (d < dist) {
 					dist = d;
@@ -92,6 +92,8 @@ void nearest_crystal(vec3 pos, out float dist, out vec3 seed) {
 			}
 		}
 	}
+
+	dist = sqrt(dist);
 }
 
 void fragment() {

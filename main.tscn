@@ -48,7 +48,7 @@ shader_parameter/coarse_scale = Vector3(0.2, 0.2, 0.2)
 shader_parameter/fine_scale = Vector3(4, 4, 4)
 shader_parameter/sparkle_scale = 40.0
 shader_parameter/sparkle_size = 0.12
-shader_parameter/sparkle_threshold = 0.0
+shader_parameter/sparkle_threshold = 0.8
 shader_parameter/sparkle_amount = 6.0
 shader_parameter/sparkle_tint = 0.5499999877064
 shader_parameter/sparkle_fade_start = 1.00000004424012
@@ -118,6 +118,7 @@ transform = Transform3D(0.84392923, -0.53645444, -1.4332123e-08, 0.49513632, 0.7
 
 [node name="basic" parent="." unique_id=721285078 instance=ExtResource("5_7mycd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9979534, 0, 0)
+visible = false
 
 [node name="Crease" parent="basic" index="0" unique_id=1000518245]
 transform = Transform3D(0.97514933, -0.2215485, 0, 0.2215485, 0.97514933, 0, 0, 0, 1, 3.5290718, 0, 0)
