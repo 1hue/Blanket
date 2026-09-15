@@ -3,12 +3,24 @@
 [ext_resource type="Script" uid="uid://x3cr4jp6yjen" path="res://main.gd" id="1_ig7tw"]
 [ext_resource type="ArrayMesh" uid="uid://dbhf8wkaa3bgj" path="res://assets/cube.obj" id="2_0xm2m"]
 [ext_resource type="Script" uid="uid://bgvm7sqcuvpec" path="res://scripts/blanket.gd" id="2_5vw27"]
+[ext_resource type="Shader" uid="uid://c7ncuad0q68ff" path="res://assets/snow_sun_sparkle.gdshader" id="3_4c57u"]
 [ext_resource type="Script" uid="uid://8ehypqim7667" path="res://scripts/compute/camera_rig.gd" id="3_h2yge"]
 [ext_resource type="PackedScene" uid="uid://c3ruydhlr5ywd" path="res://assets/cube.blend" id="4_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://bkhwwpnlnilpo" path="res://assets/basic.blend" id="5_7mycd"]
 [ext_resource type="Material" uid="uid://bt3h2rh0fwcs8" path="res://assets/wireframe_backgound_material.tres" id="6_5vw27"]
 [ext_resource type="PackedScene" uid="uid://rur1jbhne453" path="res://assets/complex.blend" id="8_5vw27"]
 [ext_resource type="Shader" uid="uid://dvu41m2pyrr71" path="res://assets/snow.gdshader" id="8_kek77"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_efxa6"]
+render_priority = 0
+shader = ExtResource("3_4c57u")
+shader_parameter/sparkle_scale = 40.0
+shader_parameter/sparkle_size = 0.30999999307088
+shader_parameter/crystal_spread = 0.63999998569472
+shader_parameter/zone_threshold = 0.76999998278896
+shader_parameter/sun_threshold = 0.92999997921264
+shader_parameter/sun_amount = 8.0
+shader_parameter/sun_tint = 0.6
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_kek77"]
 noise_type = 2
@@ -31,7 +43,8 @@ height = 256
 noise = SubResource("FastNoiseLite_4c57u")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_4c57u"]
-render_priority = 0
+render_priority = 1
+next_pass = SubResource("ShaderMaterial_efxa6")
 shader = ExtResource("8_kek77")
 shader_parameter/albedo = Color(0.85490197, 0.8784314, 0.92156863, 1)
 shader_parameter/roughness = 0.85
@@ -133,9 +146,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55610275, 0, 0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0, 0)
 
 [node name="Cube" parent="complex" index="0" unique_id=1414175170]
-transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 0, 0)
+transform = Transform3D(0.61923766, 0, -0.7852036, 0, 0.9999999, 0, 0.7852036, 0, 0.61923754, 0, 0, 0)
 surface_material_override/0 = SubResource("ShaderMaterial_4c57u")
-metadata/_edit_lock_ = true
 
 [editable path="cube"]
 [editable path="basic"]

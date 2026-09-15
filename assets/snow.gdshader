@@ -96,12 +96,14 @@ void nearest_crystal(vec3 pos, out float dist, out vec3 seed) {
 
 	dist = sqrt(dist);
 }
+
 vec3 spectral(float t) {
 	vec3 centre = vec3(0.8, 0.5, 0.2);
 	vec3 d = (vec3(t) - centre) / 0.25;
 
 	return exp(-d * d);
 }
+
 void fragment() {
 	ALBEDO = albedo.rgb;
 	ROUGHNESS = roughness;
