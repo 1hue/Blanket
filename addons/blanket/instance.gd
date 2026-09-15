@@ -10,7 +10,7 @@ class_name BlanketInstance
 const GROUP = &"blanket_instances"
 const EPSILON = 0.0001
 const MIN_REBAKE_DELAY = 0.03
-const DEFAULT_MATERIAL: ShaderMaterial = preload("res://addons/blanket/assets/snow_material.tres")
+const DEFAULT_MATERIAL: ShaderMaterial = preload("res://addons/blanket/materials/snow.tres")
 
 @export var material: Material = DEFAULT_MATERIAL
 @export_range(0, 3, 0.05, "or_greater") var depth := BlanketParams.DEFAULT_DEPTH:

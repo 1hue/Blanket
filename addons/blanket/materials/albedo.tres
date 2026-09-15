@@ -1,6 +1,6 @@
 [gd_resource type="StandardMaterial3D" format=3 uid="uid://ctfd1qkvn7unr"]
 
-[ext_resource type="Material" uid="uid://coxgqkfh2corg" path="res://addons/blanket/assets/wireframe.tres" id="1_jt5sk"]
+[ext_resource type="Material" uid="uid://coxgqkfh2corg" path="res://addons/blanket/materials/wireframe.tres" id="1_jt5sk"]
 
 [resource]
 next_pass = ExtResource("1_jt5sk")

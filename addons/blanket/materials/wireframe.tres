@@ -1,6 +1,6 @@
 [gd_resource type="ShaderMaterial" format=3 uid="uid://coxgqkfh2corg"]
 
-[ext_resource type="Shader" uid="uid://c32g3nff78grb" path="res://addons/blanket/assets/wireframe_shader.tres" id="1_rrkpe"]
+[ext_resource type="Shader" uid="uid://c32g3nff78grb" path="res://addons/blanket/shaders/wireframe_shader.tres" id="1_rrkpe"]
 
 [resource]
 render_priority = 0

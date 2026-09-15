@@ -4,10 +4,10 @@
 [ext_resource type="ArrayMesh" uid="uid://dbhf8wkaa3bgj" path="res://addons/blanket/assets/cube.obj" id="2_0xm2m"]
 [ext_resource type="Script" uid="uid://bgvm7sqcuvpec" path="res://addons/blanket/blanket.gd" id="2_5vw27"]
 [ext_resource type="Script" uid="uid://8ehypqim7667" path="res://addons/blanket/camera_rig.gd" id="3_h2yge"]
-[ext_resource type="Material" uid="uid://c4utq0wycv6aq" path="res://addons/blanket/assets/snow_material.tres" id="3_kek77"]
+[ext_resource type="Material" uid="uid://c4utq0wycv6aq" path="res://addons/blanket/materials/snow.tres" id="3_kek77"]
 [ext_resource type="PackedScene" uid="uid://c3ruydhlr5ywd" path="res://addons/blanket/assets/cube.blend" id="4_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://bkhwwpnlnilpo" path="res://addons/blanket/assets/basic.blend" id="5_7mycd"]
-[ext_resource type="Material" uid="uid://bt3h2rh0fwcs8" path="res://addons/blanket/assets/wireframe_backgound_material.tres" id="6_5vw27"]
+[ext_resource type="Material" uid="uid://bt3h2rh0fwcs8" path="res://addons/blanket/materials/wireframe_backgound.tres" id="6_5vw27"]
 [ext_resource type="PackedScene" uid="uid://rur1jbhne453" path="res://addons/blanket/assets/complex.blend" id="8_5vw27"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_7dm0k"]

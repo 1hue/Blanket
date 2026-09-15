@@ -1,7 +1,7 @@
 [gd_resource type="ShaderMaterial" format=3 uid="uid://c4utq0wycv6aq"]
 
-[ext_resource type="Shader" uid="uid://c7ncuad0q68ff" path="res://addons/blanket/assets/snow_sun_sparkle.gdshader" id="1_gj1j0"]
-[ext_resource type="Shader" uid="uid://dvu41m2pyrr71" path="res://addons/blanket/assets/snow.gdshader" id="2_yhayf"]
+[ext_resource type="Shader" uid="uid://c7ncuad0q68ff" path="res://addons/blanket/shaders/snow_sun_sparkle.gdshader" id="1_gj1j0"]
+[ext_resource type="Shader" uid="uid://dvu41m2pyrr71" path="res://addons/blanket/shaders/snow.gdshader" id="2_yhayf"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_efxa6"]
 render_priority = 0
