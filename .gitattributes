@@ -1,7 +1,28 @@
 # Normalize EOL for all files that Git considers text files
 * text=auto eol=lf
+
 # Enable LFS for 3D assets
 *.glb filter=lfs diff=lfs merge=lfs -text
+*.gltf filter=lfs diff=lfs merge=lfs -text
 *.blend filter=lfs diff=lfs merge=lfs -text
 *.obj filter=lfs diff=lfs merge=lfs -text
-*.mtl filter=lfs diff=lfs merge=lfs -text
+
+# Exclude everything at the repo root
+/** export-ignore
+
+# Re-include the addons folder, but exclude its contents
+/addons -export-ignore
+/addons/* export-ignore
+
+# Re-include only the blanket addon
+/addons/blanket -export-ignore
+
+# Exclude 3D source/model files at any depth
+*.blend export-ignore
+*.blend.import export-ignore
+*.glb export-ignore
+*.glb.import export-ignore
+*.gltf export-ignore
+*.gltf.import export-ignore
+*.obj export-ignore
+*.obj.import export-ignore
