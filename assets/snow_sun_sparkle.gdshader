@@ -3,19 +3,23 @@ render_mode blend_add, depth_draw_never, cull_back;
 
 const float SUN_FADE = 0.4;
 const float HUE_SWEEP = 0.6;
+const float SPARKLE_SCALE = 40.0;
 
-uniform float sparkle_scale : hint_range(1.0, 200.0, 0.5) = 40.0;
-uniform float sparkle_size : hint_range(0.0, 0.5, 0.01) = 0.12;
-uniform float crystal_spread : hint_range(0.0, 1.0, 0.01) = 0.3;
-uniform float zone_threshold : hint_range(0.0, 1.0, 0.01) = 0.9;
-uniform float sun_threshold : hint_range(0.0, 1.0, 0.01) = 0.7;
-uniform float sun_amount : hint_range(0.0, 20.0) = 8.0;
+uniform float sparkle_size : hint_range(0.0, 0.5, 0.01) = 0.2;
+uniform float crystal_spread : hint_range(0.0, 1.0, 0.01) = 0.31;
+uniform float zone_threshold : hint_range(0.0, 1.0, 0.01) = 0.91;
+uniform float sun_threshold : hint_range(0.0, 1.0, 0.01) = 0.93;
+uniform float sun_amount : hint_range(0.0, 20.0) = 16.0;
 uniform float sun_tint : hint_range(0.0, 1.0, 0.01) = 0.6;
+uniform float sparkle_fade_start : hint_range(0.1, 10.0) = 1.0;
+uniform float sparkle_fade_end : hint_range(1.0, 10.0) = 7.0;
 
 varying vec3 triplanar_pos;
+varying float view_depth;
 
 void vertex() {
 	triplanar_pos = VERTEX * vec3(1.0, -1.0, 1.0);
+	view_depth = length((MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
 }
 
 vec3 hash33(vec3 cell) {
@@ -65,7 +69,7 @@ void fragment() {
 void light() {
 	float dist;
 	vec3 seed;
-	nearest_crystal(triplanar_pos * sparkle_scale, dist, seed);
+	nearest_crystal(triplanar_pos * SPARKLE_SCALE, dist, seed);
 
 	float mask = 1.0 - smoothstep(0.0, sparkle_size, dist);
 	vec3 crystal_normal = normalize(NORMAL + (seed * 2.0 - 1.0) * crystal_spread);
@@ -83,5 +87,8 @@ void light() {
 	vec3 spectrum = spectral(fract(seed.b + sweep * HUE_SWEEP));
 	vec3 tint = mix(vec3(1.0), spectrum, sun_tint);
 
-	SPECULAR_LIGHT += tint * sun_zone * glint * mask * sun_amount * LIGHT_COLOR * ATTENUATION;
+	float t = clamp((view_depth - sparkle_fade_start) / (sparkle_fade_end - sparkle_fade_start), 0.0, 1.0);
+	float distance_fade = pow(1.0 - t, 2.2);
+
+	SPECULAR_LIGHT += tint * sun_zone * glint * mask * distance_fade * sun_amount * LIGHT_COLOR * ATTENUATION;
 }

@@ -5,6 +5,7 @@ const float GRAZING_FADE_BOOST = 4.0; // Wider alignment band at grazing angles
 const float SPARKLE_FADE = 0.15; // Alignment band width
 const float HUE_SPREAD = 1.0;  // Random start hue per crystal
 const float HUE_SWEEP = 0.25;  // How far hue travels while lit
+const float SPARKLE_SCALE = 40.0;
 
 group_uniforms surface;
 uniform vec4 albedo : source_color;
@@ -24,7 +25,6 @@ uniform vec3 coarse_scale = vec3(0.2);
 uniform vec3 fine_scale = vec3(4.0);
 
 group_uniforms sparkle;
-uniform float sparkle_scale : hint_range(1.0, 200.0, 0.5) = 40.0;
 uniform float sparkle_size : hint_range(0.0, 0.5, 0.01) = 0.12;
 uniform float sparkle_threshold : hint_range(0.0, 1.0, 0.01) = 0.88;
 uniform float sparkle_amount : hint_range(0.0, 20.0) = 8.0;
@@ -121,7 +121,7 @@ void fragment() {
 
 	float dist;
 	vec3 seed;
-	nearest_crystal(triplanar_pos * sparkle_scale, dist, seed);
+	nearest_crystal(triplanar_pos * SPARKLE_SCALE, dist, seed);
 
 	float depth = length(VERTEX);
 	float size = sparkle_size * max(depth, 1.0);

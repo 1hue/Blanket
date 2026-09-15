@@ -14,13 +14,14 @@
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_efxa6"]
 render_priority = 0
 shader = ExtResource("3_4c57u")
-shader_parameter/sparkle_scale = 40.0
-shader_parameter/sparkle_size = 0.30999999307088
-shader_parameter/crystal_spread = 0.63999998569472
-shader_parameter/zone_threshold = 0.76999998278896
+shader_parameter/sparkle_size = 0.1999999955296
+shader_parameter/crystal_spread = 0.30999999307088
+shader_parameter/zone_threshold = 0.90999997965968
 shader_parameter/sun_threshold = 0.92999997921264
-shader_parameter/sun_amount = 8.0
+shader_parameter/sun_amount = 16.0
 shader_parameter/sun_tint = 0.6
+shader_parameter/sparkle_fade_start = 1.0
+shader_parameter/sparkle_fade_end = 7.000000285
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_kek77"]
 noise_type = 2
@@ -59,13 +60,12 @@ shader_parameter/normal_scale = 0.2
 shader_parameter/fine_weight = 0.4
 shader_parameter/coarse_scale = Vector3(0.2, 0.2, 0.2)
 shader_parameter/fine_scale = Vector3(4, 4, 4)
-shader_parameter/sparkle_scale = 40.0
 shader_parameter/sparkle_size = 0.12
 shader_parameter/sparkle_threshold = 0.88
 shader_parameter/sparkle_amount = 8.00000038
 shader_parameter/sparkle_tint = 0.5999999865888
 shader_parameter/sparkle_fade_start = 1.00000004424012
-shader_parameter/sparkle_fade_end = 4.000000142499999
+shader_parameter/sparkle_fade_end = 4.0
 shader_parameter/blend_sharpness = 1.0
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_7dm0k"]
@@ -114,7 +114,7 @@ font_size = 96
 horizontal_alignment = 0
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=1815120481]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.490794, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00048160553, 0, 0)
 script = ExtResource("3_h2yge")
 metadata/_custom_type_script = "uid://8ehypqim7667"
 
@@ -148,6 +148,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0, 0)
 [node name="Cube" parent="complex" index="0" unique_id=1414175170]
 transform = Transform3D(0.61923766, 0, -0.7852036, 0, 0.9999999, 0, 0.7852036, 0, 0.61923754, 0, 0, 0)
 surface_material_override/0 = SubResource("ShaderMaterial_4c57u")
+metadata/_edit_lock_ = true
 
 [editable path="cube"]
 [editable path="basic"]
