@@ -21,7 +21,7 @@ Meshes are checked for upward faces. The placement of the Blanket node controls 
 
 Upward faces are identified, extruded and bevelled through a handful of compute dispatches, no mesh data copied back to the CPU. This happens as a one-time bake at initialization.
 
-The resultant generated mesh is inserted as an additional surface on the same mesh.
+The resultant generated geometry is inserted as an additional surface on the same mesh. Then textured via a ShaderMaterial.
 
 Depth can be animated at runtime cheaply without a rebake.
 
