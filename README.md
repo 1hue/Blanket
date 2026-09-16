@@ -44,4 +44,4 @@ For per-mesh control, add a `BlanketInstance` directly under a `MeshInstance3D`.
 
 ## Acknowledgements
 
-- Thanks to [@Bonkahe](https://github.com/Bonkahe) for compute shader inspiration in [SunshineClouds2](https://github.com/Bonkahe/SunshineClouds2).
+- Thanks to [@Bonkahe](https://github.com/Bonkahe) for compute shader inspiration in [SunshineClouds](https://github.com/Bonkahe/SunshineClouds2).
