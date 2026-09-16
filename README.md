@@ -41,3 +41,7 @@ Add a `Blanket` node as a sibling of whatever you want covered. Likewise, place 
 To skip a mesh, assign it the `blanket_exclude` group. In case of imported meshes, any parent with this group works too.
 
 For per-mesh control, add a `BlanketInstance` directly under a `MeshInstance3D`. Blanket leaves hand-placed instances alone, so their own settings stick.
+
+## Acknowledgements
+
+- Thanks to [@Bonkahe](https://github.com/Bonkahe) for compute shader inspiration in [SunshineClouds2](https://github.com/Bonkahe/SunshineClouds2).
