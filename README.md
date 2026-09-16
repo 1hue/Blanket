@@ -32,7 +32,7 @@ No changes to meshes are ever persisted.
 - Godot 4.8 - needs [mesh buffer RIDs](https://github.com/godotengine/godot/pull/118973)
 - Forward+ or Mobile renderer - Compatibility has no compute support
 - Desktop recommended; mobile GPU compute drivers are unreliable
-- Meshes should be `ArrayMesh` with normals, otherwise Blanket will attempt to convert at runtime
+- Meshes should be `ArrayMesh` with valid normals
 
 ## Usage
 
