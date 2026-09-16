@@ -17,7 +17,7 @@ Can be used to generate a blanket snow, a mound of dirt, a pile of autumn leaves
 
 Everything runs on the GPU through compute shaders.
 
-All meshes are checked for upward faces. The placement of the Blanket node controls which meshes are eligible - only siblings - place directly under scene root to cover the whole scene.
+Meshes are checked for upward faces. The placement of the Blanket node controls which meshes are eligible - only siblings - place directly under scene root to cover the whole scene.
 
 Upward faces are identified, extruded and bevelled through a handful of compute dispatches, no mesh data copied back to the CPU. This happens as a one-time bake at initialization.
 
