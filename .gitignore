@@ -1,6 +1,9 @@
 .godot/
 /android/
+
 .idea
-*.blend1
+*.blend1*
 *.zip
 *.kate-swp
+.directory
+.DS_Store
