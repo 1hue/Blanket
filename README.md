@@ -2,7 +2,7 @@
 
 Procedural mesh surface cover for Godot 4.
 
-Can be used to generate a blanket snow, a mound of dirt, a pile of autumn leaves.
+Can be used to generate a blanket snow, a mound of dirt, a pile of autumn leaves. Eliminates the need to modify your meshes individually — uniform effects should happen automatically!
 
 ## Features
 - Smooth animated height/depth
