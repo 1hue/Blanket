@@ -23,10 +23,6 @@ layout(set = 0, binding = 1, scalar) restrict readonly buffer InIndexBuffer {
 	uint in_faces[]; // unused
 };
 
-layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
-	uint in_attributes[]; // unused
-};
-
 layout(set = 1, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
 	uint sel_vertex_count;
 	vec3 sel_positions[]; // unused

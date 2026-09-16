@@ -29,10 +29,6 @@ script = ExtResource("1_au1l0")
 
 [node name="Blanket" type="Node" parent="." unique_id=964429215]
 script = ExtResource("2_kbqbn")
-debug_enabled = null
-debug_normals_enabled = null
-debug_normals_length = null
-debug_normals_color = null
 metadata/_custom_type_script = "uid://bgvm7sqcuvpec"
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1840859551]

@@ -31,10 +31,6 @@ layout(set = 0, binding = 1, scalar) restrict readonly buffer InIndexBuffer {
 	IN_INDEX_TYPE in_faces[];
 };
 
-layout(set = 0, binding = 2, std430) restrict buffer InAttributeBuffer {
-	uint in_attributes[];
-};
-
 layout(set = 1, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
 	uint sel_vertex_count; // unused
 	vec3 sel_positions[]; // unused
@@ -42,7 +38,7 @@ layout(set = 1, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
 
 layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 	uint sel_face_count;
-	uvec3 sel_faces[]; // Source vertex indices until faces_write.glsl repoints them
+	uvec3 sel_faces[]; // Source vertex indices until faces.glsl repoints them
 };
 
 layout(set = 2, binding = 0, scalar) restrict buffer DispatchBuffer {
@@ -75,9 +71,7 @@ void main() {
 		read_normal(corners.x) + read_normal(corners.y) + read_normal(corners.z)
 	);
 
-	bool is_upright = dot(face_normal, local_up) > upright_dot;
-
-	if (!is_upright) return;
+	if (dot(face_normal, local_up) <= upright_dot) return;
 
 	uint slot = atomicAdd(sel_face_count, 1);
 	sel_faces[slot] = corners;
