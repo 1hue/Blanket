@@ -116,5 +116,5 @@ func _notification(what) -> void:
 		vertex_flag_set, vertex_flag_buffer,
 		boundary_set, boundary_buffer,
 	]:
-		if rid.is_valid():
+		if rid:
 			rd.free_rid(rid)

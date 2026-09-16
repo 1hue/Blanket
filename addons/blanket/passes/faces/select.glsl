@@ -21,8 +21,6 @@ layout(push_constant, std430) uniform PushParams {
 	uint in_face_count;
 	uint in_normal_offset; // Bytes into the vertex buffer
 	uint in_normal_stride; // Bytes per vertex
-	uint in_color_offset; // Bytes into the attribute buffer
-	uint in_attribute_stride; // Bytes per vertex
 };
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer InVertexBuffer {
@@ -63,10 +61,6 @@ vec3 read_normal(uint vert) {
 	return oct_decode(fma(unpackUnorm2x16(in_words[word]), vec2(2), vec2(-1)));
 }
 
-void write_color(uint vert, vec4 color) {
-	in_attributes[(in_color_offset + vert * in_attribute_stride) / 4] = packUnorm4x8(color);
-}
-
 void main() {
 	uint face = gl_GlobalInvocationID.x;
 
@@ -82,13 +76,6 @@ void main() {
 	);
 
 	bool is_upright = dot(face_normal, local_up) > upright_dot;
-	vec4 color = is_upright ? vec4(0, 1, 0, 1) : vec4(1, 0, 0, 1);
-
-// 	if (DEBUG) {
-// 		write_color(corners.x, color);
-// 		write_color(corners.y, color);
-// 		write_color(corners.z, color);
-// 	}
 
 	if (!is_upright) return;
 

@@ -56,5 +56,5 @@ func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
 	for rid in [table_set, table_buffer]:
-		if rid.is_valid():
+		if rid:
 			rd.free_rid(rid)

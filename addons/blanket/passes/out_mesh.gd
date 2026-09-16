@@ -25,18 +25,12 @@ func allocate() -> void:
 	params.wall_face_base = faces + shared * BlanketParams.EDGE_FACES
 	params.out_vertex_count = params.wall_grid_base + boundary * BlanketParams.WALL_VERTS_PER_EDGE
 	params.out_index_count = (params.wall_face_base + boundary * BlanketParams.WALL_FACES_PER_EDGE) * 3
-	prints("counters", verts, faces, shared, boundary, boundary_verts, params.local_up)
-	prints("consts", BlanketParams.EDGE_VERTS, BlanketParams.WALL_SIDE_VERTS_PER_VERT,
-		BlanketParams.WALL_VERTS_PER_EDGE, BlanketParams.WALL_COLS, BlanketParams.WALL_ROWS)
-	prints("bases", params.wall_rim_base, params.wall_grid_base, params.out_vertex_count,
-		params.out_index_count)
 
 	if params.out_vertex_count == 0 or params.out_index_count == 0:
 		surface.remove()
 		return
 
 	if fits_existing_surface():
-		prints("fits_existing_surface")
 		clear_buffers()
 		return
 

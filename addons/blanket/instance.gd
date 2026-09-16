@@ -60,7 +60,7 @@ const DEFAULT_MATERIAL: ShaderMaterial = preload("res://addons/blanket/materials
 @onready var mesh_instance: MeshInstance3D = $".."
 
 var mesh: ArrayMesh:
-	get: return mesh_instance.mesh if mesh_instance else null
+	get: return mesh_instance.mesh as ArrayMesh if mesh_instance else null
 var debug_normals_mesh: MeshInstance3D: set = set_debug_normals_mesh
 var pipelines: Array[BlanketPipeline]
 var current_depth := BlanketParams.DEFAULT_DEPTH
@@ -130,8 +130,14 @@ func _process(delta: float) -> void:
 
 
 func setup() -> void:
+	if not is_supported(mesh_instance.mesh):
+		#push_warning("Blanket skipped %s - unsupported mesh type" % mesh_instance.name)
+		return
+
 	convert_to_storage_buffer_mesh()
-	validate()
+
+	if not validate():
+		return
 
 	mesh.changed.connect(on_mesh_changed)
 
@@ -245,19 +251,24 @@ func build_normal_lines(p_transform: Transform3D, length := 0.2) -> MeshInstance
 	return mi
 
 
-func validate() -> void:
-	assert(mesh is ArrayMesh,
-		"Must be an ArrayMesh - primitives like BoxMesh cannot have the STORAGE_BUFFER flag")
-	var format := mesh.surface_get_format(0)
-	var uses_storage_buffer := (format & Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER) != 0
-	assert(uses_storage_buffer, "Mesh must have the STORAGE_BUFFER flag")
+func validate() -> bool:
+	if mesh == null:
+		return false
+
+	for i in mesh.get_surface_count():
+		if mesh.surface_get_format(i) & Mesh.ARRAY_FORMAT_NORMAL == 0:
+			push_warning("Blanket skipped %s - surface %d has no normals" % [mesh_instance.name, i])
+			return false
+
+	return true
 
 
+## Primitives carry their arrays but not the storage flag, so everything gets rebuilt once.
 ## Already converted on re-entry - rebuilding would drop the computed surfaces
 func convert_to_storage_buffer_mesh() -> void:
-	var source_mesh := mesh
+	var source_mesh := mesh_instance.mesh
 
-	if source_mesh.get_surface_count() > 0 \
+	if source_mesh is ArrayMesh and source_mesh.get_surface_count() > 0 \
 			and source_mesh.surface_get_format(0) & Mesh.ARRAY_FLAG_USE_STORAGE_BUFFER:
 		return
 
@@ -267,7 +278,7 @@ func convert_to_storage_buffer_mesh() -> void:
 		var arrays := source_mesh.surface_get_arrays(i)
 
 		new_mesh.add_surface_from_arrays(
-			source_mesh.surface_get_primitive_type(i),
+			Mesh.PRIMITIVE_TRIANGLES,
 			arrays,
 			[],
 			{},
@@ -280,3 +291,14 @@ func convert_to_storage_buffer_mesh() -> void:
 			new_mesh.surface_set_material(i, source_material)
 
 	mesh_instance.mesh = new_mesh
+
+
+## Flat-faced primitives only
+static func is_supported(source: Mesh) -> bool:
+	if source == null:
+		return false
+
+	if source is ArrayMesh:
+		return true
+
+	return source is BoxMesh or source is PrismMesh or source is PlaneMesh or source is QuadMesh

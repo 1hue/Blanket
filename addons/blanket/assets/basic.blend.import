@@ -44,7 +44,7 @@ _subresources={
 "materials": {
 "Material": {
 "use_external/enabled": true,
-"use_external/fallback_path": "res://addons/blanket/assets/wireframe_backgound_material.tres",
+"use_external/fallback_path": "res://addons/blanket/materials/wireframe_backgound.tres",
 "use_external/path": "uid://bt3h2rh0fwcs8"
 }
 }

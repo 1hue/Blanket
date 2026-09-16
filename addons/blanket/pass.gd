@@ -34,7 +34,7 @@ func workgroups(count: int, workgroup_axis_size: int) -> int:
 
 func free_rids(rids: Array[RID]) -> void:
 	for rid in rids:
-		if rid.is_valid():
+		if rid:
 			rd.free_rid(rid)
 
 

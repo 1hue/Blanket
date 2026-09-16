@@ -75,7 +75,7 @@ func dispatch_buffer_create(count := 1, init: PackedInt32Array = []) -> RID:
 	return rd.storage_buffer_create(size, bytes, RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT)
 
 
-## Free scratch buffers after bake
+## TODO: Free scratch buffers after bake
 #func cleanup_bake() -> void:
 	#for rid in [faces_set, edges_set]:
 		#if rid.is_valid():
@@ -87,5 +87,5 @@ func _notification(what) -> void:
 		return
 
 	for rid in [in_mesh, dispatch, dispatch_buffer]: # Free uniform set -> free buffer
-		if rid.is_valid():
+		if rid:
 			rd.free_rid(rid)

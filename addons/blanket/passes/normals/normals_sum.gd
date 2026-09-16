@@ -62,5 +62,5 @@ func compute() -> void:
 func _notification(what) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		for rid in [uniform_set, buffer]:
-			if rid.is_valid():
+			if rid:
 				rd.free_rid(rid)

@@ -1,7 +1,7 @@
 extends BlanketPass
 class_name SelectPass
 
-const SIZE_PARAMS = 40
+const SIZE_PARAMS = 32
 const VERTEX_STRIDE = 12 # vec3
 const INDEX_STRIDE = 12 # uvec3 for simplicity
 
@@ -59,8 +59,6 @@ func pack_params() -> PackedByteArray:
 	push_constant.encode_u32(20, params.in_face_count)
 	push_constant.encode_u32(24, params.in_normal_offset)
 	push_constant.encode_u32(28, params.in_normal_stride)
-	push_constant.encode_u32(32, params.in_color_offset)
-	push_constant.encode_u32(36, params.in_attribute_stride)
 
 	return push_constant
 
@@ -84,5 +82,5 @@ func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
 		return
 	for rid in [selected_faces_set, selected_index_buffer, selected_vertex_buffer]:
-		if rid.is_valid():
+		if rid:
 			rd.free_rid(rid)

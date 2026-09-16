@@ -122,7 +122,6 @@ func _init(surface: BlanketSurface, global_transform: Transform3D) -> void:
 
 	assert(primitive == Mesh.PRIMITIVE_TRIANGLES, "Mesh must be triangles: %s is primitive type %s" % [mesh, primitive])
 	assert(format & Mesh.ARRAY_FORMAT_NORMAL != 0, "Mesh must have normals: %s" % mesh)
-	assert(format & Mesh.ARRAY_FORMAT_COLOR != 0, "Mesh must have vertex colors: %s" % mesh)
 	@warning_ignore("assert_always_true")
 	assert(BEVEL_ARCS <= MAX_BEVEL and BEVEL_SEGMENTS <= MAX_BEVEL, "Bevel exceeds the fixed array size")
 
@@ -132,6 +131,5 @@ func _init(surface: BlanketSurface, global_transform: Transform3D) -> void:
 	in_index_stride = RenderingServer.mesh_surface_get_format_index_stride(format, in_vertex_count)
 	in_normal_offset = RenderingServer.mesh_surface_get_format_offset(format, in_vertex_count, Mesh.ARRAY_NORMAL)
 	in_normal_stride = RenderingServer.mesh_surface_get_format_normal_tangent_stride(format, in_vertex_count)
-	in_color_offset = RenderingServer.mesh_surface_get_format_offset(format, in_vertex_count, Mesh.ARRAY_COLOR)
 	in_attribute_stride = RenderingServer.mesh_surface_get_format_attribute_stride(format, in_vertex_count)
 	local_up = global_transform.basis.inverse() * Vector3.UP

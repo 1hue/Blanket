@@ -71,7 +71,7 @@ func cover(node: Node) -> void:
 
 ## A hand-placed instance keeps its own settings. Leave it be
 func is_eligible(mesh_instance: MeshInstance3D) -> bool:
-	if mesh_instance.mesh == null:
+	if not BlanketInstance.is_supported(mesh_instance.mesh):
 		return false
 
 	for child in mesh_instance.get_children():

@@ -177,9 +177,10 @@ func dump_verts() -> void:
 
 
 func debug() -> void:
-	prints(
-		"params.out_vertex_count", params.out_vertex_count,
-		"params.out_index_count", params.out_index_count,
-		"params.out_index_stride", params.out_index_stride,
-	)
+	#prints(
+		#"params.out_vertex_count", params.out_vertex_count,
+		#"params.out_index_count", params.out_index_count,
+		#"params.out_index_stride", params.out_index_stride,
+	#)
+	pass
 #endregion

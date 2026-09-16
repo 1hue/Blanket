@@ -29,6 +29,10 @@ script = ExtResource("1_au1l0")
 
 [node name="Blanket" type="Node" parent="." unique_id=964429215]
 script = ExtResource("2_kbqbn")
+debug_enabled = null
+debug_normals_enabled = null
+debug_normals_length = null
+debug_normals_color = null
 metadata/_custom_type_script = "uid://bgvm7sqcuvpec"
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1840859551]
@@ -66,27 +70,27 @@ metadata/_edit_lock_ = true
 [node name="cube" parent="." unique_id=127492725 instance=ExtResource("5_fdg1k")]
 visible = false
 
-[node name="Cube" parent="cube" index="0" unique_id=890272479]
+[node name="Cube" parent="cube" index="0" unique_id=957019175]
 transform = Transform3D(0.84392923, -0.53645444, -1.4332123e-08, 0.49513632, 0.77892905, 0.38484973, -0.2064544, -0.32478598, 0.92297906, 0, 0, 0)
 
 [node name="complex" parent="." unique_id=1469824708 instance=ExtResource("6_6g5ly")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0, 0)
 
-[node name="Cube" parent="complex" index="0" unique_id=185182450]
+[node name="Cube" parent="complex" index="0" unique_id=1305052982]
 transform = Transform3D(0.61923766, 0, -0.7852036, 0, 0.9999999, 0, 0.7852036, 0, 0.61923754, 0, 0, 0)
 surface_material_override/0 = ExtResource("7_ucu34")
 
 [node name="basic" parent="." unique_id=721285078 instance=ExtResource("8_f8mb2")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9979534, 0, 0)
 
-[node name="Crease" parent="basic" index="0" unique_id=1341900521]
+[node name="Crease" parent="basic" index="0" unique_id=2060140000]
 transform = Transform3D(0.97514933, -0.2215485, 0, 0.2215485, 0.97514933, 0, 0, 0, 1, 3.5290718, 0, 0)
 surface_material_override/0 = ExtResource("9_ykfgg")
 
-[node name="Dome" parent="basic" index="1" unique_id=1542144948]
+[node name="Dome" parent="basic" index="1" unique_id=241550740]
 transform = Transform3D(0.88264245, -0.47004497, 0, 0.47004497, 0.88264245, 0, 0, 0, 1, -3.159107, 0, 0)
 
-[node name="Three" parent="basic" index="2" unique_id=1546356883]
+[node name="Three" parent="basic" index="2" unique_id=313130165]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55610275, 0, 0)
 
 [editable path="cube"]

@@ -39,7 +39,7 @@ class BlanketShader:
 	func _notification(what) -> void:
 		if what == NOTIFICATION_PREDELETE:
 			for rid in shaders.values():
-				if rid.is_valid():
+				if rid:
 					rd.free_rid(rid)
 
 
