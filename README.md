@@ -29,10 +29,10 @@ No changes to meshes are ever persisted.
 
 ## Requirements
 
-- Godot 4.8 — needs vertex buffer RIDs
+- Godot 4.8 — needs [godotengine/godot#118973](vertex buffer RIDs)
 - Forward+ or Mobile renderer — Compatibility has no compute support
 - Desktop recommended; mobile GPU compute drivers are unreliable
-- Meshes should be `ArrayMesh` with normals and vertex colours, otherwise Blanket will attempt to convert at runtime
+- Meshes should be `ArrayMesh` with normals, otherwise Blanket will attempt to convert at runtime
 
 ## Usage
 
