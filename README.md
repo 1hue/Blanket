@@ -11,7 +11,7 @@ Can be used to generate a blanket of snow 🏔️, mounds of dirt, or piles of a
 - One node per scene to cover all meshes
 - Individual mesh targetting
 - Exclusion by group
-- Advanced snow shader included
+- Advanced sparkling snow shader included
 
 ## How it works
 
