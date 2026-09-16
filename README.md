@@ -15,7 +15,7 @@ Can be used to generate a blanket of snow 🏔️, mounds of dirt, or piles of a
 
 ## How it works
 
-Everything runs on the GPU through compute shaders.
+Everything runs on the GPU through compute shaders. GDExtension not needed.
 
 Meshes are checked for upward faces. The placement of the Blanket node controls which meshes are eligible - only siblings - place directly under scene root to cover the whole scene.
 
@@ -29,7 +29,7 @@ No changes to meshes are ever persisted.
 
 ## Requirements
 
-- Godot 4.8 — needs [godotengine/godot#118973](vertex buffer RIDs)
+- Godot 4.8 — needs [mesh buffer RIDs](https://github.com/godotengine/godot/pull/118973)
 - Forward+ or Mobile renderer — Compatibility has no compute support
 - Desktop recommended; mobile GPU compute drivers are unreliable
 - Meshes should be `ArrayMesh` with normals, otherwise Blanket will attempt to convert at runtime
