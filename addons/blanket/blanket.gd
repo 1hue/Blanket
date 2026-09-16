@@ -27,10 +27,9 @@ class_name Blanket
 
 ## Meshes in this group are skipped, as are those under a parent in it
 @export var exclude_group: StringName = &"blanket_exclude"
-@export var material: ShaderMaterial = BlanketInstance.DEFAULT_MATERIAL
+@export var material: Material = BlanketInstance.DEFAULT_MATERIAL
 
 @export_group("Debug", "debug")
-@export var debug_enabled := true
 @export_subgroup("Normals", "debug_normals")
 @export var debug_normals_enabled := false
 @export_range(0, 2, 0.01, "or_greater", "prefer_slider") var debug_normals_length := 0.2
@@ -89,7 +88,6 @@ func add_instance(mesh_instance: MeshInstance3D) -> void:
 	instance.material = material
 	instance.depth = depth
 	instance.max_slope_degrees = max_slope_degrees
-	instance.debug_enabled = debug_enabled
 	instance.debug_normals_enabled = debug_normals_enabled
 	instance.debug_normals_length = debug_normals_length
 	instance.debug_normals_color = debug_normals_color
@@ -115,27 +113,3 @@ func push_settings() -> void:
 
 func change_depth(delta: int) -> void:
 	depth = BlanketParams.DEFAULT_DEPTH if delta == 0 else depth + delta
-
-
-func _unhandled_key_input(event: InputEvent) -> void:
-	if not debug_enabled:
-		return
-
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:
-			change_depth(1)
-		elif event.keycode == KEY_MINUS or event.keycode == KEY_KP_SUBTRACT:
-			change_depth(-1)
-		elif event.keycode == KEY_BACKSPACE:
-			change_depth(0)
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if not debug_enabled:
-		return
-
-	if event is InputEventMouseButton and event.pressed and event.shift_pressed:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			change_depth(1)
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			change_depth(-1)

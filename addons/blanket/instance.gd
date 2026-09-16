@@ -38,11 +38,6 @@ const DEFAULT_MATERIAL: ShaderMaterial = preload("res://addons/blanket/materials
 			rebake_timer.wait_time = rebake_delay
 
 @export_group("Debug", "debug")
-@export var debug_enabled := false:
-	set(value):
-		debug_enabled = value
-		draw_normals.call_deferred()
-
 @export_subgroup("Normals", "debug_normals")
 @export var debug_normals_enabled := false:
 	set(value):
@@ -85,7 +80,6 @@ static func is_supported(source: Mesh) -> bool:
 
 
 func _ready() -> void:
-	visible = false
 	set_notify_transform(true)
 
 	rebake_timer = Timer.new()
@@ -226,6 +220,7 @@ func set_debug_normals_mesh(value: MeshInstance3D) -> void:
 
 	if debug_normals_mesh:
 		add_child(debug_normals_mesh)
+		debug_normals_mesh.top_level = true
 
 
 func draw_normals() -> void:
@@ -234,14 +229,14 @@ func draw_normals() -> void:
 
 	debug_normals_mesh = null
 
-	if not debug_enabled or not debug_normals_enabled:
+	if not debug_normals_enabled:
 		return
 
-	debug_normals_mesh = build_normal_lines(mesh_instance.global_transform, debug_normals_length)
+	debug_normals_mesh = build_normal_lines()
 
 
 ## Every computed surface into one mesh - surface.idx is where each landed
-func build_normal_lines(transform: Transform3D, length := 0.2) -> MeshInstance3D:
+func build_normal_lines() -> MeshInstance3D:
 	var im := ImmediateMesh.new()
 	var normals_material := ORMMaterial3D.new()
 	normals_material.vertex_color_use_as_albedo = true
@@ -262,12 +257,9 @@ func build_normal_lines(transform: Transform3D, length := 0.2) -> MeshInstance3D
 		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 
 		for i in vertices.size():
-			var world_pos := transform * vertices[i]
-			var world_normal := (transform.basis * normals[i]).normalized()
-
 			im.surface_set_color(debug_normals_color)
-			im.surface_add_vertex(world_pos)
-			im.surface_add_vertex(world_pos + world_normal * length)
+			im.surface_add_vertex(vertices[i])
+			im.surface_add_vertex(vertices[i] + normals[i] * debug_normals_length)
 
 	im.surface_end()
 
