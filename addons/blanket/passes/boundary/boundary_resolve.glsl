@@ -46,17 +46,6 @@ layout(set = 3, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 
 #include "../face_edge.glsl.inc"
 
-bool is_creased(uint face, uint corner) {
-	FaceEdge entry = face_edges[face * 3 + corner];
-
-	return entry.twin != 0u && entry.creased != 0u;
-}
-
-// bevel_shrink gives every retracted corner its own slot, addressed by face and corner
-uint retracted_at(uint face, uint corner) {
-	return sel_vertex_count + 3 * face + corner;
-}
-
 // bevel_fill lays its fans out per shared edge - mirror its addressing exactly
 uint arc_vert(uint idx, uint end, uint side, uint arc) {
 	uint fan_verts = (ARCS - 1) * ARC_VERTS + ARC_VERTS - 2;
