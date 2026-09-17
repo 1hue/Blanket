@@ -13,7 +13,7 @@ layout(constant_id = 1) const uint ARCS = 1;
 const uint SEGMENTS = BEVEL_SEGMENTS * 2;
 const uint ARC_VERTS = SEGMENTS + 1;
 
-layout(local_size_x = 64) in;
+layout(local_size_x = BOUNDARY_WORKGROUP_SIZE) in;
 
 layout(push_constant, std430) uniform PushParams {
 	uint max_edges;
