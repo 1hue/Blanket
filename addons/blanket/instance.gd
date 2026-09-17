@@ -60,7 +60,7 @@ const DEFAULT_MATERIAL: ShaderMaterial = preload("res://addons/blanket/materials
 	set(value):
 		debug_indices_size = value
 		draw_indices.call_deferred()
-@export var debug_indices_color := Color.YELLOW:
+@export var debug_indices_color := Color("f2e86d"):
 	set(value):
 		debug_indices_color = value
 		draw_indices.call_deferred()
