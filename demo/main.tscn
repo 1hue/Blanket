@@ -47,6 +47,25 @@ metadata/_edit_lock_ = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, 0)
 
 [node name="fan" parent="." unique_id=611919879 instance=ExtResource("4_dujpc")]
+transform = Transform3D(-0.8660254, 0, 0.50000006, 0, 1, 0, -0.50000006, 0, -0.8660254, 0, 0, 0)
 
 [node name="house" parent="." unique_id=1163329002 instance=ExtResource("6_cqq71")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, -5)
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1327980401]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -60.0
+offset_right = 204.0
+grow_vertical = 0
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="Label" type="Label" parent="MarginContainer" unique_id=1420000539]
+layout_mode = 2
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.08235294)
+theme_override_font_sizes/font_size = 13
+text = "Shift + MiddleMouse - pan
+N - next mesh
++/- or Shift+scroll - change depth"
