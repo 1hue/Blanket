@@ -8,6 +8,7 @@ extends Node3D
 @export var zoom_speed: float = 0.5
 @export var min_distance: float = 2.0
 @export var max_distance: float = 30.0
+@export var pan_speed: float = 0.00175
 
 @onready var camera: Camera3D = $Camera3D
 
@@ -15,6 +16,7 @@ var yaw: float = 0.0
 var pitch: float = 0.0
 var dragging: bool = false
 var distance: float = 0.0
+var panning: bool = false
 
 
 func _ready() -> void:
@@ -22,6 +24,16 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_MIDDLE and event.shift_pressed:
+		panning = event.pressed
+		get_viewport().set_input_as_handled()
+		return
+
+	if event is InputEventMouseMotion and panning:
+		pan(event.relative)
+		get_viewport().set_input_as_handled()
+		return
+
 	if event.shift_pressed or event.ctrl_pressed:
 		return
 
@@ -43,6 +55,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			zoom(zoom_speed)
 			get_viewport().set_input_as_handled()
+
+
+## Screen-space drag - the rig's own axes already face the camera, and scaling by
+## distance keeps the grab point under the cursor as you zoom
+func pan(relative: Vector2) -> void:
+	var scaled := pan_speed * distance
+
+	global_position -= basis.x * relative.x * scaled
+	global_position += basis.y * relative.y * scaled
 
 
 func update_rotation() -> void:

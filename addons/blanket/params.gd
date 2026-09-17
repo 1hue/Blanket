@@ -10,7 +10,7 @@ const DEFAULT_MIN_CREASE_DEGREES = 15.0
 ## Sizes BoundaryEdge.top - a spec constant can't, the block stride won't follow
 const MAX_BEVEL = 3
 ## Passed to every pipeline as specialization constants, so a change needs a re-bake
-const BEVEL_SEGMENTS = 1
+const BEVEL_SEGMENTS = 2
 const BEVEL_ARCS = 1
 const BEVEL_WIDTH = 0.2
 ## Vertical subdivisions

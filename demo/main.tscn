@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://x3cr4jp6yjen" path="res://demo/main.gd" id="1_au1l0"]
 [ext_resource type="Script" uid="uid://bgvm7sqcuvpec" path="res://addons/blanket/blanket.gd" id="2_wrxtx"]
-[ext_resource type="Material" uid="uid://bq4fsw1x303w" path="res://addons/blanket/materials/snow_standard.tres" id="3_d70j4"]
 [ext_resource type="PackedScene" uid="uid://coj0s8dlod37o" path="res://demo/assets/fan.blend" id="4_dujpc"]
 [ext_resource type="Script" uid="uid://8ehypqim7667" path="res://demo/camera_rig.gd" id="4_nr2wj"]
 [ext_resource type="PackedScene" uid="uid://rur1jbhne453" path="res://demo/assets/complex.blend" id="5_cqq71"]
@@ -26,7 +25,6 @@ script = ExtResource("1_au1l0")
 [node name="Blanket" type="Node" parent="." unique_id=1614885158]
 script = ExtResource("2_wrxtx")
 depth = 1.3900000000000001
-material = ExtResource("3_d70j4")
 metadata/_custom_type_script = "uid://bgvm7sqcuvpec"
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1840859551]
