@@ -3,7 +3,7 @@ class_name SmoothWritePass
 
 const WORKGROUP_SIZE = 256
 const SIZE_PARAMS = 16
-const SMOOTH_STRENGTH = 0.1
+const SMOOTH_STRENGTH = 0.4
 const WALL_STRENGTH = 0.15
 
 

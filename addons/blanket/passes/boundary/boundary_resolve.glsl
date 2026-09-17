@@ -44,6 +44,8 @@ layout(set = 3, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 	uvec3 sel_faces[]; // unused
 };
 
+#include "../face_edge.glsl.inc"
+
 bool is_creased(uint face, uint corner) {
 	FaceEdge entry = face_edges[face * 3 + corner];
 

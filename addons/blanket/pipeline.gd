@@ -38,15 +38,15 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	build_passes = [
 		ShrinkPass.new(mesh, surface, params, sets),
 		FillPass.new(mesh, surface, params, sets),
-		BoundaryResolvePass.new(mesh, surface, params, sets),
-		BoundaryWritePass.new(mesh, surface, params, sets),
+		#BoundaryResolvePass.new(mesh, surface, params, sets),
+		#BoundaryWritePass.new(mesh, surface, params, sets),
 	]
 
 	update_passes = [
 		OffsetPass.new(mesh, surface, params, sets),
-		SmoothPass.new(mesh, surface, params, sets),
-		NormalsSumPass.new(mesh, surface, params, sets),
-		NormalsWritePass.new(mesh, surface, params, sets),
+		#SmoothPass.new(mesh, surface, params, sets),
+		#NormalsSumPass.new(mesh, surface, params, sets),
+		#NormalsWritePass.new(mesh, surface, params, sets),
 	]
 
 
