@@ -2,7 +2,7 @@
 ##
 ## Add this under a [MeshInstance3D] and it grows a layer of cover over every surface facing upward.
 ## [Blanket] adds these across a whole scene - place one by hand when a mesh needs its own depth or material.
-@icon("res://assets/blanket_instance.svg")
+@icon("res://addons/blanket/assets/blanket_instance.svg")
 extends Node3D
 class_name BlanketInstance
 
@@ -51,12 +51,26 @@ const DEFAULT_MATERIAL: ShaderMaterial = preload("res://addons/blanket/materials
 	set(value):
 		debug_normals_color = value
 		draw_normals.call_deferred()
+@export_subgroup("Indices", "debug_indices")
+@export var debug_indices_enabled := false:
+	set(value):
+		debug_indices_enabled = value
+		draw_indices.call_deferred()
+@export_range(0.001, 0.1, 0.001, "or_greater") var debug_indices_size := 0.02:
+	set(value):
+		debug_indices_size = value
+		draw_indices.call_deferred()
+@export var debug_indices_color := Color.YELLOW:
+	set(value):
+		debug_indices_color = value
+		draw_indices.call_deferred()
 
 @onready var mesh_instance: MeshInstance3D = $".."
 
 var mesh: ArrayMesh:
 	get: return mesh_instance.mesh as ArrayMesh if mesh_instance else null
 var debug_normals_mesh: MeshInstance3D: set = set_debug_normals_mesh
+var debug_indices_root: Node3D: set = set_debug_indices_root
 var pipelines: Array[BlanketPipeline]
 var current_depth := BlanketParams.DEFAULT_DEPTH
 var prev_basis: Basis
@@ -107,6 +121,7 @@ func _exit_tree() -> void:
 		mesh.changed.disconnect(on_mesh_changed)
 
 	debug_normals_mesh = null
+	debug_indices_root = null
 	pipelines.clear()
 
 
@@ -223,6 +238,18 @@ func set_debug_normals_mesh(value: MeshInstance3D) -> void:
 		debug_normals_mesh.top_level = true
 
 
+func set_debug_indices_root(value: Node3D) -> void:
+	if debug_indices_root:
+		remove_child(debug_indices_root)
+		debug_indices_root.queue_free()
+
+	debug_indices_root = value
+
+	if debug_indices_root:
+		add_child(debug_indices_root)
+		debug_indices_root.top_level = true
+
+
 func draw_normals() -> void:
 	if not is_inside_tree() or not is_node_ready():
 		return
@@ -233,6 +260,45 @@ func draw_normals() -> void:
 		return
 
 	debug_normals_mesh = build_normal_lines()
+
+
+func draw_indices() -> void:
+	if not is_inside_tree() or not is_node_ready():
+		return
+
+	debug_indices_root = null
+
+	if not debug_indices_enabled:
+		return
+
+	debug_indices_root = build_index_labels()
+
+
+## One Label3D per vert - fine for debugging a handful, heavy past a few hundred
+func build_index_labels() -> Node3D:
+	var root := Node3D.new()
+
+	for pipeline in pipelines:
+		var idx := pipeline.surface.idx
+
+		if idx < 0 or idx >= mesh.get_surface_count():
+			continue
+
+		var vertices: PackedVector3Array = mesh.surface_get_arrays(idx)[Mesh.ARRAY_VERTEX]
+
+		for i in vertices.size():
+			var label := Label3D.new()
+
+			label.text = str(i)
+			label.position = vertices[i]
+			label.pixel_size = debug_indices_size * 0.1
+			label.modulate = debug_indices_color
+			label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			label.no_depth_test = true
+
+			root.add_child(label)
+
+	return root
 
 
 ## Every computed surface into one mesh - surface.idx is where each landed

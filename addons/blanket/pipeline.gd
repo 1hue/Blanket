@@ -125,7 +125,8 @@ func dump_vec3(buffer: RID, name := "", has_count := false) -> void:
 	print_rich("[color=goldenrod]%s: " % label, values)
 
 
-func dump_attributes(buffer: RID, name := "") -> void:
+func dump_attributes() -> void:
+	var buffer := RenderingServer.mesh_surface_get_attribute_buffer_rd_rid(surface.mesh_rid, surface.idx)
 	var bytes := rd.buffer_get_data(buffer)
 	var stride: int = params.out_attribute_stride
 	var count := bytes.size() / stride
@@ -135,7 +136,7 @@ func dump_attributes(buffer: RID, name := "") -> void:
 		var color := bytes.decode_u32(base + params.out_color_offset)
 		var w := bytes.decode_float(base + params.out_custom_offset + 12)
 
-		print_rich("[color=goldenrod]%s[%d]: color=%08X anchor=%.0f" % [name, i, color, w])
+		print_rich("[color=goldenrod]attributes[%d]: color=%08X anchor=%.0f" % [i, color, w])
 
 
 func dump_vert_faces(vert: int) -> void:
@@ -228,9 +229,10 @@ func debug() -> void:
 	)
 	dump_faces()
 	dump_verts()
-	dump_vec3(sets.selected_vertex_buffer, "sel_positions", true)
-	dump_uvec3(sets.selected_index_buffer, "sel_faces", true)
-	debug_shared_edges()
-	dump_shared_mask(sets.face_edge_mask_buffer)
+	dump_attributes()
+	#dump_vec3(sets.selected_vertex_buffer, "sel_positions", true)
+	#dump_uvec3(sets.selected_index_buffer, "sel_faces", true)
+	#debug_shared_edges()
+	#dump_shared_mask(sets.face_edge_mask_buffer)
 	pass
 #endregion
