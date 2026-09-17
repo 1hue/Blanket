@@ -38,19 +38,20 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	build_passes = [
 		ShrinkPass.new(mesh, surface, params, sets),
 		FillPass.new(mesh, surface, params, sets),
-		#BoundaryResolvePass.new(mesh, surface, params, sets),
-		#BoundaryWritePass.new(mesh, surface, params, sets),
+		BoundaryResolvePass.new(mesh, surface, params, sets),
+		BoundaryWritePass.new(mesh, surface, params, sets),
 	]
 
 	update_passes = [
 		OffsetPass.new(mesh, surface, params, sets),
-		#SmoothPass.new(mesh, surface, params, sets),
-		#NormalsSumPass.new(mesh, surface, params, sets),
-		#NormalsWritePass.new(mesh, surface, params, sets),
+		SmoothPass.new(mesh, surface, params, sets),
+		NormalsSumPass.new(mesh, surface, params, sets),
+		NormalsWritePass.new(mesh, surface, params, sets),
 	]
 
 
 func bake() -> void:
+	prints("bake")
 	for select_pass in select_passes:
 		select_pass.compute()
 
@@ -60,17 +61,17 @@ func bake() -> void:
 	for build_pass in build_passes:
 		build_pass.compute()
 
-	#update()
+	update()
 
 
 func update() -> void:
+	prints("update")
 	if params.is_out_mesh_empty:
+		push_warning("BlanketPipeline: is_out_mesh_empty")
 		return
 
 	for update_pass in update_passes:
 		update_pass.compute()
-
-	debug()
 
 
 #region Debug

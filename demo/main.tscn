@@ -45,10 +45,10 @@ transform = Transform3D(1, 0, 0, 0, 0.8734304, 0.48694903, 0, -0.48694903, 0.873
 current = true
 metadata/_edit_lock_ = true
 
-[node name="fan" parent="." unique_id=737271029 instance=ExtResource("4_dujpc")]
-
-[node name="house" parent="." unique_id=1163329002 instance=ExtResource("6_cqq71")]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, -6)
-
 [node name="complex" parent="." unique_id=321088263 instance=ExtResource("5_cqq71")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, 0)
+
+[node name="fan" parent="." unique_id=611919879 instance=ExtResource("4_dujpc")]
+
+[node name="house" parent="." unique_id=1163329002 instance=ExtResource("6_cqq71")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, -5)

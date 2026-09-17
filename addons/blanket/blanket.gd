@@ -100,6 +100,7 @@ func add_instance(mesh_instance: MeshInstance3D) -> void:
 	instance.material = material
 	instance.depth = depth
 	instance.max_slope_degrees = max_slope_degrees
+	instance.min_crease_degrees = min_crease_degrees
 	instance.debug_normals_enabled = debug_normals_enabled
 	instance.debug_normals_length = debug_normals_length
 	instance.debug_normals_color = debug_normals_color
@@ -122,9 +123,10 @@ func push_settings() -> void:
 
 	for instance in get_tree().get_nodes_in_group(BlanketInstance.GROUP):
 		if parent.is_ancestor_of(instance):
-			instance.depth = depth
-			instance.max_slope_degrees = max_slope_degrees
-			instance.min_crease_degrees = min_crease_degrees
+			if instance is BlanketInstance:
+				instance.depth = depth
+				instance.max_slope_degrees = max_slope_degrees
+				instance.min_crease_degrees = min_crease_degrees
 
 
 func change_depth(delta: int) -> void:

@@ -26,12 +26,16 @@ const DEFAULT_MATERIAL: ShaderMaterial = preload("res://addons/blanket/materials
 ## How far a face may tilt from up and still get covered. 90 includes vertical walls
 @export_range(0.0, 90.0, 1.0, "degrees") var max_slope_degrees := BlanketParams.DEFAULT_MAX_SLOPE_DEGREES:
 	set(value):
+		if is_equal_approx(max_slope_degrees, value):
+			return
 		max_slope_degrees = value
 		queue_rebake()
 
 ## When is an edge betwen two faces considered flat
 @export_range(0.0, 90.0, 1.0, "degrees") var min_crease_degrees := BlanketParams.DEFAULT_MIN_CREASE_DEGREES:
 	set(value):
+		if is_equal_approx(min_crease_degrees, value):
+			return
 		min_crease_degrees = value
 		queue_rebake()
 
@@ -191,6 +195,7 @@ func setup() -> void:
 		pipeline.bake()
 
 	prev_basis = current_basis()
+	current_depth = depth
 	apply_depth()
 
 
@@ -220,6 +225,7 @@ func rebake() -> void:
 	for pipeline in pipelines:
 		pipeline.params.local_up = mesh_instance.global_transform.basis.inverse() * Vector3.UP
 		pipeline.params.max_slope_degrees = max_slope_degrees
+		pipeline.params.min_crease_degrees = min_crease_degrees
 		pipeline.params.depth = current_depth
 		pipeline.bake()
 
