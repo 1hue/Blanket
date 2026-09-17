@@ -1,7 +1,7 @@
 extends BlanketPass
 class_name SmoothPass
 
-const ITERATIONS = 1
+const ITERATIONS = 3
 
 var sum_pass: SmoothSumPass
 var write_pass: SmoothWritePass
