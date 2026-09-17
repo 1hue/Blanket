@@ -66,8 +66,8 @@ func allocate(new_vertex_count: int, new_index_count: int, array_types: int = Me
 		arrays[Mesh.ARRAY_COLOR] = colors
 
 	for i in Mesh.ARRAY_MAX:
-		if arrays[i] != null and arrays[i].is_empty():
-			prints("empty array", i)
+		assert(arrays[i] == null or not arrays[i].is_empty(),
+			"Array %d is empty on %s - add_surface_from_arrays will reject the surface" % [i, mesh])
 
 	idx = mesh.get_surface_count()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, SURFACE_FLAGS)
