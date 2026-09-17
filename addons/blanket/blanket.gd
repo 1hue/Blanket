@@ -15,7 +15,7 @@ class_name Blanket
 		if enabled:
 			cover_siblings()
 
-@export_range(0, 3, 0.05, "or_greater") var depth := BlanketParams.DEFAULT_DEPTH:
+@export_range(0, 3, 0.01, "or_greater") var depth := BlanketParams.DEFAULT_DEPTH:
 	set(value):
 		depth = value
 		push_settings()
