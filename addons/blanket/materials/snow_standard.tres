@@ -1,5 +1,7 @@
 [gd_resource type="StandardMaterial3D" format=3 uid="uid://bq4fsw1x303w"]
 
+[ext_resource type="Material" uid="uid://coxgqkfh2corg" path="res://addons/blanket/materials/wireframe.tres" id="1_ikein"]
+
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_lquwl"]
 noise_type = 3
 frequency = 0.0076
@@ -24,6 +26,8 @@ as_normal_map = true
 bump_strength = 27.4
 
 [resource]
+next_pass = ExtResource("1_ikein")
+cull_mode = 2
 albedo_color = Color(0.85490197, 0.8784314, 0.92156863, 1)
 roughness = 0.85
 emission = Color(0.9776916, 0.9639762, 1, 1)

@@ -45,8 +45,8 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	update_passes = [
 		OffsetPass.new(mesh, surface, params, sets),
 		SmoothPass.new(mesh, surface, params, sets),
-		NormalsSumPass.new(mesh, surface, params, sets),
-		NormalsWritePass.new(mesh, surface, params, sets),
+		#NormalsSumPass.new(mesh, surface, params, sets),
+		#NormalsWritePass.new(mesh, surface, params, sets),
 	]
 
 
@@ -61,6 +61,8 @@ func bake() -> void:
 		build_pass.compute()
 
 	update()
+
+	debug()
 
 
 func update() -> void:
@@ -173,14 +175,19 @@ func dump_faces() -> void:
 
 func dump_verts() -> void:
 	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.idx)
-	dump_vec3(vertex_buffer, "out_vertex_buffer")
+	var bytes := rd.buffer_get_data(vertex_buffer, 0, params.out_vertex_count * params.out_vertex_stride)
+
+	print_rich("[color=goldenrod]vertex_buffer: ", bytes.to_vector3_array())
 
 
 func debug() -> void:
-	#prints(
-		#"params.out_vertex_count", params.out_vertex_count,
-		#"params.out_index_count", params.out_index_count,
-		#"params.out_index_stride", params.out_index_stride,
-	#)
+	prints(
+		"params.out_vertex_count", params.out_vertex_count,
+		"params.out_index_count", params.out_index_count,
+		"params.out_face_count", params.out_face_count,
+		"params.out_index_stride", params.out_index_stride,
+	)
+	dump_faces()
+	dump_verts()
 	pass
 #endregion

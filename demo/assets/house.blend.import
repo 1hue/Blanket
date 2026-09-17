@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://c3ruydhlr5ywd"
-path="res://.godot/imported/cube.blend-9670fc3729570e33b87f2757326c556c.scn"
+uid="uid://b3r2rr3dtse5e"
+path="res://.godot/imported/house.blend-98ed5ab2eb6e6e28bd53ea2890b25860.scn"
 
 [deps]
 
-source_file="res://addons/blanket/assets/cube.blend"
-dest_files=["res://.godot/imported/cube.blend-9670fc3729570e33b87f2757326c556c.scn"]
+source_file="res://demo/assets/house.blend"
+dest_files=["res://.godot/imported/house.blend-98ed5ab2eb6e6e28bd53ea2890b25860.scn"]
 
 [params]
 
@@ -40,15 +40,7 @@ import_script/path=""
 materials/extract=0
 materials/extract_format=0
 materials/extract_path=""
-_subresources={
-"materials": {
-"Material": {
-"use_external/enabled": true,
-"use_external/fallback_path": "res://addons/blanket/materials/albedo.tres",
-"use_external/path": "uid://ctfd1qkvn7unr"
-}
-}
-}
+_subresources={}
 blender/nodes/visible=0
 blender/nodes/active_collection_only=false
 blender/nodes/punctual_lights=true
