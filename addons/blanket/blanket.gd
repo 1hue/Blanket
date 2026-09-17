@@ -35,6 +35,11 @@ class_name Blanket
 @export_range(0, 2, 0.01, "or_greater", "prefer_slider") var debug_normals_length := 0.2
 @export var debug_normals_color := Color.ORANGE_RED
 
+@export_subgroup("Indices", "debug_indices")
+@export var debug_indices_enabled := false
+@export_range(0.001, 0.1, 0.001, "or_greater") var debug_indices_size := 0.02
+@export var debug_indices_color := Color("f2e86d")
+
 
 func _ready() -> void:
 	cover_siblings()
@@ -91,6 +96,9 @@ func add_instance(mesh_instance: MeshInstance3D) -> void:
 	instance.debug_normals_enabled = debug_normals_enabled
 	instance.debug_normals_length = debug_normals_length
 	instance.debug_normals_color = debug_normals_color
+	instance.debug_indices_enabled = debug_indices_enabled
+	instance.debug_indices_size = debug_indices_size
+	instance.debug_indices_color = debug_indices_color
 
 	mesh_instance.add_child(instance)
 
