@@ -60,9 +60,7 @@ func bake() -> void:
 	for build_pass in build_passes:
 		build_pass.compute()
 
-	update()
-
-	debug()
+	#update()
 
 
 func update() -> void:
@@ -71,6 +69,8 @@ func update() -> void:
 
 	for update_pass in update_passes:
 		update_pass.compute()
+
+	debug()
 
 
 #region Debug
@@ -226,12 +226,13 @@ func debug() -> void:
 		"params.out_index_count", params.out_index_count,
 		"params.out_face_count", params.out_face_count,
 		"params.out_index_stride", params.out_index_stride,
+		"params.wall_rim_base", params.wall_rim_base
 	)
 	dump_faces()
 	dump_verts()
 	dump_attributes()
-	#dump_vec3(sets.selected_vertex_buffer, "sel_positions", true)
-	#dump_uvec3(sets.selected_index_buffer, "sel_faces", true)
+	dump_vec3(sets.selected_vertex_buffer, "sel_positions", true)
+	dump_uvec3(sets.selected_index_buffer, "sel_faces", true)
 	#debug_shared_edges()
 	#dump_shared_mask(sets.face_edge_mask_buffer)
 	pass

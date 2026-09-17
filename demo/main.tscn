@@ -37,12 +37,9 @@ current = true
 metadata/_edit_lock_ = true
 
 [node name="Cube" parent="." unique_id=339548633 instance=ExtResource("5_fdg1k")]
-transform = Transform3D(0.8535532, -0.1464466, 0.49999997, 0.4999999, 0.49999994, -0.70710677, -0.1464466, 0.85355324, 0.49999997, 0, 0, 0)
 
-[node name="BlanketInstance" type="Node3D" parent="Cube/Cube" parent_id_path=PackedInt32Array(339548633, 744258536) index="0" unique_id=1720750763]
+[node name="BlanketInstance" type="Node3D" parent="Cube/Cube" parent_id_path=PackedInt32Array(339548633, 1559503221) index="0" unique_id=1720750763]
 script = ExtResource("4_dujpc")
-debug_indices_enabled = true
-debug_indices_color = Color(0.9490196, 0.9098039, 0.42745098, 1)
 metadata/_custom_type_script = "uid://dtnblg1g7ceap"
 
 [editable path="Cube"]
