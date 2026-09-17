@@ -30,9 +30,9 @@ layout(set = 1, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	SharedEdge shared_edges[];
 };
 
-// Bit c set = edge c of this face is shared. Retraction reads only this.
-layout(set = 2, binding = 0, std430) restrict buffer FaceEdgeMaskBuffer {
-	uint face_edge_mask[];
+// One entry per corner - the twin's address, or 0 where the edge is the selection's rim
+layout(set = 2, binding = 0, std430) restrict buffer FaceEdgeBuffer {
+	FaceEdge face_edges[];
 };
 
 // Bit 0 set = vert lies on the selection boundary
@@ -167,14 +167,14 @@ void main() {
 		has_twin = true;
 		is_creased = dot(face_normal(face), face_normal(twin / 3)) <= CREASE_DOT;
 
+		// Only this lane writes its own entry, so no atomics needed
+		face_edges[self].twin = twin + 1;
+		face_edges[self].creased = is_creased ? 1u : 0u;
+
 		match_twin(self, twin, is_creased);
 	}
 
 	if (!has_twin) {
 		record_boundary(self, edge);
-	} else if (is_creased) {
-		atomicOr(face_edge_mask[face], 1u << corner);
-	} else {
-		atomicOr(face_edge_mask[face], 1u << (corner + FLAT_SHIFT));
 	}
 }

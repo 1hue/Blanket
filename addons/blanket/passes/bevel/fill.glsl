@@ -49,7 +49,7 @@ layout(set = 1, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
 
 layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 	uint sel_face_count;
-	uvec3 sel_faces[]; // unused
+	uvec3 sel_faces[];
 };
 
 layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
@@ -57,8 +57,8 @@ layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	SharedEdge shared_edges[];
 };
 
-layout(set = 3, binding = 0, std430) restrict buffer FaceEdgeMaskBuffer {
-	uint face_edge_mask[];
+layout(set = 3, binding = 0, std430) restrict buffer FaceEdgeBuffer {
+	FaceEdge face_edges[];
 };
 
 SharedEdge edge;
@@ -97,9 +97,74 @@ vec3 arc_point(mat3 anchors, vec3 apex, uint segment) {
 	return reach < 1e-9 ? p : apex + spoke * (radius / reach);
 }
 
-// Retracted is per face, in apex order - the arc at one apex crosses from one face's vert to the other's
+void build_quad(uint face, uint inner_a, uint inner_b, uint outer_b, uint outer_a, bool flip, bool reverse) {
+	if (flip) {
+		write_triangle(face, uvec3(inner_a, inner_b, outer_a), reverse);
+		write_triangle(face + 1, uvec3(inner_b, outer_b, outer_a), reverse);
+		return;
+	}
+
+	write_triangle(face, uvec3(inner_a, inner_b, outer_b), reverse);
+	write_triangle(face + 1, uvec3(inner_a, outer_b, outer_a), reverse);
+}
+
+bool is_creased(uint face_idx, uint corner) {
+	FaceEdge entry = face_edges[face_idx * 3 + corner];
+
+	return entry.twin != 0u && entry.creased != 0u;
+}
+
+bool is_retracted(uint face_idx, uint corner) {
+	return is_creased(face_idx, corner) || is_creased(face_idx, prev_corner(corner));
+}
+
+uint retracted_at(uint face_idx, uint corner) {
+	return sel_vertex_count + 3 * face_idx + corner;
+}
+
+// Two faces meeting at a flat edge inset within their own planes and land a hair
+// apart at each shared vert. The lower face owns it, so the seam closes with no strip
+uint merged_slot(uint face_idx, uint corner) {
+	uint own = retracted_at(face_idx, corner);
+	FaceEdge entry = face_edges[face_idx * 3 + corner];
+	FaceEdge prev = face_edges[face_idx * 3 + prev_corner(corner)];
+
+	// Either of the corner's two edges can be the flat one holding a twin
+	uint twin = entry.creased == 0u && entry.twin != 0u ? entry.twin : 0u;
+
+	if (twin == 0u) twin = prev.creased == 0u && prev.twin != 0u ? prev.twin : 0u;
+	if (twin == 0u) return own;
+
+	uint twin_face = (twin - 1) / 3;
+
+	if (twin_face > face_idx) return own;
+
+	// Same source vert, so whichever of the twin's corners sits on it is the pair
+	uint vert = sel_faces[face_idx][corner];
+
+	for (uint i = 0; i < 3; ++i) {
+		if (sel_faces[twin_face][i] != vert) continue;
+
+		return is_retracted(twin_face, i) ? retracted_at(twin_face, i) : own;
+	}
+
+	return own;
+}
+
+// shrink only allocates a slot where the corner moved, and merges the pair either
+// side of a flat edge - resolve through the same rule or the arc ends land adrift
+uint end_vert(uint side, uint end) {
+	uint face = edge.faces[side];
+	uint slot = edge.retracted[side][end];
+	uint corner = slot - sel_vertex_count - 3 * face;
+
+	return is_retracted(face, corner) ? merged_slot(face, corner) : edge.apexes[end];
+}
+
+// Retracted is per face, in apex order - the arc at one apex crosses from one
+// face's vert to the other's. Resolved through the merge, same as end_vert
 uvec2 arc_ends(uint end) {
-	return uvec2(edge.retracted[0][end], edge.retracted[1][end]);
+	return uvec2(end_vert(0, end), end_vert(1, end));
 }
 
 mat3 arc_anchors(uint end) {
@@ -133,15 +198,36 @@ uint fan_vert(uint end, uint arc, uint segment) {
 	return inner_base + (end * (ARCS - 1) + arc - 1) * ARC_VERTS + segment;
 }
 
-void build_quad(uint face, uint inner_a, uint inner_b, uint outer_b, uint outer_a, bool flip, bool reverse) {
-	if (flip) {
-		write_triangle(face, uvec3(inner_a, inner_b, outer_a), reverse);
-		write_triangle(face + 1, uvec3(inner_b, outer_b, outer_a), reverse);
-		return;
+void build_gap(uint face_base) {
+	uvec2 side_x = uvec2(end_vert(0, 0), end_vert(0, 1));
+	uvec2 side_y = uvec2(end_vert(1, 0), end_vert(1, 1));
+
+	write_triangle(face_base, uvec3(side_x.y, side_x.x, side_y.x), false);
+	write_triangle(face_base + 1, uvec3(side_x.y, side_y.x, side_y.y), false);
+
+	// Where both sides pulled back from an apex, the fans on either side stop short
+	// and leave a wedge against the apex itself
+	if (side_x.x != edge.apexes.x && side_y.x != edge.apexes.x) {
+		write_triangle(face_base + 2, uvec3(edge.apexes.x, side_y.x, side_x.x), false);
 	}
 
-	write_triangle(face, uvec3(inner_a, inner_b, outer_b), reverse);
-	write_triangle(face + 1, uvec3(inner_a, outer_b, outer_a), reverse);
+	if (side_x.y != edge.apexes.y && side_y.y != edge.apexes.y) {
+		write_triangle(face_base + 3, uvec3(edge.apexes.y, side_x.y, side_y.y), false);
+	}
+}
+
+void build_strip(uint face_base) {
+	for (uint segment = 0; segment < SEGMENTS; segment++) {
+		build_quad(
+			face_base + segment * 2,
+			fan_vert(0, ARCS, segment),
+			fan_vert(0, ARCS, segment + 1),
+			fan_vert(1, ARCS, segment + 1),
+			fan_vert(1, ARCS, segment),
+			segment % 2 == 1, // Alternate so neither side collects every extra edge
+			false
+		);
+	}
 }
 
 void build_fan(uint end, uint face_base) {
@@ -186,41 +272,6 @@ void build_fan(uint end, uint face_base) {
 			);
 		}
 	}
-}
-
-void build_strip(uint face_base) {
-	for (uint segment = 0; segment < SEGMENTS; segment++) {
-		build_quad(
-			face_base + segment * 2,
-			fan_vert(0, ARCS, segment),
-			fan_vert(0, ARCS, segment + 1),
-			fan_vert(1, ARCS, segment + 1),
-			fan_vert(1, ARCS, segment),
-			segment % 2 == 1, // Alternate so neither side collects every extra edge
-			false
-		);
-	}
-}
-
-// shrink only allocates a slot where the corner moved - elsewhere the face still
-// points at the original apex
-uint end_vert(uint side, uint end) {
-	uint face = edge.faces[side];
-	uint slot = edge.retracted[side][end];
-	uint corner = slot - sel_vertex_count - 3 * face;
-
-	return is_retracted(face_edge_mask[face], corner) ? slot : edge.apexes[end];
-}
-
-// A flat edge grows no arcs, but an adjacent crease can still pull one face's corner
-// back. Wound against both faces, since each traverses this edge the other way.
-// Collapses to a degenerate triangle at any end where neither side moved
-void build_gap(uint face_base) {
-	uvec2 side_x = uvec2(end_vert(0, 0), end_vert(0, 1));
-	uvec2 side_y = uvec2(end_vert(1, 0), end_vert(1, 1));
-
-	write_triangle(face_base, uvec3(side_x.y, side_x.x, side_y.x), false);
-	write_triangle(face_base + 1, uvec3(side_x.y, side_y.x, side_y.y), false);
 }
 
 void main() {

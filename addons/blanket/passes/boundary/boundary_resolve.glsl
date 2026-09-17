@@ -25,8 +25,8 @@ layout(set = 0, binding = 0, scalar) restrict buffer BoundaryBuffer {
 	BoundaryEdge boundary_edges[];
 };
 
-layout(set = 1, binding = 0, std430) restrict buffer FaceEdgeMaskBuffer {
-	uint face_edge_mask[];
+layout(set = 1, binding = 0, std430) restrict buffer FaceEdgeBuffer {
+	FaceEdge face_edges[];
 };
 
 layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
@@ -43,6 +43,12 @@ layout(set = 3, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 	uint sel_face_count;
 	uvec3 sel_faces[]; // unused
 };
+
+bool is_creased(uint face, uint corner) {
+	FaceEdge entry = face_edges[face * 3 + corner];
+
+	return entry.twin != 0u && entry.creased != 0u;
+}
 
 // bevel_shrink gives every retracted corner its own slot, addressed by face and corner
 uint retracted_at(uint face, uint corner) {
@@ -90,26 +96,20 @@ void resolve(uint idx, uint slot, uint apex, uint retracted) {
 void main() {
 	uint idx = gl_GlobalInvocationID.x;
 
-	// boundary_count counts attempts, not slots - the overflow ones were never written
+	// boundary_count counts attempts, not slots - overflow ones were never written
 	if (idx >= min(boundary_count, max_edges)) return;
 
 	uvec2 verts = boundary_edges[idx].verts;
 	uint face = boundary_edges[idx].face;
 	uint corner = boundary_edges[idx].corner;
-	uint mask = face_edge_mask[face];
 	uint prev = prev_corner(corner);
 	uint next = next_corner(corner);
 
-	// The boundary edge is never shared, so retraction comes down to the
-	// corner's other edge. Where there is none, the column collapses
-	uint retracted_x = is_shared(mask, prev) ? retracted_at(face, corner) : verts.x;
-	uint retracted_y = is_shared(mask, next) ? retracted_at(face, next) : verts.y;
+	// The boundary edge is never shared, so retraction comes down to the corner's other edge.
+	// Where there is none, the column collapses
+	uint retracted_x = is_creased(face, prev) ? retracted_at(face, corner) : verts.x;
+	uint retracted_y = is_creased(face, next) ? retracted_at(face, next) : verts.y;
 
 	resolve(idx, 0, verts.x, retracted_x);
 	resolve(idx, 1, verts.y, retracted_y);
-
-// 	if (idx == 0 && boundary_count > 1) {
-// 		boundary_edges[1].face = RINGS;
-// 		boundary_edges[1].corner = boundary_edges[1].top.length();
-// 	}
 }

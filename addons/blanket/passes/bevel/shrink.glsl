@@ -49,19 +49,53 @@ layout(set = 1, binding = 1, scalar) restrict buffer SelectedIndexBuffer {
 	uvec3 sel_faces[];
 };
 
-// Bit c set = edge c of this face is shared. Retraction reads only this.
-layout(set = 2, binding = 0, std430) restrict buffer FaceEdgeMaskBuffer {
-	uint face_edge_mask[];
+layout(set = 2, binding = 0, std430) restrict buffer FaceEdgeBuffer {
+	FaceEdge face_edges[];
 };
+
+bool is_creased(uint face_idx, uint corner) {
+	FaceEdge entry = face_edges[face_idx * 3 + corner];
+
+	return entry.twin != 0u && entry.creased != 0u;
+}
+
+bool is_retracted(uint face_idx, uint corner) {
+	return is_creased(face_idx, corner) || is_creased(face_idx, prev_corner(corner));
+}
 
 uint retracted_at(uint face_idx, uint corner) {
 	return sel_vertex_count + 3 * face_idx + corner;
 }
 
-// Insetting from every side collapses the face at the inradius, A/s. Cap
-// below it so the worst case is a tiny copy of the original, never an
-// inverted one. Edges that aren't shared don't inset, so this is loose
-// for boundary faces - which is fine, it only ever clamps
+// Two faces meeting at a flat edge inset within their own planes and land a hair
+// apart at each shared vert. The lower face owns it, so the seam closes with no strip
+uint merged_slot(uint face_idx, uint corner) {
+	uint own = retracted_at(face_idx, corner);
+	FaceEdge entry = face_edges[face_idx * 3 + corner];
+	FaceEdge prev = face_edges[face_idx * 3 + prev_corner(corner)];
+
+	// Either of the corner's two edges can be the flat one holding a twin
+	uint twin = entry.creased == 0u && entry.twin != 0u ? entry.twin : 0u;
+
+	if (twin == 0u) twin = prev.creased == 0u && prev.twin != 0u ? prev.twin : 0u;
+	if (twin == 0u) return own;
+
+	uint twin_face = (twin - 1) / 3;
+
+	if (twin_face > face_idx) return own;
+
+	// Same source vert, so whichever of the twin's corners sits on it is the pair
+	uint vert = sel_faces[face_idx][corner];
+
+	for (uint i = 0; i < 3; ++i) {
+		if (sel_faces[twin_face][i] != vert) continue;
+
+		return is_retracted(twin_face, i) ? retracted_at(twin_face, i) : own;
+	}
+
+	return own;
+}
+
 float max_width(uvec3 face) {
 	mat3 p = mat3(sel_positions[face.x], sel_positions[face.y], sel_positions[face.z]);
 	float perimeter = distance(p[0], p[1]) + distance(p[1], p[2]) + distance(p[2], p[0]);
@@ -72,11 +106,7 @@ float max_width(uvec3 face) {
 	return inradius * (1.0 - MIN_SCALE);
 }
 
-// Corner c lies on edges c and c-1. Each contributes a line: offset inward
-// by the width if shared, left in place if not. The corner is their
-// intersection, so a boundary edge holds the corner on itself and the
-// silhouette is preserved
-vec3 inset_corner(uvec3 face, uint mask, uint corner, float width) {
+vec3 inset_corner(uvec3 face, uint face_idx, uint corner, float width) {
 	vec3 apex = sel_positions[face[corner]];
 	vec3 to_next = sel_positions[face[next_corner(corner)]] - apex;
 	vec3 to_prev = sel_positions[face[prev_corner(corner)]] - apex;
@@ -93,8 +123,8 @@ vec3 inset_corner(uvec3 face, uint mask, uint corner, float width) {
 	// for the next edge. Mirror that to get the prev edge's normal
 	vec2 n_next = vec2(0.0, sign(prev2.y));
 	vec2 n_prev = vec2(-prev2.y, prev2.x) / length(prev2) * -sign(prev2.y);
-	float d_next = is_shared(mask, corner) ? width : 0.0;
-	float d_prev = is_shared(mask, prev_corner(corner)) ? width : 0.0;
+	float d_next = is_creased(face_idx, corner) ? width : 0.0;
+	float d_prev = is_creased(face_idx, prev_corner(corner)) ? width : 0.0;
 
 	// Solve for p with dot(p, n) = d on both offset lines
 	float det = n_next.x * n_prev.y - n_next.y * n_prev.x;
@@ -133,26 +163,28 @@ void main() {
 	uint corner = gl_GlobalInvocationID.y;
 	if (face_idx >= sel_face_count) return;
 
-	uint mask = face_edge_mask[face_idx];
 	uvec3 face = sel_faces[face_idx];
 
 	if (corner == 0) {
 		uvec3 repointed = face;
 
 		for (uint i = 0; i < 3; ++i) {
-			if (is_retracted(mask, i)) {
-				repointed[i] = retracted_at(face_idx, i);
+			if (is_retracted(face_idx, i)) {
+				repointed[i] = merged_slot(face_idx, i);
 			}
 		}
 
 		out_faces[face_idx] = OUT_INDEX_TYPE(repointed);
 	}
 
-	if (!is_retracted(mask, corner)) return;
+	if (!is_retracted(face_idx, corner)) return;
 
 	// A retracted vert is new geometry, so it carries no boundary flag
-	uint slot = retracted_at(face_idx, corner);
-	vec3 position = inset_corner(face, mask, corner, min(WIDTH, max_width(face)));
+	uint slot = merged_slot(face_idx, corner);
+
+	if (slot != retracted_at(face_idx, corner)) return; // The twin owns it
+
+	vec3 position = inset_corner(face, face_idx, corner, min(WIDTH, max_width(face)));
 
 	write_vertex(slot, position);
 }

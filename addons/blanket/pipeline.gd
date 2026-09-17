@@ -203,7 +203,7 @@ func dump_shared_mask(buffer: RID, name := "shared_mask") -> void:
 func debug_shared_edges() -> void:
 	var bytes := rd.buffer_get_data(sets.shared_edge_buffer)
 	var count := bytes.decode_u32(0)
-	var stride := EdgesPass.STRUCT_STRIDE
+	var stride := EdgesPass.SHARED_EDGE_STRIDE
 
 	print_rich("[color=gold]shared_edges[count=%d][/color]" % count)
 
@@ -220,20 +220,67 @@ func debug_shared_edges() -> void:
 		])
 
 
+func dump_face_edges() -> void:
+	var bytes := rd.buffer_get_data(sets.face_edge_buffer)
+
+	for face in params.in_face_count:
+		var parts: Array[String] = []
+
+		for corner in 3:
+			var at := (face * 3 + corner) * 8
+			var twin := bytes.decode_u32(at)
+			var creased := bytes.decode_u32(at + 4)
+
+			parts.append("%s%s" % [
+				"-" if twin == 0 else str(twin - 1),
+				"c" if creased else "."
+			])
+
+		print_rich("[color=orchid]face_edge[%d]: %s[/color]" % [face, " ".join(parts)])
+
+
+func dump_merged_slots() -> void:
+	var edges := rd.buffer_get_data(sets.face_edge_buffer)
+	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.idx)
+	var indices := rd.buffer_get_data(index_buffer)
+	var sel_verts := rd.buffer_get_data(sets.selected_vertex_buffer).decode_u32(0)
+	var faces := rd.buffer_get_data(sets.selected_index_buffer)
+	var face_count := faces.decode_u32(0)
+
+	for face in face_count:
+		var parts: Array[String] = []
+
+		for corner in 3:
+			var at := (face * 3 + corner) * 8
+			var twin := edges.decode_u32(at)
+			var creased := edges.decode_u32(at + 4)
+			var own := sel_verts + 3 * face + corner
+			var slot := own
+
+			if twin != 0 and creased == 0:
+				var twin_corner: int = twin - 1
+				var twin_face: int = twin_corner / 3
+
+				if twin_face < face:
+					slot = sel_verts + 3 * twin_face + (twin_corner % 3 + 1) % 3
+
+			parts.append("c%d:own=%d->%d" % [corner, own, slot])
+
+		var tri_at := face * 6
+		var written := Vector3i(
+			indices.decode_u16(tri_at), indices.decode_u16(tri_at + 2), indices.decode_u16(tri_at + 4)
+		)
+
+		print_rich("[color=orchid]face %d: %s written=%s[/color]" % [face, " ".join(parts), written])
+
+
 func debug() -> void:
-	prints(
-		"params.out_vertex_count", params.out_vertex_count,
-		"params.out_index_count", params.out_index_count,
-		"params.out_face_count", params.out_face_count,
-		"params.out_index_stride", params.out_index_stride,
-		"params.wall_rim_base", params.wall_rim_base
-	)
-	dump_faces()
-	dump_verts()
-	dump_attributes()
-	dump_vec3(sets.selected_vertex_buffer, "sel_positions", true)
-	dump_uvec3(sets.selected_index_buffer, "sel_faces", true)
-	#debug_shared_edges()
-	#dump_shared_mask(sets.face_edge_mask_buffer)
+	#prints(
+		#"params.out_vertex_count", params.out_vertex_count,
+		#"params.out_index_count", params.out_index_count,
+		#"params.out_face_count", params.out_face_count,
+		#"params.out_index_stride", params.out_index_stride,
+		#"params.wall_rim_base", params.wall_rim_base
+	#)
 	pass
 #endregion

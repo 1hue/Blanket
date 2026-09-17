@@ -19,6 +19,11 @@ struct SharedEdge {
 	uint crease; // 0 = coplanar, so fill closes the gap instead of building arcs
 };
 
+struct FaceEdge {
+	uint twin; // Global corner across this edge, biased by one. 0 = nothing there, so boundary
+	uint creased; // Non-zero when the two faces disagree enough to be worth beveling
+};
+
 struct BoundaryEdge {
 	uvec2 verts;
 	uint face;
@@ -32,18 +37,4 @@ uint prev_corner(uint corner) {
 
 uint next_corner(uint corner) {
 	return (corner + 1) % 3;
-}
-
-// Shared and creased
-bool is_shared(uint mask, uint edge) {
-	return (mask & (1u << edge)) != 0u;
-}
-
-// Shared but coplanar
-bool is_flat(uint mask, uint edge) {
-	return (mask & (1u << (edge + FLAT_SHIFT))) != 0u;
-}
-
-bool is_retracted(uint mask, uint corner) {
-	return is_shared(mask, corner) || is_shared(mask, prev_corner(corner));
 }

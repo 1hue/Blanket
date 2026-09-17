@@ -33,8 +33,8 @@ var faces_table_buffer: RID
 #region Bevel
 var shared_edge: RID
 var shared_edge_buffer: RID
-var face_edge_mask: RID
-var face_edge_mask_buffer: RID
+var face_edge: RID
+var face_edge_buffer: RID
 var vertex_flag: RID
 var vertex_flag_buffer: RID
 var boundary: RID
