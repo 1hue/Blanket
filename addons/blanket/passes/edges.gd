@@ -2,8 +2,8 @@ extends BlanketPass
 class_name EdgesPass
 
 const SIZE_PARAMS = 4
-const SHARED_EDGE_STRIDE = 32
-const STRUCT_STRIDE = 32
+const SHARED_EDGE_STRIDE = 36
+const STRUCT_STRIDE = 36
 const BOUNDARY_EDGE_STRIDE = 16 + (BlanketParams.MAX_BEVEL + 1) * 8
 const BOUNDARY_HEADER = 8 # boundary_count, boundary_vert_count
 

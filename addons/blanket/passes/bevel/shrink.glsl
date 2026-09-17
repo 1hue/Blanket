@@ -54,10 +54,6 @@ layout(set = 2, binding = 0, std430) restrict buffer FaceEdgeMaskBuffer {
 	uint face_edge_mask[];
 };
 
-bool is_retracted(uint mask, uint corner) {
-	return is_shared(mask, corner) || is_shared(mask, prev_corner(corner));
-}
-
 uint retracted_at(uint face_idx, uint corner) {
 	return sel_vertex_count + 3 * face_idx + corner;
 }
@@ -102,7 +98,7 @@ vec3 inset_corner(uvec3 face, uint mask, uint corner, float width) {
 
 	// Solve for p with dot(p, n) = d on both offset lines
 	float det = n_next.x * n_prev.y - n_next.y * n_prev.x;
-	if (abs(det) < 1e-6) return apex; // Parallel edges, no intersection
+	if (abs(det) < EPSILON) return apex; // Parallel edges, no intersection
 
 	vec2 p = vec2(
 		d_next * n_prev.y - d_prev * n_next.y,

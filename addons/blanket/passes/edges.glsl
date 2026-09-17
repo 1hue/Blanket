@@ -121,26 +121,25 @@ void record_boundary(uint self, uvec2 edge) {
 	mark_boundary(edge.y);
 }
 
-// The pair is recorded once, by the lower lane. False means the edge is too flat to bevel
-bool match_twin(uint self, uint twin) {
-	uint face = self / 3;
-
-	if (twin < self) return true; // The other lane records it
+// Records the pair once, by the lower lane. Flat edges are recorded too - fill
+// still has a gap to close where an adjacent crease pulled a corner back
+void match_twin(uint self, uint twin, bool creased) {
+	if (twin < self) return; // The other lane records it
 
 	uint slot = atomicAdd(shared_edge_count, 1);
 
-	if (slot >= max_edges) return true; // Buffer overflowed
+	if (slot >= max_edges) return; // Buffer overflowed
 
+	uint face = self / 3;
 	uvec2 apexes = wound_edge_at_corner(self);
 
 	shared_edges[slot].faces = uvec2(face, twin / 3);
 	shared_edges[slot].apexes = apexes;
 	shared_edges[slot].retracted[0] = retracted_at_corner(self, apexes);
 	shared_edges[slot].retracted[1] = retracted_at_corner(twin, apexes);
+	shared_edges[slot].crease = creased ? 1u : 0u;
 
 	atomicMax(dispatch_fill.x, 1 + slot / FILL_WORKGROUP_SIZE);
-
-	return true;
 }
 
 void main() {
@@ -160,18 +159,22 @@ void main() {
 	uint self = face * 3 + corner;
 	uvec2 edge = edge_at_corner(self);
 	bool has_twin = false;
-	bool is_shared_edge = false;
+	bool is_creased = false;
 
 	for (uint twin = 0; twin < sel_face_count * 3; twin++) {
 		if (twin == self || edge_at_corner(twin) != edge) continue;
 
 		has_twin = true;
-		match_twin(self, twin);
+		is_creased = dot(face_normal(face), face_normal(twin / 3)) <= CREASE_DOT;
+
+		match_twin(self, twin, is_creased);
 	}
 
-	if (has_twin) {
+	if (!has_twin) {
+		record_boundary(self, edge);
+	} else if (is_creased) {
 		atomicOr(face_edge_mask[face], 1u << corner);
 	} else {
-		record_boundary(self, edge);
+		atomicOr(face_edge_mask[face], 1u << (corner + FLAT_SHIFT));
 	}
 }

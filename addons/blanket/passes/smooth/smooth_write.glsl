@@ -4,6 +4,8 @@
 
 #extension GL_EXT_scalar_block_layout : require
 
+#include "../common.glsl.inc"
+
 layout(constant_id = 0) const float SMOOTH_STRENGTH = 0.5; // 0 = unchanged, 1 = at neighbour average
 layout(constant_id = 1) const float WALL_STRENGTH = 0.3; // 0 = collapse inward, 1 = stand up
 
@@ -41,12 +43,12 @@ void main() {
 	uint vert = gl_GlobalInvocationID.x;
 
 	if (vert >= out_vertex_count) return;
-	if (sums[vert].w < 1e-6) return; // No neighbours, or their weights cancelled out
+	if (sums[vert].w < EPSILON) return; // No neighbours, or their weights cancelled out
 
 	float smoothing = vert < wall_rim_base ? SMOOTH_STRENGTH : SMOOTH_STRENGTH * (1.0 - WALL_STRENGTH);
 	float scaled = movable(vert) * smoothing;
 
-	if (abs(scaled) < 1e-6) return;
+	if (abs(scaled) < EPSILON) return;
 
 	vec3 average = sums[vert].xyz / sums[vert].w;
 

@@ -57,6 +57,10 @@ layout(set = 2, binding = 0, scalar) restrict buffer SharedEdgeBuffer {
 	SharedEdge shared_edges[];
 };
 
+layout(set = 3, binding = 0, std430) restrict buffer FaceEdgeMaskBuffer {
+	uint face_edge_mask[];
+};
+
 SharedEdge edge;
 uint inner_base; // Arcs 1..ARCS-1, every vert new
 uint outer_base; // Arc ARCS, minus the two retracted ends
@@ -198,6 +202,27 @@ void build_strip(uint face_base) {
 	}
 }
 
+// shrink only allocates a slot where the corner moved - elsewhere the face still
+// points at the original apex
+uint end_vert(uint side, uint end) {
+	uint face = edge.faces[side];
+	uint slot = edge.retracted[side][end];
+	uint corner = slot - sel_vertex_count - 3 * face;
+
+	return is_retracted(face_edge_mask[face], corner) ? slot : edge.apexes[end];
+}
+
+// A flat edge grows no arcs, but an adjacent crease can still pull one face's corner
+// back. Wound against both faces, since each traverses this edge the other way.
+// Collapses to a degenerate triangle at any end where neither side moved
+void build_gap(uint face_base) {
+	uvec2 side_x = uvec2(end_vert(0, 0), end_vert(0, 1));
+	uvec2 side_y = uvec2(end_vert(1, 0), end_vert(1, 1));
+
+	write_triangle(face_base, uvec3(side_x.y, side_x.x, side_y.x), false);
+	write_triangle(face_base + 1, uvec3(side_x.y, side_y.x, side_y.y), false);
+}
+
 void main() {
 	uint idx = gl_GlobalInvocationID.x;
 
@@ -210,10 +235,15 @@ void main() {
 
 	uint fan_verts = (ARCS - 1) * ARC_VERTS + ARC_VERTS - 2;
 	uint fan_faces = SEGMENTS + (ARCS - 1) * SEGMENTS * 2;
+	uint face_base = sel_face_count + idx * (fan_faces * 2 + SEGMENTS * 2);
+
+	if (edge.crease == 0u) {
+		build_gap(face_base);
+		return;
+	}
 
 	inner_base = sel_vertex_count + sel_face_count * 3 + idx * fan_verts * 2;
 	outer_base = inner_base + (ARCS - 1) * ARC_VERTS * 2;
-	uint face_base = sel_face_count + idx * (fan_faces * 2 + SEGMENTS * 2);
 
 	build_fan(0, face_base);
 	build_fan(1, face_base + fan_faces);

@@ -110,7 +110,7 @@ float row_rise(uint row) {
 	if (row == 0) return 0.0;
 	if (row + 1 == ROWS) return 1.0;
 
-	float fold = depth > 1e-6 ? max(1.0 - FOLD_GAP / depth, RISE_FOLD) : RISE_FOLD;
+	float fold = depth > EPSILON ? max(1.0 - FOLD_GAP / depth, RISE_FOLD) : RISE_FOLD;
 
 	return mix(fold, 1.0, float(row - 1) / float(ROWS - 2));
 }

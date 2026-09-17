@@ -45,8 +45,8 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 	update_passes = [
 		OffsetPass.new(mesh, surface, params, sets),
 		SmoothPass.new(mesh, surface, params, sets),
-		#NormalsSumPass.new(mesh, surface, params, sets),
-		#NormalsWritePass.new(mesh, surface, params, sets),
+		NormalsSumPass.new(mesh, surface, params, sets),
+		NormalsWritePass.new(mesh, surface, params, sets),
 	]
 
 
@@ -180,6 +180,45 @@ func dump_verts() -> void:
 	print_rich("[color=goldenrod]vertex_buffer: ", bytes.to_vector3_array())
 
 
+func dump_shared_mask(buffer: RID, name := "shared_mask") -> void:
+	var bytes := rd.buffer_get_data(buffer)
+	var words := bytes.to_int32_array()
+	var labels: Array[String] = []
+
+	for i in mini(words.size(), params.in_face_count):
+		labels.append("%d:%s%s%s|%s%s%s" % [
+			i,
+			"a" if words[i] & 1 else ".",
+			"b" if words[i] & 2 else ".",
+			"c" if words[i] & 4 else ".",
+			"A" if words[i] & 8 else ".",
+			"B" if words[i] & 16 else ".",
+			"C" if words[i] & 32 else ".",
+		])
+
+	print_rich("[color=orchid]%s[%d]: " % [name, labels.size()], " ".join(labels), "[/color]")
+
+
+func debug_shared_edges() -> void:
+	var bytes := rd.buffer_get_data(sets.shared_edge_buffer)
+	var count := bytes.decode_u32(0)
+	var stride := EdgesPass.STRUCT_STRIDE
+
+	print_rich("[color=gold]shared_edges[count=%d][/color]" % count)
+
+	for i in mini(count, params.max_edges):
+		var at := 4 + i * stride
+
+		print_rich("[color=gold]  %d: faces=%s apexes=%s retracted=[%s, %s] crease=%d[/color]" % [
+			i,
+			Vector2i(bytes.decode_u32(at), bytes.decode_u32(at + 4)),
+			Vector2i(bytes.decode_u32(at + 8), bytes.decode_u32(at + 12)),
+			Vector2i(bytes.decode_u32(at + 16), bytes.decode_u32(at + 20)),
+			Vector2i(bytes.decode_u32(at + 24), bytes.decode_u32(at + 28)),
+			bytes.decode_u32(at + 32),
+		])
+
+
 func debug() -> void:
 	prints(
 		"params.out_vertex_count", params.out_vertex_count,
@@ -189,5 +228,9 @@ func debug() -> void:
 	)
 	dump_faces()
 	dump_verts()
+	dump_vec3(sets.selected_vertex_buffer, "sel_positions", true)
+	dump_uvec3(sets.selected_index_buffer, "sel_faces", true)
+	debug_shared_edges()
+	dump_shared_mask(sets.face_edge_mask_buffer)
 	pass
 #endregion
