@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://g813oa3u8glg"]
 
 [ext_resource type="Script" uid="uid://x3cr4jp6yjen" path="res://demo/main.gd" id="1_au1l0"]
-[ext_resource type="Script" uid="uid://dtnblg1g7ceap" path="res://addons/blanket/instance.gd" id="4_dujpc"]
+[ext_resource type="Script" uid="uid://bgvm7sqcuvpec" path="res://addons/blanket/blanket.gd" id="2_wrxtx"]
+[ext_resource type="PackedScene" uid="uid://coj0s8dlod37o" path="res://demo/assets/fan.blend" id="4_dujpc"]
 [ext_resource type="Script" uid="uid://8ehypqim7667" path="res://demo/camera_rig.gd" id="4_nr2wj"]
-[ext_resource type="PackedScene" uid="uid://c3ruydhlr5ywd" path="res://demo/assets/cube.blend" id="5_fdg1k"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_7dm0k"]
 sky_horizon_color = Color(0.60784316, 0.6901961, 0.6862745, 1)
@@ -19,6 +19,11 @@ sky = SubResource("Sky_ig7tw")
 
 [node name="Main" type="Node3D" unique_id=1983684945]
 script = ExtResource("1_au1l0")
+
+[node name="Blanket" type="Node" parent="." unique_id=1614885158]
+script = ExtResource("2_wrxtx")
+debug_indices_enabled = true
+metadata/_custom_type_script = "uid://bgvm7sqcuvpec"
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1840859551]
 environment = SubResource("Environment_0xm2m")
@@ -36,10 +41,4 @@ transform = Transform3D(1, 0, 0, 0, 0.8734304, 0.48694903, 0, -0.48694903, 0.873
 current = true
 metadata/_edit_lock_ = true
 
-[node name="Cube" parent="." unique_id=339548633 instance=ExtResource("5_fdg1k")]
-
-[node name="BlanketInstance" type="Node3D" parent="Cube/Cube" parent_id_path=PackedInt32Array(339548633, 1559503221) index="0" unique_id=1720750763]
-script = ExtResource("4_dujpc")
-metadata/_custom_type_script = "uid://dtnblg1g7ceap"
-
-[editable path="Cube"]
+[node name="fan" parent="." unique_id=737271029 instance=ExtResource("4_dujpc")]

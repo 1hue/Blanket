@@ -51,6 +51,7 @@ const DEFAULT_MATERIAL: ShaderMaterial = preload("res://addons/blanket/materials
 	set(value):
 		debug_normals_color = value
 		draw_normals.call_deferred()
+
 @export_subgroup("Indices", "debug_indices")
 @export var debug_indices_enabled := false:
 	set(value):
