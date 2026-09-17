@@ -13,6 +13,7 @@ layout(local_size_x = EDGES_WORKGROUP_SIZE, local_size_y = 3) in;
 
 layout(push_constant, std430) uniform PushParams {
 	uint max_edges;
+	float crease_dot;
 };
 
 layout(set = 0, binding = 0, scalar) restrict buffer SelectedVertexBuffer {
@@ -165,7 +166,7 @@ void main() {
 		if (twin == self || edge_at_corner(twin) != edge) continue;
 
 		has_twin = true;
-		is_creased = dot(face_normal(face), face_normal(twin / 3)) <= CREASE_DOT;
+		is_creased = dot(face_normal(face), face_normal(twin / 3)) <= crease_dot;
 
 		// Only this lane writes its own entry, so no atomics needed
 		face_edges[self].twin = twin + 1;

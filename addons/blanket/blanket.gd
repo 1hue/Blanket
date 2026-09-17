@@ -6,6 +6,7 @@
 extends Node
 class_name Blanket
 
+#region Exports
 ## Off stops new insertions and broadcasts. Existing instances stay put
 @export var enabled := true:
 	set(value):
@@ -25,6 +26,12 @@ class_name Blanket
 		max_slope_degrees = value
 		push_settings()
 
+## When is an edge betwen two faces considered flat
+@export_range(0.0, 90.0, 1.0, "degrees") var min_crease_degrees := BlanketParams.DEFAULT_MIN_CREASE_DEGREES:
+	set(value):
+		min_crease_degrees = value
+		push_settings()
+
 ## Meshes in this group are skipped, as are those under a parent in it
 @export var exclude_group: StringName = &"blanket_exclude"
 @export var material: Material = BlanketInstance.DEFAULT_MATERIAL
@@ -39,7 +46,7 @@ class_name Blanket
 @export var debug_indices_enabled := false
 @export_range(0.001, 0.1, 0.001, "or_greater") var debug_indices_size := 0.02
 @export var debug_indices_color := Color("f2e86d")
-
+#endregion
 
 func _ready() -> void:
 	cover_siblings()
@@ -117,6 +124,7 @@ func push_settings() -> void:
 		if parent.is_ancestor_of(instance):
 			instance.depth = depth
 			instance.max_slope_degrees = max_slope_degrees
+			instance.min_crease_degrees = min_crease_degrees
 
 
 func change_depth(delta: int) -> void:

@@ -9,8 +9,6 @@ const uint BOUNDARY_WORKGROUP_SIZE = 64;
 const uint FLAG_BOUNDARY = 1;
 const uint FLAG_BITS = 8; // Low bits are flags, the rest is the rim column slot
 const uint MAX_BEVEL = 3;
-const uint FLAT_SHIFT = 3; // Mask bits 0-2 are creased edges, 3-5 flat ones
-const float CREASE_DOT = 0.966; // cos(15 degrees)
 
 struct SharedEdge {
 	uvec2 faces; // Which 2 faces in index_buffer

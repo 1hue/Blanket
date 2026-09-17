@@ -6,29 +6,41 @@
 extends Node3D
 class_name BlanketInstance
 
-## Joined on enter, so a Blanket above can find us without a tree walk
+## Helps [Blanket] above find us without a tree walk
 const GROUP = &"blanket_instances"
 const EPSILON = 0.0001
 const MIN_REBAKE_DELAY = 0.03
 const DEFAULT_MATERIAL: ShaderMaterial = preload("res://addons/blanket/materials/snow.tres")
 
+#region Exports
 @export var material: Material = DEFAULT_MATERIAL
+
 @export_range(0, 3, 0.05, "or_greater") var depth := BlanketParams.DEFAULT_DEPTH:
 	set(value):
 		depth = value
 		set_process(not is_equal_approx(depth, current_depth))
+
 ## How quickly the layer settles toward [member depth]
 @export_range(0.1, 20.0, 0.1, "or_greater") var settle_rate := 6.0
+
 ## How far a face may tilt from up and still get covered. 90 includes vertical walls
 @export_range(0.0, 90.0, 1.0, "degrees") var max_slope_degrees := BlanketParams.DEFAULT_MAX_SLOPE_DEGREES:
 	set(value):
 		max_slope_degrees = value
 		queue_rebake()
+
+## When is an edge betwen two faces considered flat
+@export_range(0.0, 90.0, 1.0, "degrees") var min_crease_degrees := BlanketParams.DEFAULT_MIN_CREASE_DEGREES:
+	set(value):
+		min_crease_degrees = value
+		queue_rebake()
+
 ## Rotating or scaling a mesh moves which faces point up, so the selection needs rebuilding
 @export var rebake_on_transform := true:
 	set(value):
 		rebake_on_transform = value
 		prev_basis = current_basis()
+
 ## Quiet time before a rebake - dragging a rotation handle would otherwise rebake every frame
 @export_range(0.03, 1.0, 0.01, "or_greater") var rebake_delay := 0.2:
 	set(value):
@@ -67,6 +79,7 @@ const DEFAULT_MATERIAL: ShaderMaterial = preload("res://addons/blanket/materials
 		draw_indices.call_deferred()
 
 @onready var mesh_instance: MeshInstance3D = $".."
+#endregion
 
 var mesh: ArrayMesh:
 	get: return mesh_instance.mesh as ArrayMesh if mesh_instance else null
@@ -126,8 +139,8 @@ func _exit_tree() -> void:
 	pipelines.clear()
 
 
-## Fires on our own global transform, parent movement included. Translation leaves local_up
-## alone, so the basis still needs checking
+## Fires on our own global transform, parent movement included. Translation leaves local_up alone,
+## so the basis still needs checking
 func _notification(what: int) -> void:
 	if what != NOTIFICATION_TRANSFORM_CHANGED or not rebake_on_transform:
 		return
@@ -171,6 +184,7 @@ func setup() -> void:
 		var pipeline := BlanketPipeline.new(mesh, i, mesh_instance.global_transform)
 
 		pipeline.params.max_slope_degrees = max_slope_degrees
+		pipeline.params.min_crease_degrees = min_crease_degrees
 		pipelines.append(pipeline)
 
 	for pipeline in pipelines:

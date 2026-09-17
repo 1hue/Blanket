@@ -1,7 +1,7 @@
 extends BlanketPass
 class_name EdgesPass
 
-const SIZE_PARAMS = 4
+const SIZE_PARAMS = 8
 const SHARED_EDGE_STRIDE = 36
 const FACE_EDGE_STRIDE = 8
 const BOUNDARY_EDGE_STRIDE = 16 + (BlanketParams.MAX_BEVEL + 1) * 8
@@ -83,6 +83,7 @@ func init_boundary_buffer() -> void:
 
 func pack_params() -> PackedByteArray:
 	push_constant.encode_u32(0, params.max_edges)
+	push_constant.encode_float(4, params.crease_dot)
 
 	return push_constant
 
