@@ -4,6 +4,9 @@ extends Node3D
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	if not blanket:
+		return
+
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:
 			blanket.change_depth(1)
@@ -14,6 +17,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not blanket:
+		return
+
 	if event is InputEventMouseButton and event.pressed and event.shift_pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			blanket.change_depth(1)
