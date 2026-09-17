@@ -1,4 +1,4 @@
-// Copy the selection into the new surface, merged verts sharing one slot.
+// Repoint each chosen face at the merged verts - consolidate selected faces and verts
 #[compute]
 #version 450
 

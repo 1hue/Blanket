@@ -1,4 +1,4 @@
-// Sum each face's normal into its three corners. Run before normals_write.glsl.
+// Add up face normals. Run before normals_write.glsl
 #[versions]
 out_u16 = "#define OUT_INDEX_TYPE u16vec3";
 out_u32 = "#define OUT_INDEX_TYPE uvec3";

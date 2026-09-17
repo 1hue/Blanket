@@ -1,4 +1,4 @@
-// Offset each vert along local_up, scaled by the proportion stored in custom0
+// Offset each vert along local_up, scaled by the proportion stored in Custom0.W
 #[compute]
 #version 450
 

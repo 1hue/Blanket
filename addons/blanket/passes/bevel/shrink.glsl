@@ -1,4 +1,4 @@
-// Retract each selected face from its shared edges
+// Retract each selected face from its shared edges, leaving a gap to be filled with bevel topology
 #[versions]
 out_u16 = "#define OUT_INDEX_TYPE u16vec3";
 out_u32 = "#define OUT_INDEX_TYPE uvec3";

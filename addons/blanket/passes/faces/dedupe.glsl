@@ -1,4 +1,4 @@
-// Merge vertices by position and place each survivor in the scratch buffer
+// Merge vertices sitting at the same spot for smooth shading and seamless moving
 #[compute]
 #version 450
 

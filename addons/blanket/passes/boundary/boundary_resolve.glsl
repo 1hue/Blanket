@@ -1,4 +1,4 @@
-// Resolve each boundary endpoint to the column of verts its wall's top edge meets
+// Work out which vertices each rim skirt hangs from
 #[compute]
 #version 450
 

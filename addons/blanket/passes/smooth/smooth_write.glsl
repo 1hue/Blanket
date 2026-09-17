@@ -1,4 +1,4 @@
-// Move each vertex toward its neighbour average. Pinned verts stay put.
+// Move each vertex toward its neighbour average. Pinned verts don't move.
 #[compute]
 #version 450
 

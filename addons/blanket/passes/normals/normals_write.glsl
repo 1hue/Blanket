@@ -1,4 +1,4 @@
-// Normalize the accumulated sums into the surface's packed normals.
+// Normalize the accumulated sums
 #[compute]
 #version 450
 

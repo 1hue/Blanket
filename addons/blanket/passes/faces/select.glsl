@@ -1,4 +1,4 @@
-// Find all faces facing up - within upright_dot of local_up
+// Find the faces that point upward
 #[versions]
 in_u16 = "#define IN_INDEX_TYPE u16vec3";
 in_u32 = "#define IN_INDEX_TYPE uvec3";

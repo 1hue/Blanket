@@ -1,5 +1,5 @@
 // Fill each boundary edge's wall: a quad grid from the rim up to the surface.
-// Everything lies on the rim at rest - W is what raises it
+// Everything lies on the rim at rest - W determines actual raise
 #[versions]
 out_u16 = "#define OUT_INDEX_TYPE u16vec3";
 out_u32 = "#define OUT_INDEX_TYPE uvec3";

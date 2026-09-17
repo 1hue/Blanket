@@ -1,4 +1,4 @@
-// Seed the out surface with the flat selection - visible as soon as this runs
+// Populate the out surface with the deduped selection - visible as soon as this runs
 #[versions]
 out_u16 = "#define OUT_INDEX_TYPE u16vec3";
 out_u32 = "#define OUT_INDEX_TYPE uvec3";

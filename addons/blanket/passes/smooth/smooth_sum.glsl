@@ -1,4 +1,4 @@
-// Sum each face's edges into its vertices' neighbour totals. Run before smooth_write.glsl.
+// Add up the neighbours around each vertex. Run before smooth_write.glsl
 #[versions]
 out_u16 = "#define OUT_INDEX_TYPE u16vec3";
 out_u32 = "#define OUT_INDEX_TYPE uvec3";
