@@ -14,9 +14,8 @@ Eliminate the need to modify your meshes individually - uniform effects should h
 
 - Customizable & smoothly animated height/depth
 - Customizable upward angle
-- Reacts to mesh transform changes
 - Easy scene-wide control via main node
-- Individual nodes for specific mesh targeting
+- Individual mesh targeting/overrides
 - Easy exclusion by group
 
 ## How it Works
