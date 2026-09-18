@@ -92,4 +92,3 @@ Is this addon valuable to you? It took some real sweat and tears to make.
 ## Acknowledgements
 
 - Thanks to [@Bonkahe](https://github.com/Bonkahe) for compute shader inspiration in [SunshineClouds](https://github.com/Bonkahe/SunshineClouds2).
-]()
