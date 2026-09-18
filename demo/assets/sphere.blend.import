@@ -40,7 +40,15 @@ import_script/path=""
 materials/extract=0
 materials/extract_format=0
 materials/extract_path=""
-_subresources={}
+_subresources={
+"materials": {
+"Sphere_005_1": {
+"use_external/enabled": false,
+"use_external/fallback_path": "res://addons/blanket/materials/wireframe_backgound.tres",
+"use_external/path": "uid://bt3h2rh0fwcs8"
+}
+}
+}
 blender/nodes/visible=0
 blender/nodes/active_collection_only=false
 blender/nodes/punctual_lights=true
