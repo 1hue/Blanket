@@ -38,6 +38,8 @@ No changes to meshes are ever persisted.
 
 ## Usage
 
+Download via Godot Asset Store or manually copy the `addons/blanket/` folder in your project. Enable addon via Project -> Project Settings -> Addons. If you see errors, restart editor to ensure the `BlanketShaders` global is loaded.
+
 Add a `Blanket` node as a sibling of whatever you want covered. Likewise, place directly under scene root like you would `WorldEnvironment` if you want everything covered.
 
 To skip a mesh, assign it the `blanket_exclude` group. In case of imported meshes, any parent with this group works too.
