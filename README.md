@@ -45,7 +45,7 @@ This addon demonstrates advanced GLSL use in Godot. Lots to be excited about.
   - Use case: Pass `a` determines that there's `x` number of verts, writes dispatch size for Pass `b`, which then only concerns itself with verts `x`
 - **Smart workgroup layouts where possible**
   - Work distributed logically across `xyz` compute axes for better code readability
-  - Workgroups sizes tailored to maximize wavefront occupancy (GPU utilization)
+  - Workgroup sizes tailored to maximize wavefront occupancy (GPU utilization)
 - **Specialization constants**
   - Some params don't change, hence can be rolled into bytecode at compile-time for efficiency
 - **Direct GPU access of mesh vertex/index/attribute buffers**
