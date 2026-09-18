@@ -15,7 +15,7 @@ Can be used to generate a blanket of snow 🏔️, mounds of dirt, or piles of a
 - Exclusion by group
 - Advanced sparkling snow shader included
 
-## How it works
+## How it Works
 
 Everything runs on the GPU through compute shaders. GDExtension not needed.
 
@@ -29,6 +29,32 @@ Depth can be animated at runtime cheaply without a rebake.
 
 No changes to meshes are ever persisted.
 
+## Under the Hood
+
+This addon demonstrates advanced GLSL use in Godot. Lots to be excited about.
+
+- **Beautiful compute shaders**
+  - All of your meshes processed in parallel
+  - Same work not feasible on the CPU
+- **Logical split between "bake" and "update" stages**
+  - No unnecessary work done at runtime
+- **Indirect dispatching of each compute pass**
+  - No GPU-CPU roundtrip
+  - Use case: Pass A determines that there's X number of verts, then writes dispatch size for Pass B which only concerns itself with the X number of verts
+- **Smart workgroup layouts where possible**
+  - Work distributed logically across XYZ compute axes for better code readability
+  - Workgroups sizes tailored to maximize wavefront occupancy (GPU utilization)
+- **Specialization constants**
+  - Some params don't change, hence can be rolled into bytecode at compile-time for efficiency
+- **Direct GPU access of mesh vertex/index/attribute buffers**
+- **The little known [shader versions](addons/blanket/shaders.gd#L27) in Godot**
+  - Facilitates switching between half-precision and full-precision mesh buffers without code clutter
+    - Small meshes with index buffers under 65k fit get 16-bit addressing in Godot
+- GLSL extensions
+  - [GL_EXT_scalar_block_layout](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_scalar_block_layout.txt)
+  - [GL_EXT_shader_explicit_arithmetic_types](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_explicit_arithmetic_types.txt)
+  - [GL_EXT_shader_atomic_float](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_shader_atomic_float.txt)
+
 ## Requirements
 
 - Godot 4.8 - needs [mesh buffer RIDs](https://github.com/godotengine/godot/pull/118973)
@@ -38,13 +64,14 @@ No changes to meshes are ever persisted.
 
 ## Usage
 
-Download via Godot Asset Store or manually copy the `addons/blanket/` folder in your project. Enable addon via Project -> Project Settings -> Addons. If you see errors, restart editor to ensure the `BlanketShaders` global is loaded.
+Download via Godot Asset Store or download the zip and manually copy the `addons/blanket/` folder to your project. Enable addon via Project -> Project Settings -> Addons. If you see errors, restart editor to ensure the `BlanketShaders` global is loaded.
 
 Add a `Blanket` node as a sibling of whatever you want covered. Likewise, place directly under scene root like you would `WorldEnvironment` if you want everything covered.
 
 To skip a mesh, assign it the `blanket_exclude` group. In case of imported meshes, any parent with this group works too.
 
 For per-mesh control, add a `BlanketInstance` directly under a `MeshInstance3D`. Hand-placed instances are left alone - not overriden.
+
 ## Acknowledgements
 
 - Thanks to [@Bonkahe](https://github.com/Bonkahe) for compute shader inspiration in [SunshineClouds](https://github.com/Bonkahe/SunshineClouds2).
