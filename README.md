@@ -8,7 +8,7 @@ Lay down a layer of geometry on top of all upright surfaces in your scene.
 
 This addon can be used to generate a blanket of snow 🏔️, mounds of dirt, or piles of autumn leaves 🍂.
 
-Eliminate the need to modify your meshes individually - uniform effects should happen automatically!
+Eliminate the tedious work of reauthoring all of your 3D models - uniform effects should happen automatically!
 
 ## Features
 
