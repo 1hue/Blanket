@@ -80,7 +80,7 @@ For per-mesh control, add a `BlanketInstance` directly under a `MeshInstance3D`.
 
 ## Support
 
-Is this project valuable to you? It took some real sweat and tears to make, so any donations would be truly appreciated.
+Is this project valuable to you? It took some real sweat and tears to make. Any donations would be truly appreciated.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/1hued)
 
