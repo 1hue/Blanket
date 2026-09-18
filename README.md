@@ -13,7 +13,6 @@ Can be used to generate a blanket of snow 🏔️, mounds of dirt, or piles of a
 - One node per scene to cover all meshes
 - Individual mesh targetting
 - Exclusion by group
-- Advanced sparkling snow shader included
 
 ## How it Works
 
@@ -56,10 +55,6 @@ This addon demonstrates advanced GLSL use in Godot. Lots to be excited about.
   - [GL_EXT_scalar_block_layout](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_scalar_block_layout.txt)
   - [GL_EXT_shader_explicit_arithmetic_types](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_shader_explicit_arithmetic_types.txt)
   - [GL_EXT_shader_atomic_float](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GLSL_EXT_shader_atomic_float.txt)
-- Advanced multi-pass snow GDShader
-  - Reflection-based sparkle/glint effect for added realism
-  - Runs as a `next_pass`
-  - Uses the `light()` pipeline
 
 ## Requirements
 
