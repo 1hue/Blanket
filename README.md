@@ -6,8 +6,6 @@ Can be used to generate a blanket of snow 🏔️, mounds of dirt, or piles of a
 
 ![Screenshot of a scene of meshes with snow cover](demo/assets/screenshot.png)
 
-![Screenshot of a sphere mesh with snow cover](demo/assets/screenshot_2.png)
-
 ## Features
 - Smooth animated height/depth
 - Slope threshold / upward facing angle
@@ -30,6 +28,8 @@ The resultant generated geometry is inserted as an additional surface on the sam
 Depth can be animated at runtime cheaply without a rebake.
 
 No changes to meshes are ever persisted.
+
+![Screenshot of a sphere mesh with snow cover](demo/assets/screenshot_2.png)
 
 ## Under the Hood
 
