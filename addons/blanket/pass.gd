@@ -32,6 +32,11 @@ func workgroups(count: int, workgroup_axis_size: int) -> int:
 	return ceili(count / float(workgroup_axis_size))
 
 
+## Bootleg barrier because Godot's indirect dispatch is wonky - results in mesh holes due to incorrect dispatch values
+func sync_dispatch() -> void:
+	rd.buffer_get_data(sets.dispatch_buffer)
+
+
 func free_rids(rids: Array[RID]) -> void:
 	for rid in rids:
 		if rid:

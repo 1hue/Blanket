@@ -1,11 +1,12 @@
 [gd_scene format=3 uid="uid://g813oa3u8glg"]
 
 [ext_resource type="Script" uid="uid://x3cr4jp6yjen" path="res://demo/main.gd" id="1_au1l0"]
-[ext_resource type="Script" uid="uid://bgvm7sqcuvpec" path="res://addons/blanket/blanket.gd" id="2_wrxtx"]
 [ext_resource type="PackedScene" uid="uid://coj0s8dlod37o" path="res://demo/assets/fan.blend" id="4_dujpc"]
 [ext_resource type="Script" uid="uid://8ehypqim7667" path="res://demo/camera_rig.gd" id="4_nr2wj"]
 [ext_resource type="PackedScene" uid="uid://rur1jbhne453" path="res://demo/assets/complex.blend" id="5_cqq71"]
 [ext_resource type="PackedScene" uid="uid://b3r2rr3dtse5e" path="res://demo/assets/house.blend" id="6_cqq71"]
+[ext_resource type="Script" uid="uid://bgvm7sqcuvpec" path="res://addons/blanket/blanket.gd" id="7_7a6vi"]
+[ext_resource type="PackedScene" uid="uid://cnj5nrmj1thh5" path="res://demo/assets/sphere.blend" id="7_d70j4"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_7dm0k"]
 sky_horizon_color = Color(0.60784316, 0.6901961, 0.6862745, 1)
@@ -22,11 +23,6 @@ sky = SubResource("Sky_ig7tw")
 [node name="Main" type="Node3D" unique_id=1983684945]
 script = ExtResource("1_au1l0")
 
-[node name="Blanket" type="Node" parent="." unique_id=1614885158]
-script = ExtResource("2_wrxtx")
-depth = 1.3900000000000001
-metadata/_custom_type_script = "uid://bgvm7sqcuvpec"
-
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1840859551]
 environment = SubResource("Environment_0xm2m")
 
@@ -35,7 +31,7 @@ transform = Transform3D(0.7954905, 0.36377117, -0.48462918, -0.06428598, 0.84591
 shadow_enabled = true
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=1815120481]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00048160553, 1.1916234, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 0, 0)
 script = ExtResource("4_nr2wj")
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig" unique_id=807859617]
@@ -44,13 +40,13 @@ current = true
 metadata/_edit_lock_ = true
 
 [node name="complex" parent="." unique_id=321088263 instance=ExtResource("5_cqq71")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 0)
 
 [node name="fan" parent="." unique_id=611919879 instance=ExtResource("4_dujpc")]
 transform = Transform3D(-0.8660254, 0, 0.50000006, 0, 1, 0, -0.50000006, 0, -0.8660254, 0, 0, 0)
 
 [node name="house" parent="." unique_id=1163329002 instance=ExtResource("6_cqq71")]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, -5)
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, -8)
 
 [node name="MarginContainer" type="MarginContainer" parent="." unique_id=1327980401]
 anchors_preset = 2
@@ -69,3 +65,12 @@ theme_override_font_sizes/font_size = 13
 text = "Shift + MiddleMouse - pan
 N - next mesh
 +/- or Shift+scroll - change depth"
+
+[node name="sphere" parent="." unique_id=178334458 instance=ExtResource("7_d70j4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 0)
+
+[node name="Blanket" type="Node" parent="." unique_id=1470922003]
+script = ExtResource("7_7a6vi")
+metadata/_custom_type_script = "uid://bgvm7sqcuvpec"
+
+[editable path="sphere"]

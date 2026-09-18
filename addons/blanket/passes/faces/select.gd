@@ -19,7 +19,6 @@ func _pre() -> void:
 	init_selected_faces_buffers()
 
 
-
 func init_in_mesh_set() -> void:
 	var vertex_buffer := RenderingServer.mesh_surface_get_vertex_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
 	var index_buffer := RenderingServer.mesh_surface_get_index_buffer_rd_rid(surface.mesh_rid, surface.source_idx)
@@ -31,7 +30,7 @@ func init_in_mesh_set() -> void:
 
 
 func init_selected_faces_buffers() -> void:
-	var max_verts := mini(params.in_vertex_count, params.in_face_count * 3)
+	var max_verts := mini(params.in_vertex_count, params.in_index_count)
 	var vertex_size := align_buffer(4 + maxi(max_verts, 1) * VERTEX_STRIDE)
 	var index_size := align_buffer(4 + maxi(params.in_face_count, 1) * INDEX_STRIDE)
 
@@ -73,7 +72,10 @@ func compute() -> void:
 	rd.compute_list_bind_uniform_set(compute_list, selected_faces_set, 1)
 	rd.compute_list_bind_uniform_set(compute_list, sets.dispatch, 2)
 	rd.compute_list_dispatch(compute_list, workgroups(params.in_face_count, 256), 1, 1)
+	rd.compute_list_add_barrier(compute_list)
 	rd.compute_list_end()
+
+	sync_dispatch()
 
 
 func _notification(what) -> void:

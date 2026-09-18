@@ -12,7 +12,6 @@ enum Dispatch {
 	BOUNDARY = 6 * 12,
 }
 
-# TODO Clean up vars
 var rd: RenderingDevice
 var surface: BlanketSurface
 
@@ -58,21 +57,28 @@ func _init(p_surface: BlanketSurface) -> void:
 
 
 func init_indirect_dispatch() -> void:
-	dispatch_buffer = dispatch_buffer_create(Dispatch.BOUNDARY / 12 + 1)
+	dispatch_buffer = rd.storage_buffer_create(
+		Dispatch.size() * 12,
+		get_dispatch_bytes(),
+		RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT
+	)
 	dispatch = rd.uniform_set_create([
 		BlanketUtil.create_uniform([dispatch_buffer], RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, 0),
 	], BlanketShaders.select.shaders[&"in_u16"], 2)
 
 
-func dispatch_buffer_create(count := 1, init: PackedInt32Array = []) -> RID:
-	var size := count * 12
+func clear_dispatch() -> void:
+	rd.buffer_update(dispatch_buffer, 0, Dispatch.size() * 12, get_dispatch_bytes())
+
+
+func get_dispatch_bytes() -> PackedByteArray:
 	var bytes := PackedByteArray()
-	bytes.resize(size)
+	bytes.resize(Dispatch.size() * 12)
 
-	for i in count * 3:
-		bytes.encode_u32(i * 4, init[i] if i < init.size() else 1)
+	for i in Dispatch.size() * 3:
+		bytes.encode_u32(i * 4, 1)
 
-	return rd.storage_buffer_create(size, bytes, RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT)
+	return bytes
 
 
 ## TODO: Free scratch buffers after bake

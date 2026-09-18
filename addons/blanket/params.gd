@@ -64,7 +64,7 @@ var in_face_count: int:
 	get: return in_index_count / 3
 ## Every corner may append once, to either edge list - the only bound that can't overflow
 var max_edges: int:
-	get: return in_face_count * 3
+	get: return in_index_count
 #endregion
 
 #region Generated surface

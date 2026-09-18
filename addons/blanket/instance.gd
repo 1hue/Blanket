@@ -218,7 +218,7 @@ func apply_depth() -> void:
 		pipeline.params.depth = current_depth
 		pipeline.update()
 
-	draw_normals.call_deferred()
+	draw_debug.call_deferred()
 
 
 func rebake() -> void:
@@ -229,7 +229,7 @@ func rebake() -> void:
 		pipeline.params.depth = current_depth
 		pipeline.bake()
 
-	draw_normals.call_deferred()
+	draw_debug.call_deferred()
 
 
 func current_basis() -> Basis:
@@ -244,7 +244,7 @@ func on_mesh_changed() -> void:
 			if idx > -1 and idx < mesh_instance.get_surface_override_material_count():
 				mesh_instance.set_surface_override_material(idx, material)
 
-	draw_normals.call_deferred()
+	draw_debug.call_deferred()
 
 
 func set_debug_normals_mesh(value: MeshInstance3D) -> void:
@@ -269,6 +269,11 @@ func set_debug_indices_root(value: Node3D) -> void:
 	if debug_indices_root:
 		add_child(debug_indices_root)
 		debug_indices_root.top_level = true
+
+
+func draw_debug() -> void:
+	draw_normals()
+	draw_indices()
 
 
 func draw_normals() -> void:

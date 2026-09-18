@@ -51,6 +51,8 @@ func compute() -> void:
 	rd.compute_list_dispatch_indirect(compute_list, sets.dispatch_buffer, BlanketSets.Dispatch.DEDUPE)
 	rd.compute_list_end()
 
+	sync_dispatch()
+
 
 func _notification(what) -> void:
 	if what != NOTIFICATION_PREDELETE:
