@@ -17,7 +17,7 @@ Can be used to generate a blanket of snow 🏔️, mounds of dirt, or piles of a
 
 ## How it Works
 
-Everything runs on the GPU through compute shaders. GDExtension not needed.
+Everything runs on the GPU through compute shaders. **No GDExtension needed**.
 
 Meshes are checked for upward faces. The placement of the Blanket node controls which meshes are eligible - only siblings - place directly under scene root to cover the whole scene.
 
