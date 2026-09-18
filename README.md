@@ -27,7 +27,7 @@ The resultant generated geometry is inserted as an additional surface on the sam
 
 Depth can be animated at runtime cheaply without a rebake.
 
-No changes to meshes are ever persisted.
+Your meshes are safe - never modified.
 
 ![Screenshot of a sphere mesh with snow cover](demo/assets/screenshot_2.png)
 
@@ -37,14 +37,14 @@ This addon demonstrates advanced GLSL use in Godot. Lots to be excited about.
 
 - **Beautiful compute shaders**
   - All of your meshes processed in parallel
-  - Same work not feasible on the CPU
+  - Same work would not be feasible on the CPU
 - **Logical split between "bake" and "update" stages**
   - No unnecessary work done at runtime
 - **Indirect dispatching of each compute pass**
   - No GPU-CPU roundtrip
-  - Use case: Pass A determines that there's X number of verts, then writes dispatch size for Pass B which only concerns itself with the X number of verts
+  - Use case: Pass `a` determines that there's `x` number of verts, writes dispatch size for Pass `b`, which then only concerns itself with verts `x`
 - **Smart workgroup layouts where possible**
-  - Work distributed logically across XYZ compute axes for better code readability
+  - Work distributed logically across `xyz` compute axes for better code readability
   - Workgroups sizes tailored to maximize wavefront occupancy (GPU utilization)
 - **Specialization constants**
   - Some params don't change, hence can be rolled into bytecode at compile-time for efficiency
