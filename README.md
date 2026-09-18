@@ -2,17 +2,22 @@
 
 ![Screenshot of a scene of meshes with snow cover](demo/assets/hero-crop.webp)
 
-Procedural mesh surface cover for Godot 4.
+Procedural surface cover for Godot 4.
 
-Can be used to generate a blanket of snow 🏔️, mounds of dirt, or piles of autumn leaves 🍂. Eliminates the need to modify your meshes individually - uniform effects should happen automatically!
+Lay down a layer of geometry on top of all upright surfaces in your scene.
+
+This addon can be used to generate a blanket of snow 🏔️, mounds of dirt, or piles of autumn leaves 🍂.
+
+Eliminate the need to modify your meshes individually - uniform effects should happen automatically!
 
 ## Features
-- Smooth animated height/depth
-- Slope threshold / upward facing angle
-- Rotate or scale a mesh and the cover rebuilds itself
-- One node per scene to cover all meshes
-- Individual mesh targetting
-- Exclusion by group
+
+- Customizable & smoothly animated height/depth
+- Customizable upward angle
+- Reacts to mesh transform changes
+- Easy scene-wide control via main node
+- Individual nodes for specific mesh targeting
+- Easy exclusion by group
 
 ## How it Works
 
