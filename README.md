@@ -81,7 +81,7 @@ For per-mesh control, add a `BlanketInstance` directly under a `MeshInstance3D`.
 > [!NOTE]
 > This addon is published under the MIT [license](LICENSE), so you're free to use it however you please - as long as the copyright is retained in your project code.
 >
-> A mention in your credits would help me make more cool stuff.
+> A mention in your credits would help me make more cool stuff though.
 
 ## Support
 
