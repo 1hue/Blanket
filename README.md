@@ -4,7 +4,9 @@ Procedural mesh surface cover for Godot 4.
 
 Can be used to generate a blanket of snow 🏔️, mounds of dirt, or piles of autumn leaves 🍂. Eliminates the need to modify your meshes individually - uniform effects should happen automatically!
 
-![Screenshot of meshes with snow cover](demo/assets/screenshot.png)
+![Screenshot of a scene of meshes with snow cover](demo/assets/screenshot.png)
+
+![Screenshot of a sphere mesh with snow cover](demo/assets/screenshot_2.png)
 
 ## Features
 - Smooth animated height/depth
