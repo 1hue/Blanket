@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 const float EPSILON = 1e-6;
 const uint DEDUPE_WORKGROUP_SIZE = 64;
 const uint FACES_WORKGROUP_SIZE = 64;

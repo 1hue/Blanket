@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2026 1hue
+# SPDX-License-Identifier: MIT
+
 @abstract
 extends RefCounted
 class_name BlanketPass

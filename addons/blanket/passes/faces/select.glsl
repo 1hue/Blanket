@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 // Find the faces that point upward
 #[versions]
 in_u16 = "#define IN_INDEX_TYPE u16vec3";

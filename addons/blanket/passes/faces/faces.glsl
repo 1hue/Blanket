@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 // Repoint each chosen face at the merged verts - consolidate selected faces and verts
 #[compute]
 #version 450

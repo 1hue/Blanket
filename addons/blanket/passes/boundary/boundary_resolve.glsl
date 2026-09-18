@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 // Work out which vertices each rim skirt hangs from
 #[compute]
 #version 450

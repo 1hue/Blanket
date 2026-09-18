@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 // Fill each boundary edge's wall: a quad grid from the rim up to the surface.
 // Everything lies on the rim at rest - W determines actual raise
 #[versions]

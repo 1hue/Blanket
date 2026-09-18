@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 // Merge vertices sitting at the same spot for smooth shading and seamless moving
 #[compute]
 #version 450

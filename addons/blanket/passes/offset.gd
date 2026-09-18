@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2026 1hue
+# SPDX-License-Identifier: MIT
+
 extends BlanketPass
 class_name OffsetPass
 

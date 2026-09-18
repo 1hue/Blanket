@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 // Populate the out surface with the deduped selection - visible as soon as this runs
 #[versions]
 out_u16 = "#define OUT_INDEX_TYPE u16vec3";

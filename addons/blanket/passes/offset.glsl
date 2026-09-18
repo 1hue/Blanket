@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 // Offset each vert along local_up, scaled by the proportion stored in Custom0.W
 #[compute]
 #version 450

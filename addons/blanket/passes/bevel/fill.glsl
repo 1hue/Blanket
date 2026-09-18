@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 // Bridge each shared edge with a fan at both apexes and a strip between their arcs
 #[versions]
 out_u16 = "#define OUT_INDEX_TYPE u16vec3";

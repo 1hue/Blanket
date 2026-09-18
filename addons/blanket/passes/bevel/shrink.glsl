@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 // Retract each selected face from its shared edges, leaving a gap to be filled with bevel topology
 #[versions]
 out_u16 = "#define OUT_INDEX_TYPE u16vec3";

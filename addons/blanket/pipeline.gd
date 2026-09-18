@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2026 1hue
+# SPDX-License-Identifier: MIT
+
 ## Collection of compute passes per mesh surface.
 extends RefCounted
 class_name BlanketPipeline

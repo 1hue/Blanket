@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 // Find every edge shared by two selected faces, store the apex verts.
 // Mark the verts on the boundary and record its edges for the wall.
 #[compute]

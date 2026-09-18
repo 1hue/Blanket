@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2026 1hue
+# SPDX-License-Identifier: MIT
+
 ## Covers every mesh in a scene
 ##
 ## Drop this in once and it finds the meshes around it, adding a [BlanketInstance] to each one.

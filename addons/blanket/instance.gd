@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2026 1hue
+# SPDX-License-Identifier: MIT
+
 ## Covers one mesh
 ##
 ## Add this under a [MeshInstance3D] and it grows a layer of cover over every surface facing upward.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 1hue
+// SPDX-License-Identifier: MIT
+
 bool is_creased(uint face_idx, uint corner) {
 	FaceEdge entry = face_edges[face_idx * 3 + corner];
 
