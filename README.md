@@ -50,7 +50,7 @@ This addon demonstrates advanced GLSL use in Godot. Lots to be excited about.
   - Work distributed logically across `xyz` compute axes for better code readability
   - Workgroup sizes tailored to maximize wavefront occupancy (GPU utilization)
 - **Specialization constants**
-  - Some params don't change, hence can be rolled into bytecode at compile-time for efficiency
+  - Some params don't change, hence can be baked into the pipeline for efficiency
 - **Direct GPU access of mesh vertex/index/attribute buffers**
 - **The little known [shader versions](addons/blanket/shaders.gd#L27) in Godot**
   - Facilitates switching between half-precision and full-precision mesh buffers without code clutter
