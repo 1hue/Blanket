@@ -1,4 +1,4 @@
-# Blanket
+## Blanket
 
 Procedural mesh surface cover for Godot 4.
 
@@ -78,12 +78,18 @@ To skip a mesh, assign it the `blanket_exclude` group. In case of imported meshe
 
 For per-mesh control, add a `BlanketInstance` directly under a `MeshInstance3D`. Hand-placed instances are left alone - not overriden.
 
+> [!NOTE]
+> This addon is published under the MIT [license](LICENSE), so you're free to use it however you please - as long as the copyright is retained in your project code.
+>
+> A mention in your credits would help me make more cool stuff.
+
 ## Support
 
-Is this project valuable to you? It took some real sweat and tears to make. Any donations would be truly appreciated.
+Is this addon valuable to you? It took some real sweat and tears to make.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/1hued)
 
 ## Acknowledgements
 
 - Thanks to [@Bonkahe](https://github.com/Bonkahe) for compute shader inspiration in [SunshineClouds](https://github.com/Bonkahe/SunshineClouds2).
+]()
