@@ -78,6 +78,12 @@ To skip a mesh, assign it the `blanket_exclude` group. In case of imported meshe
 
 For per-mesh control, add a `BlanketInstance` directly under a `MeshInstance3D`. Hand-placed instances are left alone - not overriden.
 
+## Support
+
+Is this project valuable to you? It took some real sweat and tears to make, so any donations would be truly appreciated.
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/1hued)
+
 ## Acknowledgements
 
 - Thanks to [@Bonkahe](https://github.com/Bonkahe) for compute shader inspiration in [SunshineClouds](https://github.com/Bonkahe/SunshineClouds2).
