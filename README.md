@@ -6,8 +6,6 @@ Procedural surface cover for Godot 4.
 
 Lay down a layer of geometry on top of all upright surfaces in your scene.
 
-This addon can be used to generate a blanket of snow 🏔️, mounds of dirt, or piles of autumn leaves 🍂.
-
 Eliminate the tedious work of reauthoring all of your 3D models - uniform effects should happen automatically!
 
 ## Features
@@ -22,15 +20,16 @@ Eliminate the tedious work of reauthoring all of your 3D models - uniform effect
 
 Everything runs on the GPU through compute shaders. **No GDExtension needed**.
 
-Meshes are checked for upward faces. The placement of the Blanket node controls which meshes are eligible - only siblings - place directly under scene root to cover the whole scene.
+Meshes are checked for upward faces. The placement of the `Blanket` node controls which meshes are eligible - only siblings - place directly under scene root to cover the whole scene.
 
 Upward faces are identified, extruded and bevelled through a handful of compute dispatches, no mesh data copied back to the CPU. This happens as a one-time bake at initialization.
 
 The resultant generated geometry is inserted as an additional surface on the same mesh. Then textured via a `ShaderMaterial`.
 
-Depth can be animated at runtime cheaply without a rebake.
+Depth can then be animated at runtime cheaply without a rebake.
 
-Your meshes are safe - never modified.
+> [!NOTE]
+> Your meshes are safe - never modified.
 
 ![Screenshot of a sphere mesh with snow cover](demo/assets/screenshot_2.png)
 
