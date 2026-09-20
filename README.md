@@ -77,7 +77,7 @@ To skip a mesh, assign it the `blanket_exclude` group. In case of imported model
 For per-mesh control, add a `BlanketInstance` directly under a `MeshInstance3D`. Hand-placed instances are left alone - not overriden.
 
 > [!NOTE]
-> This addon is published under the MIT [license](LICENSE), so you're free to use it however you please - as long as the copyright is retained in your project code.
+> This addon is published under the [MIT License](LICENSE), so you're free to use it however you please - as long as the copyright is retained in your project code.
 >
 > A mention in your credits would help me make more cool stuff though.
 
