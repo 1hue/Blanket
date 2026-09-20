@@ -72,7 +72,7 @@ Download via Godot Asset Store or download the zip and manually copy the `addons
 
 Add a `Blanket` node as a sibling of whatever you want covered. If you want everything in your scene covered, place directly under scene root like you would `WorldEnvironment`.
 
-To skip a mesh, assign it the `blanket_exclude` group. In case of imported meshes, any parent with this group works too.
+To skip a mesh, assign it the `blanket_exclude` group. In case of imported models (`.glb`, `.fbx`, etc.), any parent with this group works too.
 
 For per-mesh control, add a `BlanketInstance` directly under a `MeshInstance3D`. Hand-placed instances are left alone - not overriden.
 
