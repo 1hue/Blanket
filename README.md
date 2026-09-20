@@ -70,7 +70,7 @@ This addon demonstrates advanced GLSL use in Godot. Lots to be excited about.
 
 Download via Godot Asset Store or download the zip and manually copy the `addons/blanket/` folder to your project. Enable addon via Project -> Project Settings -> Addons. If you see errors, restart editor to ensure the `BlanketShaders` global is loaded.
 
-Add a `Blanket` node as a sibling of whatever you want covered. Likewise, place directly under scene root like you would `WorldEnvironment` if you want everything covered.
+Add a `Blanket` node as a sibling of whatever you want covered. If you want everything in your scene covered, place directly under scene root like you would `WorldEnvironment`.
 
 To skip a mesh, assign it the `blanket_exclude` group. In case of imported meshes, any parent with this group works too.
 
