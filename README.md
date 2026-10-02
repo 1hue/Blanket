@@ -1,6 +1,6 @@
 ## Blanket
 
-![Screenshot of a scene of meshes with snow cover](demo/assets/hero-crop.webp)
+![Screenshot of a scene of meshes with snow cover](demo/assets/screenshot.png)
 
 Procedural surface cover for Godot 4.
 
