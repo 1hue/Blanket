@@ -29,7 +29,7 @@ The resultant generated geometry is inserted as an additional surface on the sam
 Depth can then be animated at runtime cheaply without a rebake.
 
 > [!NOTE]
-> Your meshes are safe - never modified.
+> Your meshes are safe - never modified. ✅
 
 ![Screenshot of a sphere mesh with snow cover](demo/assets/screenshot_2.png)
 
