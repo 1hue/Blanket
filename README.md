@@ -52,7 +52,7 @@ This addon demonstrates advanced GLSL use in Godot. Lots to be excited about.
   - Some params don't change, hence can be baked into the pipeline for efficiency
 - **Direct GPU access of mesh vertex/index/attribute buffers**
 - **The little known [shader versions](addons/blanket/shaders.gd#L27) in Godot**
-  - Facilitates switching between half-precision and full-precision mesh buffers without code clutter
+  - Facilitates switching between half and full-precision mesh buffers without code clutter
   - Small meshes under 65k indices get 16-bit addressing in Godot
 - GLSL extensions
   - [GL_EXT_scalar_block_layout](https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_scalar_block_layout.txt)
