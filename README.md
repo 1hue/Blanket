@@ -26,7 +26,7 @@ Upward faces are identified, extruded and bevelled through a handful of compute 
 
 The resultant generated geometry is inserted as an additional surface on the same mesh. Then textured via a `ShaderMaterial`.
 
-Depth can then be animated at runtime cheaply without a rebake.
+Depth can then be animated cheaply at runtime without a rebake.
 
 > [!NOTE]
 > Your meshes are safe - never modified. ✅
