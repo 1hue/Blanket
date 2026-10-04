@@ -18,7 +18,7 @@ Eliminate the tedious work of reauthoring all of your 3D models - uniform effect
 
 ## How it Works
 
-Everything runs on the GPU through compute shaders. **No GDExtension needed**.
+Everything runs on the GPU as compute shaders. **No GDExtension needed**.
 
 Meshes are checked for upward faces. The placement of the `Blanket` node controls which meshes are eligible - only siblings - place directly under scene root to cover the whole scene.
 
