@@ -62,6 +62,7 @@ This addon demonstrates advanced GLSL use in Godot. Lots to be excited about.
 ## Requirements
 
 - Godot 4.8 - needs [mesh buffer RIDs](https://github.com/godotengine/godot/pull/118973)
+- Vulkan API
 - Forward+ or Mobile renderer - Compatibility has no compute support
 - Desktop recommended; mobile GPU compute may or may not work
 - Meshes should be `ArrayMesh` with valid normals
