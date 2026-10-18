@@ -10,13 +10,17 @@ extends Node
 class_name Blanket
 
 #region Exports
-## Off stops new insertions and broadcasts. Existing instances stay put
 @export var enabled := true:
 	set(value):
 		enabled = value
 
 		if enabled:
-			cover_siblings()
+			cover_scope()
+
+@export var target: Node:
+	set(value):
+		target = value
+		cover_scope()
 
 @export_range(0, 3, 0.01, "or_greater") var depth := BlanketParams.DEFAULT_DEPTH:
 	set(value):
@@ -35,11 +39,11 @@ class_name Blanket
 		min_crease_degrees = value
 		push_settings()
 
-## Meshes in this group are skipped, as are those under a parent in it
 @export var exclude_group: StringName = &"blanket_exclude"
 @export var material: Material = BlanketInstance.DEFAULT_MATERIAL
 
 @export_group("Debug", "debug")
+@export var debug_enabled := false
 @export_subgroup("Normals", "debug_normals")
 @export var debug_normals_enabled := false
 @export_range(0, 2, 0.01, "or_greater", "prefer_slider") var debug_normals_length := 0.2
@@ -52,22 +56,26 @@ class_name Blanket
 #endregion
 
 func _ready() -> void:
-	cover_siblings()
+	cover_scope()
+
+
+func get_scope() -> Node:
+	if target:
+		return target
+
+	if Engine.is_editor_hint():
+		return get_tree().edited_scene_root
+
+	return get_tree().root
 
 
 ## Idempotent - is_eligible skips anything already covered
-func cover_siblings() -> void:
+func cover_scope() -> void:
 	if not enabled or not is_inside_tree():
 		return
 
-	var parent := get_parent()
-
-	if parent == null:
-		return
-
-	for sibling in parent.get_children():
-		if sibling != self:
-			cover(sibling)
+	for child in get_scope().get_children():
+		cover(child)
 
 	push_settings()
 
@@ -83,7 +91,6 @@ func cover(node: Node) -> void:
 		cover(child)
 
 
-## A hand-placed instance keeps its own settings. Leave it be
 func is_eligible(mesh_instance: MeshInstance3D) -> bool:
 	if not BlanketInstance.is_supported(mesh_instance.mesh):
 		return false
@@ -95,7 +102,6 @@ func is_eligible(mesh_instance: MeshInstance3D) -> bool:
 	return true
 
 
-## Settings land before add_child - in place by the time _ready bakes
 func add_instance(mesh_instance: MeshInstance3D) -> void:
 	var instance := BlanketInstance.new()
 
@@ -113,19 +119,18 @@ func add_instance(mesh_instance: MeshInstance3D) -> void:
 
 	mesh_instance.add_child(instance)
 
+	if debug_enabled:
+		prints("Blanket cover:", self, mesh_instance.get_path())
 
-## The group spans the whole scene. Filter to what our parent owns - hand-placed instances included
+
 func push_settings() -> void:
 	if not enabled or not is_inside_tree():
 		return
 
-	var parent := get_parent()
-
-	if parent == null:
-		return
+	var scope := get_scope()
 
 	for instance in get_tree().get_nodes_in_group(BlanketInstance.GROUP):
-		if parent.is_ancestor_of(instance):
+		if scope.is_ancestor_of(instance):
 			if instance is BlanketInstance:
 				instance.depth = depth
 				instance.max_slope_degrees = max_slope_degrees
