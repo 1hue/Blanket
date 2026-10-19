@@ -56,8 +56,6 @@ func _init(p_mesh: ArrayMesh, surface_idx: int, global_transform: Transform3D) -
 
 
 func bake() -> void:
-	#sets.clear_dispatch()
-
 	for select_pass in select_passes:
 		select_pass.compute()
 
@@ -68,12 +66,10 @@ func bake() -> void:
 		build_pass.compute()
 
 	update()
-	#debug.dump()
 
 
 func update() -> void:
 	if params.is_out_mesh_empty:
-		push_warning("BlanketPipeline: is_out_mesh_empty")
 		return
 
 	for update_pass in update_passes:
