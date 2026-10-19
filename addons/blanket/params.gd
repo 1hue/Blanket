@@ -7,7 +7,7 @@ class_name BlanketParams
 signal changed
 
 const DEFAULT_DEPTH = 0.5
-const DEFAULT_MAX_SLOPE_DEGREES = 65.0
+const DEFAULT_MAX_SLOPE_DEGREES = 31.0
 const DEFAULT_MIN_CREASE_DEGREES = 15.0
 
 ## Sizes BoundaryEdge.top - a spec constant can't, the block stride won't follow
