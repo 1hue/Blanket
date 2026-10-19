@@ -98,8 +98,7 @@ var prev_basis: Basis
 var rebake_timer: Timer
 
 
-## Triangles in an ArrayMesh only - primitives can't take the storage flag, and
-## other topologies have no faces to select
+## Triangles in an [ArrayMesh] only - primitives can't have the storage flag and other topologies have no faces
 static func is_supported(source: Mesh) -> bool:
 	if source is not ArrayMesh:
 		return false
@@ -126,7 +125,6 @@ func _ready() -> void:
 	setup()
 
 
-## Tree re-entry after a teardown. First time through, _ready hasn't run and mesh_instance is still null
 func _enter_tree() -> void:
 	add_to_group(GROUP)
 
@@ -134,7 +132,6 @@ func _enter_tree() -> void:
 		setup()
 
 
-## Dropping the pipelines frees their RIDs through the RefCounted destructors
 func _exit_tree() -> void:
 	remove_from_group(GROUP)
 
@@ -146,8 +143,6 @@ func _exit_tree() -> void:
 	pipelines.clear()
 
 
-## Fires on our own global transform, parent movement included. Translation leaves local_up alone,
-## so the basis still needs checking
 func _notification(what: int) -> void:
 	if what != NOTIFICATION_TRANSFORM_CHANGED or not rebake_on_transform:
 		return
@@ -303,7 +298,7 @@ func draw_indices() -> void:
 	debug_indices_root = build_index_labels()
 
 
-## One Label3D per vert - fine for debugging a handful, heavy past a few hundred
+## One [Label3D] per vert
 func build_index_labels() -> Node3D:
 	var root := Node3D.new()
 
@@ -330,7 +325,6 @@ func build_index_labels() -> Node3D:
 	return root
 
 
-## Every computed surface into one mesh - surface.idx is where each landed
 func build_normal_lines() -> MeshInstance3D:
 	var im := ImmediateMesh.new()
 	var normals_material := ORMMaterial3D.new()
@@ -363,8 +357,7 @@ func build_normal_lines() -> MeshInstance3D:
 	return mi
 
 
-## Source meshes rarely carry the storage flag, so everything gets rebuilt once.
-## Already converted on re-entry - rebuilding would drop the computed surfaces
+## Need storage flag to access source mesh buffers
 func convert_to_storage_buffer_mesh() -> void:
 	var source_mesh := mesh
 
@@ -375,6 +368,13 @@ func convert_to_storage_buffer_mesh() -> void:
 
 	for i in source_mesh.get_surface_count():
 		var arrays := source_mesh.surface_get_arrays(i)
+
+		# Handle meshes with no index buffer - assumed every 3 verts form a tri
+		if source_mesh.surface_get_array_index_len(i) == 0:
+			var surface_tool := SurfaceTool.new()
+			surface_tool.create_from(source_mesh, i)
+			surface_tool.index()
+			arrays = surface_tool.commit_to_arrays()
 
 		new_mesh.add_surface_from_arrays(
 			Mesh.PRIMITIVE_TRIANGLES,

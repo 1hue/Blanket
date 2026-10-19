@@ -28,6 +28,7 @@ var vertex_stride: int:
 var index_count: int:
 	get: return mesh.surface_get_array_index_len(idx) if idx >= 0 else 0
 
+
 func _init(p_mesh: ArrayMesh, p_source_idx: int) -> void:
 	mesh = p_mesh
 	source_idx = p_source_idx
